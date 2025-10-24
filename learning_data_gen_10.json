@@ -1,0 +1,264 @@
+{
+  "generation_data": [
+    {
+      "generation": 1,
+      "avg_fitness": 17.518014198741547,
+      "max_fitness": 86.39345406183297,
+      "min_fitness": 10.0,
+      "std_fitness": 16.90513825444521,
+      "avg_food": 0.8333333333333334,
+      "max_food": 9,
+      "avg_age": 2150.1,
+      "max_age": 3458.0,
+      "avg_distance": 851.3475320748842,
+      "diversity": 0.21630819831187395,
+      "alive_count": 0
+    },
+    {
+      "generation": 2,
+      "avg_fitness": 17.446978531170473,
+      "max_fitness": 100.0,
+      "min_fitness": 0.125,
+      "std_fitness": 21.003987174006983,
+      "avg_food": 1.2333333333333334,
+      "max_food": 15,
+      "avg_age": 1720.5333333333333,
+      "max_age": 4115.0,
+      "avg_distance": 1082.7454328429817,
+      "diversity": 0.20399635437237681,
+      "alive_count": 0
+    },
+    {
+      "generation": 3,
+      "avg_fitness": 19.241244139318137,
+      "max_fitness": 100.0,
+      "min_fitness": 0.9007506444902561,
+      "std_fitness": 17.732437025589128,
+      "avg_food": 1.1666666666666667,
+      "max_food": 12,
+      "avg_age": 1982.5,
+      "max_age": 3962.0,
+      "avg_distance": 1339.7895041667266,
+      "diversity": 0.1762300265361286,
+      "alive_count": 0
+    },
+    {
+      "generation": 4,
+      "avg_fitness": 20.41323479443776,
+      "max_fitness": 51.99975275350066,
+      "min_fitness": 2.896893840690691,
+      "std_fitness": 11.982942142897503,
+      "avg_food": 1.2666666666666666,
+      "max_food": 6,
+      "avg_age": 1867.8,
+      "max_age": 2898.0,
+      "avg_distance": 1502.73479443776,
+      "diversity": 0.08475137298941948,
+      "alive_count": 0
+    },
+    {
+      "generation": 5,
+      "avg_fitness": 21.445930352122378,
+      "max_fitness": 71.24657596878605,
+      "min_fitness": 0.4735347859599681,
+      "std_fitness": 14.56991043601335,
+      "avg_food": 1.3333333333333333,
+      "max_food": 7,
+      "avg_age": 2011.2333333333333,
+      "max_age": 3551.0,
+      "avg_distance": 2103.263685455713,
+      "diversity": 0.0683619061959315,
+      "alive_count": 0
+    },
+    {
+      "generation": 6,
+      "avg_fitness": 20.79687788796529,
+      "max_fitness": 80.13104672989132,
+      "min_fitness": 0.41381410343222486,
+      "std_fitness": 16.670583471625655,
+      "avg_food": 1.3,
+      "max_food": 8,
+      "avg_age": 1848.4,
+      "max_age": 4126.0,
+      "avg_distance": 2163.2112212986226,
+      "diversity": 0.07833639540786466,
+      "alive_count": 1
+    },
+    {
+      "generation": 7,
+      "avg_fitness": 20.07821542849989,
+      "max_fitness": 89.04432781697946,
+      "min_fitness": 0.2598979578542302,
+      "std_fitness": 19.930576965777504,
+      "avg_food": 1.3333333333333333,
+      "max_food": 9,
+      "avg_age": 1704.8333333333333,
+      "max_age": 4476.0,
+      "avg_distance": 1974.2154284998874,
+      "diversity": 0.07037657805452137,
+      "alive_count": 0
+    },
+    {
+      "generation": 8,
+      "avg_fitness": 19.994916347607745,
+      "max_fitness": 90.0,
+      "min_fitness": 0.14717196750653,
+      "std_fitness": 18.05528102467736,
+      "avg_food": 1.3,
+      "max_food": 9,
+      "avg_age": 1809.0333333333333,
+      "max_age": 6057.0,
+      "avg_distance": 1901.803193917987,
+      "diversity": 0.06065152404564588,
+      "alive_count": 0
+    },
+    {
+      "generation": 9,
+      "avg_fitness": 20.238502049943154,
+      "max_fitness": 68.6753268849439,
+      "min_fitness": 1.4525604204021625,
+      "std_fitness": 13.884901251635227,
+      "avg_food": 1.2666666666666666,
+      "max_food": 7,
+      "avg_age": 1894.0666666666666,
+      "max_age": 3858.0,
+      "avg_distance": 2082.335383276481,
+      "diversity": 0.06419955476183223,
+      "alive_count": 0
+    },
+    {
+      "generation": 10,
+      "avg_fitness": 20.054394014251933,
+      "max_fitness": 84.1056913840414,
+      "min_fitness": 0.24345749230062064,
+      "std_fitness": 18.551929055550943,
+      "avg_food": 1.3333333333333333,
+      "max_food": 9,
+      "avg_age": 1655.0666666666666,
+      "max_age": 3517.0,
+      "avg_distance": 1934.7273475852612,
+      "diversity": 0.0562265244028973,
+      "alive_count": 0
+    }
+  ],
+  "fitness_history": [
+    17.518014198741547,
+    17.446978531170473,
+    19.241244139318137,
+    20.41323479443776,
+    21.445930352122378,
+    20.79687788796529,
+    20.07821542849989,
+    19.994916347607745,
+    20.238502049943154,
+    20.054394014251933
+  ],
+  "food_history": [
+    0.8333333333333334,
+    1.2333333333333334,
+    1.1666666666666667,
+    1.2666666666666666,
+    1.3333333333333333,
+    1.3,
+    1.3333333333333333,
+    1.3,
+    1.2666666666666666,
+    1.3333333333333333
+  ],
+  "survival_history": [
+    2150.1,
+    1720.5333333333333,
+    1982.5,
+    1867.8,
+    2011.2333333333333,
+    1848.4,
+    1704.8333333333333,
+    1809.0333333333333,
+    1894.0666666666666,
+    1655.0666666666666
+  ],
+  "diversity_history": [
+    0.21630819831187395,
+    0.20399635437237681,
+    0.1762300265361286,
+    0.08475137298941948,
+    0.0683619061959315,
+    0.07833639540786466,
+    0.07037657805452137,
+    0.06065152404564588,
+    0.06419955476183223,
+    0.0562265244028973
+  ],
+  "behavior_patterns": [
+    {
+      "food_seekers": 10.0,
+      "explorers": 33.33333333333333,
+      "survivors": 100.0,
+      "efficient_movers": 76.66666666666667,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 13.333333333333334,
+      "explorers": 36.666666666666664,
+      "survivors": 70.0,
+      "efficient_movers": 86.66666666666667,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 10.0,
+      "explorers": 63.33333333333333,
+      "survivors": 83.33333333333334,
+      "efficient_movers": 86.66666666666667,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 23.333333333333332,
+      "explorers": 63.33333333333333,
+      "survivors": 73.33333333333333,
+      "efficient_movers": 86.66666666666667,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 16.666666666666664,
+      "explorers": 70.0,
+      "survivors": 80.0,
+      "efficient_movers": 90.0,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 20.0,
+      "explorers": 73.33333333333333,
+      "survivors": 63.33333333333333,
+      "efficient_movers": 93.33333333333333,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 13.333333333333334,
+      "explorers": 56.666666666666664,
+      "survivors": 63.33333333333333,
+      "efficient_movers": 83.33333333333334,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 13.333333333333334,
+      "explorers": 56.666666666666664,
+      "survivors": 60.0,
+      "efficient_movers": 80.0,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 13.333333333333334,
+      "explorers": 66.66666666666666,
+      "survivors": 70.0,
+      "efficient_movers": 86.66666666666667,
+      "obstacle_avoiders": 0.0
+    },
+    {
+      "food_seekers": 13.333333333333334,
+      "explorers": 66.66666666666666,
+      "survivors": 56.666666666666664,
+      "efficient_movers": 86.66666666666667,
+      "obstacle_avoiders": 0.0
+    }
+  ]
+}
