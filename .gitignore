@@ -1,0 +1,31 @@
+# === Entornos virtuales ===
+venv/
+.venv/
+env/
+.env/
+__pycache__/
+*.py[cod]
+
+# === Archivos temporales ===
+*.log
+*.tmp
+*.swp
+
+# === Config locales ===
+.DS_Store
+.idea/
+.vscode/
+*.code-workspace
+
+# === Archivos de salida ===
+logs/
+checkpoints/
+results/
+data/
+notebooks/.ipynb_checkpoints/
+__pycache__/
+
+# === Dependencias ===
+*.egg-info/
+dist/
+build/

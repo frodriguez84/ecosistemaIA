@@ -1,0 +1,112 @@
+# Configuración principal del Ecosistema Evolutivo IA
+
+simulation:
+  map_size: [80, 80]
+  ticks_per_epoch: 2000
+  population: 100
+  food_density: 0.1
+  obstacle_density: 0.05
+  random_seed: 42
+  max_epochs: 200
+  checkpoint_interval: 10
+
+agent:
+  vision_range: 5
+  energy_max: 100
+  energy_move_cost: 1.2
+  energy_eat_gain: 20
+  energy_decay_rate: 0.1
+  max_age: 1000
+  reproduction_threshold: 80
+  reproduction_cost: 30
+  vision:
+    enabled: true
+    range: 5
+    angle: 360
+    resolution: 8
+  energy:
+    enabled: true
+  distance:
+    enabled: true
+  collision:
+    enabled: true
+  sensors:
+    vision:
+      enabled: true
+      range: 5
+      angle: 360
+      resolution: 8
+    energy:
+      enabled: true
+    distance:
+      enabled: true
+    collision:
+      enabled: true
+  actuators:
+    movement:
+      enabled: true
+      max_speed: 2.0
+      acceleration: 0.5
+    rotation:
+      enabled: true
+      max_angular_speed: 0.5
+    reproduction:
+      enabled: true
+      energy_threshold: 80
+      energy_cost: 30
+    feeding:
+      enabled: true
+      energy_gain: 20
+      range: 1.0
+
+ga:
+  population_size: 100
+  mutation_rate: 0.08
+  crossover_rate: 0.7
+  elitism: 2
+  max_generations: 200
+  selection_method: "tournament"  # tournament, roulette
+  tournament_size: 3
+
+neural_net:
+  input_size: 10
+  hidden_layers: [16, 8]
+  output_size: 4
+  activation: "relu"  # relu, tanh, sigmoid
+  weight_range: [-1.0, 1.0]
+
+environment:
+  food_regeneration_rate: 0.01
+  obstacle_penalty: 5
+  boundary_penalty: 10
+  collision_penalty: 2
+
+fitness:
+  survival_weight: 1.0
+  food_weight: 0.5
+  efficiency_weight: 0.3
+  diversity_weight: 0.2
+
+analytics:
+  clustering_interval: 20
+  metrics_log_interval: 10
+  save_plots: true
+  clustering_method: "kmeans"  # kmeans, dbscan
+  n_clusters: 5
+
+ui:
+  window_size: [1000, 800]
+  fps: 60
+  show_grid: true
+  show_vision: false
+  colors:
+    agent: [255, 100, 100]
+    food: [100, 255, 100]
+    obstacle: [100, 100, 100]
+    background: [50, 50, 50]
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/runtime/simulation.log"
+  metrics_file: "logs/metrics/metrics.csv"

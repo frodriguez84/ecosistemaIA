@@ -1,0 +1,37 @@
+# Dependencias principales para Ecosistema Evolutivo IA
+
+# Renderizado 2D y eventos
+pygame>=2.5.0
+
+# Redes neuronales
+torch>=2.0.0
+# Alternativa: tensorflow>=2.13.0
+
+# Algoritmos genéticos
+deap>=1.4.0
+
+# Clustering y análisis
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Generación procedural
+# noise>=1.2.2  # Comentado - usando implementación simple
+
+# Visualización y análisis
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Configuración y CLI
+PyYAML>=6.0
+argparse
+
+# Logging estructurado
+rich>=13.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Utilidades
+tqdm>=4.65.0

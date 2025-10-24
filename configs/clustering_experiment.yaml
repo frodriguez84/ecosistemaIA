@@ -1,0 +1,45 @@
+# Configuración para experimentos de clustering
+simulation:
+  map_size: [1000, 700]
+  ticks_per_epoch: 2000
+  max_epochs: 50
+  random_seed: 42
+
+agent:
+  population_size: 50
+  vision_range: 60
+  energy_max: 150
+  energy_move_cost: 1
+  energy_eat_gain: 25
+  max_age: 1500
+
+environment:
+  food_density: 0.04
+  obstacle_density: 0.12
+  food_regeneration_rate: 0.008
+
+ga:
+  mutation_rate: 0.08
+  crossover_rate: 0.85
+  elitism: 3
+  max_generations: 100
+
+neural_net:
+  input_size: 10
+  hidden_layers: [24, 12, 6]
+  output_size: 5
+  activation: "relu"
+
+clustering:
+  enabled: true
+  method: "kmeans"
+  n_clusters: 5
+  features: ["position", "energy", "age", "fitness"]
+  save_plots: true
+
+ui:
+  window_size: [1200, 900]
+  fps: 45
+  show_metrics: true
+  show_vision: true
+  show_clusters: true

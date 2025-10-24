@@ -1,0 +1,37 @@
+# Configuración para experimentos de larga duración
+simulation:
+  map_size: [1200, 800]
+  ticks_per_epoch: 5000
+  max_epochs: 100
+  random_seed: 42
+
+agent:
+  population_size: 100
+  vision_range: 80
+  energy_max: 200
+  energy_move_cost: 1
+  energy_eat_gain: 30
+  max_age: 2000
+
+environment:
+  food_density: 0.03
+  obstacle_density: 0.15
+  food_regeneration_rate: 0.005
+
+ga:
+  mutation_rate: 0.05
+  crossover_rate: 0.9
+  elitism: 5
+  max_generations: 200
+
+neural_net:
+  input_size: 12
+  hidden_layers: [32, 16, 8]
+  output_size: 6
+  activation: "relu"
+
+ui:
+  window_size: [1400, 1000]
+  fps: 60
+  show_metrics: true
+  show_vision: true
