@@ -6,19 +6,25 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    MAX_TICKS_PER_GENERATION = 10000
+    MAX_TICKS_PER_GENERATION = 3000   # AUMENTADO para asegurar supervivientes
     POPULATION_SIZE = 30
     TARGET_FPS = 60
     MAX_GENERATIONS = 50
     
+    # === SISTEMA ADAPTATIVO DE TIEMPO ===
+    ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
+    BASE_TICKS = 3000                 # Tiempo base (AUMENTADO para más supervivencia)
+    COMPLEX_TICKS = 8000              # Tiempo para tareas complejas (generaciones 11+)
+    TRANSITION_GENERATION = 10        # Generación donde cambia el tiempo
+    
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.25         # 25% de mutación (MUY AUMENTADO para diversidad)
-    CROSSOVER_RATE = 0.8         # 80% de cruce (OPTIMIZADO)
+    MUTATION_RATE = 0.20         # 20% de mutación (AUMENTADO para combatir convergencia)
+    CROSSOVER_RATE = 0.7         # 70% de cruce (REDUCIDO para más exploración)
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "tournament"  # "elitism" o "tournament"
-    TOURNAMENT_SIZE = 7             # Tamaño del torneo (MUY AUMENTADO para diversidad)
-    ELITISM = 1                     # Mejores agentes que se mantienen (solo si SELECTION_METHOD = "elitism")
+    TOURNAMENT_SIZE = 10             # Tamaño del torneo (AUMENTADO: más presión selectiva distribuida)
+    ELITISM = 2                     # Mejores agentes que se mantienen (AUMENTADO para estabilidad)
     
     # === RED NEURONAL ===
     INPUT_SIZE = 8               # 8 sensores
@@ -28,15 +34,27 @@ class SimulationConfig:
     # === AGENTE ===
     AGENT_SPEED = 3.0            # Velocidad de movimiento
     VISION_RANGE = 150           # Rango de visión
-    AGENT_ENERGY = 100.0         # Energía inicial
-    AGENT_ENERGY_CONSUMPTION = 0.05  # Consumo de energía por tick
-    AGENT_ENERGY_GAIN_FOOD = 10      # Energía ganada al comer
+    AGENT_ENERGY = 200.0         # Energía inicial
+    AGENT_ENERGY_CONSUMPTION = 0.04  # Consumo de energía por tick (REDUCIDO para más supervivencia)
+    AGENT_ENERGY_GAIN_FOOD = 15      # Energía ganada al comer (AUMENTADO para compensar consumo)
     AGENT_RADIUS = 8             # Tamaño del agente
     
     # === MUNDO ===
     SCREEN_WIDTH = 1200          # Ancho de pantalla
     SCREEN_HEIGHT = 800          # Alto de pantalla
-    FOOD_COUNT = 40              # Cantidad de comida inicial
+    FOOD_COUNT = 60              # Cantidad de comida inicial
+    
+    # === SISTEMA DE CORTE DE ÁRBOLES ===
+    TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
+    TREE_CUTTING_THRESHOLD = 25  # Umbral para activar corte (≤25 manzanas)
+    TREE_HITS_TO_CUT = 3         # Golpes necesarios para cortar árbol
+    TREE_CUT_REWARD = 20         # Fitness ganado por cortar árbol
+    TREE_CUT_FOOD_REWARD = 8      # Manzanas generadas al cortar árbol
+    
+    # === SISTEMA FUTURO (LLAVES/PUERTAS/COFRE) ===
+    KEYS_SYSTEM_ENABLED = False   # Habilitar sistema de llaves (FUTURO)
+    DOORS_SYSTEM_ENABLED = False  # Habilitar sistema de puertas (FUTURO)
+    CHEST_SYSTEM_ENABLED = False  # Habilitar sistema de cofre (FUTURO)
     
     # === RENDIMIENTO ===
     STATS_UPDATE_FREQUENCY = 5   # Actualizar stats cada N frames

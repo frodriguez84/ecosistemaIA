@@ -76,14 +76,18 @@ def main():
     print(f"✅ {len(agents)} agentes avanzados creados")
     print(f"✅ {len(world.food_items)} piezas de comida generadas")
     print(f"✅ {len(world.obstacles)} obstáculos generados")
-    print(f"✅ Sistema de sprites inicializado")
-    print(f"✅ Sistema de partículas activado")
+    print("✅ Sistema de sprites inicializado")
+    print("✅ Sistema de partículas activado")
     
     # Bucle principal
     running = True
     paused = False
     generation = 1
-    max_ticks_per_generation = config.MAX_TICKS_PER_GENERATION
+    # Calcular tiempo máximo adaptativo
+    if config.ADAPTIVE_TIME_ENABLED and generation > config.TRANSITION_GENERATION:
+        max_ticks_per_generation = config.COMPLEX_TICKS
+    else:
+        max_ticks_per_generation = config.BASE_TICKS
     tick = 0
     
     # Sistema de comandos
@@ -174,9 +178,23 @@ def main():
             for agent in alive_agents:
                 decisions = agent.decide(world, alive_agents, sprite_manager)
                 agent.act(decisions, world, alive_agents, tick)
+                
+                # Sistema de corte de árboles
+                if config.TREE_CUTTING_ENABLED:
+                    # Intentar agarrar hacha
+                    agent._try_pickup_axe(world)
+                    
+                    # Intentar cortar árbol
+                    agent._try_cut_tree(world, tick)
         
-        world.update()
-        tick += 1
+        # Actualizar sistema de corte de árboles (solo si no está pausado)
+        if not paused and config.TREE_CUTTING_ENABLED:
+            world.update_tree_cutting_status()
+        
+        # Actualizar mundo (solo si no está pausado)
+        if not paused:
+            world.update()
+            tick += 1
         
         # Verificar si todos murieron o se acabó el tiempo
         if len(alive_agents) == 0 or tick >= max_ticks_per_generation:
@@ -205,6 +223,11 @@ def main():
             else:
                 avg_fitness = max_fitness = avg_age = avg_food = avg_avoidance = avg_energy = 0
             
+            # Contar árboles cortados en esta generación
+            trees_cut_this_generation = 0
+            if hasattr(world, 'trees'):
+                trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
+            
             # Preparar datos para el cuadro de resumen
             generation_data = {
                 'generation': generation,
@@ -219,7 +242,8 @@ def main():
                 'avg_movement_skill': sum(agent.get_movement_skill() for agent in agents) / len(agents) if agents else 0,
                 'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents) if agents else 0,
                 'avg_obstacle_skill': sum(agent.get_obstacle_skill() for agent in agents) / len(agents) if agents else 0,
-                'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents) if agents else 0
+                'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents) if agents else 0,
+                'trees_cut': trees_cut_this_generation
             }
             
             # Añadir fitness promedio al historial
@@ -246,6 +270,12 @@ def main():
             tick = 0
             generation += 1
             
+            # Recalcular tiempo máximo para la nueva generación
+            if config.ADAPTIVE_TIME_ENABLED and generation > config.TRANSITION_GENERATION:
+                max_ticks_per_generation = config.COMPLEX_TICKS
+            else:
+                max_ticks_per_generation = config.BASE_TICKS
+            
             print(f"✅ Nueva generación {generation} creada")
         
         # Renderizar
@@ -262,6 +292,32 @@ def main():
         # Dibujar obstáculos con sprites
         for obstacle in world.obstacles:
             obstacle.draw(screen, sprite_manager, tick)
+        
+        # Dibujar hacha si existe y no fue agarrada
+        if config.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
+            axe_sprite = sprite_manager.get_environment_sprite('axe')
+            if axe_sprite:
+                # Efecto de brillo pulsante
+                glow_intensity = int(50 + 30 * abs(pygame.math.Vector2(1, 1).length() * 0.1 * tick % 1 - 0.5))
+                glow_color = (255, 255, 100 + glow_intensity)  # Amarillo brillante
+                
+                # Dibujar halo de brillo suave (sin fondo)
+                for i in range(3):
+                    glow_radius = 15 + i * 5
+                    glow_alpha = 30 - i * 8  # Más transparente
+                    glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                    pygame.draw.circle(glow_surface, (*glow_color[:3], glow_alpha), 
+                                    (glow_radius, glow_radius), glow_radius)
+                    screen.blit(glow_surface, (world.axe['x'] - glow_radius, world.axe['y'] - glow_radius))
+                
+                # Dibujar hacha original con brillo sutil
+                screen.blit(axe_sprite, (world.axe['x'] - 10, world.axe['y'] - 10))
+                
+                # Añadir brillo sutil encima (sin fondo)
+                bright_overlay = pygame.Surface(axe_sprite.get_size(), pygame.SRCALPHA)
+                bright_overlay.fill((*glow_color[:3], 30))  # Muy transparente
+                bright_overlay.blit(axe_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
+                screen.blit(bright_overlay, (world.axe['x'] - 10, world.axe['y'] - 10))
         
         # Dibujar manzanas (comida)
         for food in world.food_items:
@@ -282,16 +338,6 @@ def main():
         # Dibujar agentes
         for agent in agents:
             agent.draw(screen, tick, sprite_manager, particle_system)
-            
-            # Dibujar indicador de comportamiento inteligente
-            if agent.fitness > 50 and agent.alive:  # Solo agentes vivos con buen fitness
-                # Dibujar línea hacia comida cercana si la está buscando
-                if hasattr(agent, 'target_food') and agent.target_food:
-                    # Solo dibujar si el agente está dentro del mapa visible
-                    if 0 <= agent.x < screen_width - 250 and 0 <= agent.y < screen_height:
-                        pygame.draw.line(screen, (255, 255, 0), 
-                                       (int(agent.x), int(agent.y)), 
-                                       (int(agent.target_food[0]), int(agent.target_food[1])), 2)
         
         # Dibujar partículas
         particle_system.draw(screen)

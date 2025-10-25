@@ -21,6 +21,10 @@ class Obstacle:
     
     def collides_with(self, x, y, radius):
         """Verifica si hay colisión con el obstáculo."""
+        # Si el árbol está cortado, no hay colisión
+        if self.type == "tree" and self.is_cut:
+            return False
+        
         # Calcular distancia desde el centro del obstáculo
         dx = abs(x - (self.x + self.width // 2))
         dy = abs(y - (self.y + self.height // 2))
@@ -37,7 +41,7 @@ class Obstacle:
     def get_effect(self):
         """Obtiene el efecto del obstáculo."""
         if self.type == "water":
-            return {"energy_loss": 2, "speed_reduction": 0.7}  # Agua ralentiza
+            return {"energy_loss": 0.25, "speed_reduction": 0.8, "fitness_loss": 2}  # Agua más suave
         elif self.type == "safe":
             return {"energy_gain": 2, "speed_boost": 1.2}
         return {"energy_loss": 0, "speed_reduction": 1.0}
@@ -68,6 +72,37 @@ class Obstacle:
             # Fallback: dibujar rectángulo de color
             color = self._get_color()
             pygame.draw.rect(screen, color, (self.x, self.y, self.width, self.height))
+    
+    def _draw_hit_counter(self, screen):
+        """Dibuja la barra de vida del árbol."""
+        from config import SimulationConfig
+        
+        # Obtener golpes restantes
+        hits_remaining = SimulationConfig.TREE_HITS_TO_CUT - self.collision_count
+        
+        if hits_remaining > 0:
+            # Calcular progreso de vida
+            max_hits = SimulationConfig.TREE_HITS_TO_CUT
+            health_ratio = hits_remaining / max_hits
+            
+            # Dimensiones de la barra
+            bar_width = 20
+            bar_height = 4
+            bar_x = self.x + self.width // 2 - bar_width // 2
+            bar_y = self.y - 10
+            
+            # Fondo de la barra (rojo)
+            bg_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)
+            pygame.draw.rect(screen, (255, 0, 0), bg_rect)
+            
+            # Barra de vida (verde)
+            health_width = int(bar_width * health_ratio)
+            if health_width > 0:
+                health_rect = pygame.Rect(bar_x, bar_y, health_width, bar_height)
+                pygame.draw.rect(screen, (0, 255, 0), health_rect)
+            
+            # Borde de la barra
+            pygame.draw.rect(screen, (255, 255, 255), bg_rect, 1)
     
     def _get_color(self):
         """Obtiene el color del obstáculo."""

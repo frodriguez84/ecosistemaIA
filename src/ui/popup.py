@@ -146,9 +146,7 @@ class SummaryPopup:
         
         behavior_stats = [
             f"Vida: {self.generation_data['avg_age']/60:.1f} min",
-            f"Comida: {self.generation_data['avg_food']:.1f}",
-            f"Esquives: {self.generation_data['avg_avoidance']:.0f}",
-            f"Energía: {self.generation_data['avg_energy']:.1f}"
+            f"Comida: {self.generation_data['avg_food']:.1f}"
         ]
         
         for stat in behavior_stats:
@@ -179,11 +177,14 @@ class SummaryPopup:
         popup_surface.blit(skills_title, (right_x, y_offset + 10))
         y_offset += 35
         
+        # Contar árboles cortados
+        trees_cut = self.generation_data.get('trees_cut', 0)
+        
         skills_stats = [
             f"Movimiento: {self.generation_data['avg_movement_skill']:.1f}%",
             f"Comida: {self.generation_data['avg_food_skill']:.1f}%",
             f"Obstáculos: {self.generation_data['avg_obstacle_skill']:.1f}%",
-            f"Energía: {self.generation_data['avg_energy_skill']:.1f}%"
+            f"Árboles cortados: {trees_cut}"
         ]
         
         for stat in skills_stats:

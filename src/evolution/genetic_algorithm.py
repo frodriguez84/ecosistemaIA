@@ -150,8 +150,8 @@ class GeneticAlgorithm:
                 # Calcular diversidad actual
                 fitnesses = [agent.fitness for agent in agents]
                 diversity = np.std(fitnesses) / (np.mean(fitnesses) + 1e-6)
-                if diversity < 0.1:  # Baja diversidad
-                    mutation_rate = min(0.4, self.mutation_rate * 2)  # Doblar mutación
+                if diversity < 0.15:  # Baja diversidad (AUMENTADO umbral)
+                    mutation_rate = min(0.5, self.mutation_rate * 2.5)  # Más agresivo contra convergencia
             
             if random.random() < mutation_rate:
                 child_brain.mutate(mutation_rate)

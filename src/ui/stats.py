@@ -65,6 +65,10 @@ class StatsPanel:
             f"Comida: {len([f for f in world.food_items if not f['eaten']])}"
         ]
         
+        # Añadir texto de corte de árboles si está activo
+        if hasattr(world, 'axe_picked_up') and world.axe_picked_up:
+            stats.append("🪓 Pueden cortar árboles!")
+        
         # Dibujar estadísticas
         y_offset = 50
         for stat in stats:

@@ -54,6 +54,10 @@ class AdvancedAgent:
         # Efectos visuales
         self.death_effect_frames = 0
         self.death_effect_max_frames = 10
+        
+        # Cooldown para golpear árboles
+        self.last_tree_hit_tick = 0
+        self.tree_hit_cooldown = 120  # 120 ticks entre golpes (2 segundos a 60 FPS)
     
     def perceive(self, world, other_agents):
         """Recopila información del entorno."""
@@ -269,6 +273,10 @@ class AdvancedAgent:
                 elif "energy_gain" in effect:
                     self.energy = min(self.max_energy, self.energy + effect["energy_gain"])
                 
+                # Aplicar efectos de fitness
+                if "fitness_loss" in effect:
+                    self.fitness = max(0, self.fitness - effect["fitness_loss"])
+                
                 # Aplicar efectos de velocidad
                 if "speed_reduction" in effect:
                     self.speed = max(1.0, self.speed * effect["speed_reduction"])
@@ -294,6 +302,26 @@ class AdvancedAgent:
                     # Actualizar fitness en tiempo real para feedback visual
                     self._calculate_fitness()
                     return True
+        return False
+    
+    def _try_pickup_axe(self, world):
+        """Intenta agarrar el hacha."""
+        if world.check_axe_pickup(self.x, self.y):
+            return True
+        return False
+    
+    def _try_cut_tree(self, world, current_tick):
+        """Intenta cortar un árbol."""
+        # Verificar cooldown del agente
+        if current_tick - self.last_tree_hit_tick < self.tree_hit_cooldown:
+            return False
+        
+        if world.process_tree_hit(self.x, self.y, current_tick):
+            # Recompensa por cortar árbol
+            self.fitness += 20  # TREE_CUT_REWARD
+            # Actualizar cooldown del agente
+            self.last_tree_hit_tick = current_tick
+            return True
         return False
     
     def _try_heal(self, world):
