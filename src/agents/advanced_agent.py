@@ -6,6 +6,7 @@ import numpy as np
 import pygame
 import random
 import math
+from config import SimulationConfig
 
 
 class AdvancedAgent:
@@ -16,7 +17,7 @@ class AdvancedAgent:
         self.x = float(x)
         self.y = float(y)
         self.angle = random.uniform(0, 2 * np.pi)
-        self.speed = 2.0  # Velocidad aumentada
+        self.speed = SimulationConfig.AGENT_SPEED  # Velocidad desde config
         self.radius = 8
         
         # Estado
@@ -318,7 +319,7 @@ class AdvancedAgent:
         
         if world.process_tree_hit(self.x, self.y, current_tick):
             # Recompensa por cortar árbol
-            self.fitness += 20  # TREE_CUT_REWARD
+            self.fitness += 10  # TREE_CUT_REWARD
             # Actualizar cooldown del agente
             self.last_tree_hit_tick = current_tick
             return True
@@ -354,21 +355,21 @@ class AdvancedAgent:
     
     def _calculate_fitness(self):
         """Calcula el fitness del agente."""
-        # Fitness base por supervivencia (MÁS GRADUAL)
-        survival_fitness = min(self.age * 0.005, 10)  # Máximo 10 puntos por supervivencia
+        # Fitness base por supervivencia (MÁS IMPORTANTE)
+        survival_fitness = min(self.age * 0.008, 15)  # Máximo 15 puntos por supervivencia
         
-        # Fitness por comida (MÁS GRADUAL Y REALISTA)
-        food_fitness = self.food_eaten * 8  # 8 puntos por manzana (más gradual)
+        # Fitness por comida (VALOR INTERMEDIO)
+        food_fitness = self.food_eaten * 5  # 5 puntos por manzana
         
-        # Fitness por exploración (MÁS GRADUAL)
-        exploration_fitness = min(self.distance_traveled / 1000, 8)  # Máximo 8 puntos
+        # Fitness por exploración (VALOR INTERMEDIO)
+        exploration_fitness = min(self.distance_traveled / 1000, 6)  # Máximo 6 puntos
         
-        # Fitness por evitar obstáculos (MEJORADO)
+        # Fitness por evitar obstáculos (MANTENER BAJO)
         obstacle_fitness = 0
         # Usar fitness base en lugar de self.fitness para evitar dependencia circular
         base_fitness = survival_fitness + food_fitness + exploration_fitness
         if base_fitness > 15:  # Umbral ajustado para obstáculos
-            obstacle_fitness = self.obstacles_avoided * 3  # Recompensa moderada
+            obstacle_fitness = self.obstacles_avoided * 1  # Recompensa moderada
         
         # Penalización por movimiento circular
         circular_penalty = 0

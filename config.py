@@ -6,29 +6,29 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    MAX_TICKS_PER_GENERATION = 3000   # AUMENTADO para asegurar supervivientes
     POPULATION_SIZE = 30
     TARGET_FPS = 60
-    MAX_GENERATIONS = 50
+    MAX_GENERATIONS = 20  # Extendido para ver tendencias a largo plazo
+    HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 3000                 # Tiempo base (AUMENTADO para más supervivencia)
-    COMPLEX_TICKS = 8000              # Tiempo para tareas complejas (generaciones 11+)
-    TRANSITION_GENERATION = 10        # Generación donde cambia el tiempo
+    BASE_TICKS = 2000                 # Tiempo base inicial
+    TICKS_INCREMENT_AMOUNT = 1000     # Cuántos ticks aumentar cada incremento
+    TICKS_INCREMENT_FREQUENCY = 5      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.20         # 20% de mutación (AUMENTADO para combatir convergencia)
+    MUTATION_RATE = 0.25         # 25% de mutación (EQUILIBRADO)
     CROSSOVER_RATE = 0.7         # 70% de cruce (REDUCIDO para más exploración)
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "tournament"  # "elitism" o "tournament"
-    TOURNAMENT_SIZE = 10             # Tamaño del torneo (AUMENTADO: más presión selectiva distribuida)
+    TOURNAMENT_SIZE = 6             # Tamaño del torneo (AUMENTADO para más presión selectiva)
     ELITISM = 2                     # Mejores agentes que se mantienen (AUMENTADO para estabilidad)
     
     # === RED NEURONAL ===
     INPUT_SIZE = 8               # 8 sensores
-    HIDDEN_SIZE = 20             # 20 neuronas ocultas (AUMENTADO para capacidad)
+    HIDDEN_SIZE = 16             # 20 neuronas ocultas (AUMENTADO para capacidad)
     OUTPUT_SIZE = 4              # 4 acciones
     
     # === AGENTE ===
@@ -46,10 +46,10 @@ class SimulationConfig:
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
-    TREE_CUTTING_THRESHOLD = 25  # Umbral para activar corte (≤25 manzanas)
+    TREE_CUTTING_THRESHOLD = 30  # Umbral para activar corte (≤25 manzanas)
     TREE_HITS_TO_CUT = 3         # Golpes necesarios para cortar árbol
-    TREE_CUT_REWARD = 20         # Fitness ganado por cortar árbol
-    TREE_CUT_FOOD_REWARD = 8      # Manzanas generadas al cortar árbol
+    TREE_CUT_REWARD = 10         # Fitness ganado por cortar árbol
+    TREE_CUT_FOOD_REWARD = 10      # Manzanas generadas al cortar árbol
     
     # === SISTEMA FUTURO (LLAVES/PUERTAS/COFRE) ===
     KEYS_SYSTEM_ENABLED = False   # Habilitar sistema de llaves (FUTURO)
@@ -97,7 +97,9 @@ class SimulationConfig:
     def get_simulation_params(cls):
         """Obtiene parámetros de simulación."""
         return {
-            'max_ticks': cls.MAX_TICKS_PER_GENERATION,
+            'base_ticks': cls.BASE_TICKS,
+            'ticks_increment': cls.TICKS_INCREMENT_AMOUNT,
+            'ticks_frequency': cls.TICKS_INCREMENT_FREQUENCY,
             'population_size': cls.POPULATION_SIZE,
             'target_fps': cls.TARGET_FPS,
             'max_generations': cls.MAX_GENERATIONS
@@ -108,7 +110,10 @@ class SimulationConfig:
         """Imprime toda la configuración."""
         print("🔧 CONFIGURACIÓN ACTUAL:")
         print("=" * 50)
-        print(f"📊 Simulación: {cls.MAX_TICKS_PER_GENERATION} ticks, {cls.POPULATION_SIZE} agentes")
+        print(f"📊 Simulación: {cls.POPULATION_SIZE} agentes")
+        print(f"⏱️ Ticks adaptativos: Base {cls.BASE_TICKS}, +{cls.TICKS_INCREMENT_AMOUNT} cada {cls.TICKS_INCREMENT_FREQUENCY} gen")
+        mode = "HEADLESS (rápido)" if cls.HEADLESS_MODE else "VISUAL (renderizado)"
+        print(f"🎮 Modo: {mode}")
         print(f"🧬 Genético: {cls.MUTATION_RATE*100}% mutación, {cls.CROSSOVER_RATE*100}% cruce")
         print(f"🎯 Selección: {cls.SELECTION_METHOD.upper()}, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
         print(f"🧠 Neuronal: {cls.INPUT_SIZE}→{cls.HIDDEN_SIZE}→{cls.OUTPUT_SIZE}")
