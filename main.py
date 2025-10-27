@@ -268,6 +268,20 @@ def main():
             print(f"   - Agentes vivos: {len(alive_agents)}")
             print(f"   - Ticks: {tick}")
             
+            # Contar árboles cortados en esta generación
+            trees_cut_this_generation = 0
+            if hasattr(world, 'trees'):
+                trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
+            
+            # Estadísticas de puzzle (llaves, puertas, cofre)
+            red_key_status = "🔑 RECOGIDA" if world.red_key_collected else "❌ NO RECOGIDA"
+            gold_key_status = "🔑 RECOGIDA" if world.gold_key_collected else "❌ NO RECOGIDA"
+            
+            door_status = "🚪 ABIERTA" if world.door and world.door.is_open else "🔒 CERRADA"
+            iron_door_status = "🚪 ABIERTA" if world.door_iron and world.door_iron.is_open else "🔒 CERRADA"
+            
+            chest_status = "📦 ABIERTO" if world.chest and world.chest.is_open else "🔒 CERRADO"
+            
             if agents:
                 # Calcular fitness de todos los agentes antes de las estadísticas
                 for agent in agents:
@@ -284,13 +298,17 @@ def main():
                 print(f"   - Tiempo de vida: {avg_age/60:.1f} min")
                 print(f"   - Comida promedio: {avg_food:.1f}")
                 print(f"   - Supervivencia: {len(alive_agents)/len(agents)*100:.1f}%")
+                
+                # Estadísticas de puzzle
+                print(f"   🧩 PUZZLE:")
+                print(f"      - Llave roja: {red_key_status}")
+                print(f"      - Llave dorada: {gold_key_status}")
+                print(f"      - Puerta madera: {door_status}")
+                print(f"      - Puerta hierro: {iron_door_status}")
+                print(f"      - Cofre: {chest_status}")
+                print(f"      - Árboles cortados: {trees_cut_this_generation}")
             else:
                 avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
-            
-            # Contar árboles cortados en esta generación
-            trees_cut_this_generation = 0
-            if hasattr(world, 'trees'):
-                trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
             
             # Preparar datos para el cuadro de resumen
             generation_data = {
@@ -505,6 +523,17 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
     """Muestra la pantalla de FIN cuando se abre el cofre."""
     import pygame
     from config import SimulationConfig
+    
+    # Si estamos en modo headless, solo mostrar estadísticas por consola
+    if SimulationConfig.HEADLESS_MODE:
+        print(f"\n🎉 ¡MISIÓN COMPLETADA! 🎉")
+        print(f"📊 Generación: {generation}")
+        print(f"⏱️ Tick: {tick}")
+        print(f"🎯 Agentes vivos: {len([a for a in agents if a.alive])}")
+        print(f"🏆 ¡El cofre ha sido abierto por un agente evolutivo!")
+        print(f"📈 Fitness promedio: {sum(a.fitness for a in agents) / len(agents):.1f}")
+        print(f"📈 Fitness máximo: {max(a.fitness for a in agents):.1f}")
+        return
     
     # Crear reporte final de aprendizaje
     learning_monitor.create_learning_report()

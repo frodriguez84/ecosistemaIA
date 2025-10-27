@@ -644,7 +644,7 @@ class World:
         for obstacle in obstacles_to_remove:
             self.obstacles.remove(obstacle)
         
-        print(f"🧹 Limpieza de fortalezas: {len(obstacles_to_remove)} obstáculos eliminados")
+        # print(f"🧹 Limpieza de fortalezas: {len(obstacles_to_remove)} obstáculos eliminados")
     
     def _clean_small_fortress(self):
         """Elimina todos los obstáculos dentro de la fortaleza pequeña (solo después de completar el puzzle)."""
@@ -666,7 +666,7 @@ class World:
                 self.obstacles.remove(obstacle)
         
         if obstacles_to_remove:
-            print(f"🧹 Limpieza de fortaleza pequeña: {len(obstacles_to_remove)} obstáculos eliminados")
+            pass  # print(f"🧹 Limpieza de fortaleza pequeña: {len(obstacles_to_remove)} obstáculos eliminados")
     
     def _is_inside_small_fortress(self, x, y):
         """Verifica si un punto está dentro de la fortaleza pequeña."""
@@ -731,7 +731,7 @@ class World:
                 self.obstacles.remove(obstacle)
         
         if obstacles_to_remove:
-            print(f"🚪 Limpieza alrededor de puertas: {len(obstacles_to_remove)} obstáculos eliminados")
+            pass  # print(f"🚪 Limpieza alrededor de puertas: {len(obstacles_to_remove)} obstáculos eliminados")
     
     def check_axe_pickup(self, agent_x, agent_y):
         """Verifica si un agente agarró el hacha."""

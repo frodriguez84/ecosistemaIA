@@ -6,23 +6,23 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    POPULATION_SIZE = 40
+    POPULATION_SIZE = 50
     TARGET_FPS = 60
-    MAX_GENERATIONS = 30    # Extendido para ver tendencias a largo plazo
-    HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
+    MAX_GENERATIONS = 100    # Extendido para ver tendencias a largo plazo
+    HEADLESS_MODE = True             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 2000                 # Tiempo base inicial
-    TICKS_INCREMENT_AMOUNT = 1000     # Cuántos ticks aumentar cada incremento
+    BASE_TICKS = 1500                 # Tiempo base inicial
+    TICKS_INCREMENT_AMOUNT = 750     # Cuántos ticks aumentar cada incremento
     TICKS_INCREMENT_FREQUENCY = 5      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.15        # 15% de mutación (REDUCIDO para evitar convergencia prematura)
-    CROSSOVER_RATE = 0.7         # 70% de cruce (REDUCIDO para más exploración)
+    MUTATION_RATE = 0.2        # 15% de mutación 
+    CROSSOVER_RATE = 0.6        # 70% de cruce 
     
     # === SELECCIÓN DE PADRES ===
-    SELECTION_METHOD = "tournament"  # "elitism" o "tournament"
+    SELECTION_METHOD = "elitism"  # "elitism" o "tournament"
     TOURNAMENT_SIZE = 6             # Tamaño del torneo (AUMENTADO para más presión selectiva)
     ELITISM = 2                     # Mejores agentes que se mantienen (AUMENTADO para estabilidad)
     
@@ -34,9 +34,9 @@ class SimulationConfig:
     # === AGENTE ===
     AGENT_SPEED = 3.0            # Velocidad de movimiento
     VISION_RANGE = 150           # Rango de visión
-    AGENT_ENERGY = 200.0         # Energía inicial
-    AGENT_ENERGY_CONSUMPTION = 0.04  # Consumo de energía por tick (REDUCIDO para más supervivencia)
-    AGENT_ENERGY_GAIN_FOOD = 15      # Energía ganada al comer (AUMENTADO para compensar consumo)
+    AGENT_ENERGY = 150.0         # Energía inicial
+    AGENT_ENERGY_CONSUMPTION = 0.04  # Consumo de energía por tick 
+    AGENT_ENERGY_GAIN_FOOD = 15      # Energía ganada al comer 
     AGENT_RADIUS = 8             # Tamaño del agente
     
     # === MUNDO ===
@@ -56,7 +56,7 @@ class SimulationConfig:
     HUT_CUTTING_THRESHOLD = 20     # Umbral para activar corte (≤20 manzanas)
     HUT_HITS_TO_CUT = 4            # Golpes necesarios para destruir hut
     HUT_CUT_REWARD = 15            # Fitness ganado por destruir hut
-    HUT_CUT_FOOD_REWARD = 25       # Manzanas generadas al destruir hut
+    HUT_CUT_FOOD_REWARD = 30       # Manzanas generadas al destruir hut
     
     # === SISTEMA DE AGUA ===
     WATER_FITNESS_PENALTY = 5      # Fitness perdido por tick en agua (equilibrado con comida)
@@ -70,7 +70,7 @@ class SimulationConfig:
     TILE_SIZE = 32                # Tamaño de cada tile en píxeles
     
     # Llaves
-    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente (cambiado de 11 a 1)
+    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente
     RED_KEY_REWARD = 5            # Fitness por recoger red_key
     GOLD_KEY_REWARD = 15          # Fitness por recoger gold_key
     

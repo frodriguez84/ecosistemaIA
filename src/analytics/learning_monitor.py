@@ -152,7 +152,7 @@ class LearningMonitor:
             print(f"   - Exploradores: {behaviors['explorers']:.1f}%")
             print(f"   - Supervivientes: {behaviors['survivors']:.1f}%")
             print(f"   - Movimiento eficiente: {behaviors['efficient_movers']:.1f}%")
-            print(f"   - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
+            # print(f"   - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
     
     def detect_learning_patterns(self):
         """Detecta patrones de aprendizaje."""
