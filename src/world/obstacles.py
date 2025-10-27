@@ -381,3 +381,73 @@ class Chest:
                 # Cofre abierto - gris
                 pygame.draw.rect(screen, (192, 192, 192), (self.x, self.y, self.width, self.height))
                 pygame.draw.rect(screen, (128, 128, 128), (self.x + 2, self.y + 2, self.width - 4, self.height - 4))
+
+
+class PerimeterObstacle:
+    """Obstáculo decorativo del perímetro del mapa."""
+    
+    def __init__(self, x, y, sprite_type):
+        self.x = x
+        self.y = y
+        self.width = 20  # TILE_SIZE
+        self.height = 20  # TILE_SIZE
+        self.type = 'perimeter'
+        self.sprite_type = sprite_type  # '021', '023', '024', '026', '028', '029', '030', '031'
+    
+    def collides_with(self, other_x, other_y, other_width, other_height):
+        """Verifica colisión con otro objeto."""
+        return (self.x < other_x + other_width and
+                self.x + self.width > other_x and
+                self.y < other_y + other_height and
+                self.y + self.height > other_y)
+    
+    def draw(self, screen, sprite_manager):
+        """Dibuja el obstáculo del perímetro."""
+        sprite = sprite_manager.get_environment_sprite('perimeter', self.sprite_type)
+        
+        if sprite:
+            # Escalar sprite al tamaño correcto
+            sprite_scaled = pygame.transform.scale(sprite, (self.width, self.height))
+            screen.blit(sprite_scaled, (self.x, self.y))
+        else:
+            # Fallback visual si no se encuentra el sprite
+            pygame.draw.rect(screen, (100, 100, 100), (self.x, self.y, self.width, self.height))
+            pygame.draw.rect(screen, (80, 80, 80), (self.x + 1, self.y + 1, self.width - 2, self.height - 2))
+
+
+class PondObstacle:
+    """Estanque móvil de 3x3 tiles."""
+    
+    def __init__(self, x, y, sprite_type):
+        self.x = x
+        self.y = y
+        self.width = 20  # TILE_SIZE
+        self.height = 20  # TILE_SIZE
+        self.type = 'pond'
+        self.sprite_type = sprite_type  # '020', '021', '022', '023', '019', '024', '025', '026', '027'
+    
+    def collides_with(self, other_x, other_y, other_width, other_height):
+        """Verifica colisión con otro objeto."""
+        return (self.x < other_x + other_width and
+                self.x + self.width > other_x and
+                self.y < other_y + other_height and
+                self.y + self.height > other_y)
+    
+    def draw(self, screen, sprite_manager, tick=0):
+        """Dibuja el elemento del estanque con animación de agua."""
+        # Para elementos de agua (019/018), usar el mismo sistema que el agua suelta
+        if self.sprite_type in ['019', '018']:
+            # Usar el mismo sistema de animación que el agua suelta (cada 10 ticks)
+            water_variant = 1 if (tick // 10) % 2 == 0 else 2
+            sprite = sprite_manager.get_environment_sprite('water', water_variant)
+        else:
+            sprite = sprite_manager.get_environment_sprite('pond', self.sprite_type)
+        
+        if sprite:
+            # Escalar sprite al tamaño correcto
+            sprite_scaled = pygame.transform.scale(sprite, (self.width, self.height))
+            screen.blit(sprite_scaled, (self.x, self.y))
+        else:
+            # Fallback visual si no se encuentra el sprite
+            pygame.draw.rect(screen, (100, 150, 200), (self.x, self.y, self.width, self.height))
+            pygame.draw.rect(screen, (80, 120, 180), (self.x + 1, self.y + 1, self.width - 2, self.height - 2))

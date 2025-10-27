@@ -52,6 +52,27 @@ class SpriteManager:
         self.sprites['chest_opened'] = self._load_sprite(f"{sprite_dir}/environment/chest_opened.png")
         self.sprites['gold_key'] = self._load_sprite(f"{sprite_dir}/environment/gold_key.png")
         self.sprites['red_key'] = self._load_sprite(f"{sprite_dir}/environment/red_key.png")
+        
+        # Sprites del perímetro decorativo
+        self.sprites['perimeter_021'] = self._load_sprite(f"{sprite_dir}/environment/021.png")  # Lado inferior
+        self.sprites['perimeter_023'] = self._load_sprite(f"{sprite_dir}/environment/023.png")  # Lado derecho
+        self.sprites['perimeter_024'] = self._load_sprite(f"{sprite_dir}/environment/024.png")  # Lado izquierdo
+        self.sprites['perimeter_026'] = self._load_sprite(f"{sprite_dir}/environment/026.png")  # Lado superior
+        self.sprites['perimeter_028'] = self._load_sprite(f"{sprite_dir}/environment/028.png")  # Esquina superior izquierda
+        self.sprites['perimeter_029'] = self._load_sprite(f"{sprite_dir}/environment/029.png")  # Esquina superior derecha
+        self.sprites['perimeter_030'] = self._load_sprite(f"{sprite_dir}/environment/030.png")  # Esquina inferior izquierda
+        self.sprites['perimeter_031'] = self._load_sprite(f"{sprite_dir}/environment/031.png")  # Esquina inferior derecha
+        
+        # Sprites del estanque móvil (3x3)
+        self.sprites['pond_020'] = self._load_sprite(f"{sprite_dir}/environment/020.png")  # Esquina superior izquierda
+        self.sprites['pond_021'] = self._load_sprite(f"{sprite_dir}/environment/021.png")  # Lado superior
+        self.sprites['pond_022'] = self._load_sprite(f"{sprite_dir}/environment/022.png")  # Esquina superior derecha
+        self.sprites['pond_023'] = self._load_sprite(f"{sprite_dir}/environment/023.png")  # Lado izquierdo
+        self.sprites['pond_019'] = self._load_sprite(f"{sprite_dir}/environment/019.png")  # Agua central
+        self.sprites['pond_024'] = self._load_sprite(f"{sprite_dir}/environment/024.png")  # Lado derecho
+        self.sprites['pond_025'] = self._load_sprite(f"{sprite_dir}/environment/025.png")  # Esquina inferior izquierda
+        self.sprites['pond_026'] = self._load_sprite(f"{sprite_dir}/environment/026.png")  # Lado inferior
+        self.sprites['pond_027'] = self._load_sprite(f"{sprite_dir}/environment/027.png")  # Esquina inferior derecha
     
     def _load_sprite(self, path):
         """Carga un sprite desde archivo."""
@@ -131,6 +152,10 @@ class SpriteManager:
             return self.sprites.get('gold_key')
         elif sprite_type == 'red_key':
             return self.sprites.get('red_key')
+        elif sprite_type == 'perimeter':
+            return self.sprites.get(f'perimeter_{variant}')
+        elif sprite_type == 'pond':
+            return self.sprites.get(f'pond_{variant}')
         else:
             return None
 

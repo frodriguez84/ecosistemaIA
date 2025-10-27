@@ -13,7 +13,8 @@ class SummaryPopup:
         self.screen_height = screen_height
         self.width = 800  # Más compacto
         self.height = 600  # Más compacto
-        self.x = (screen_width - self.width) // 2
+        # Mover 3cm a la izquierda (aproximadamente 113 píxeles a 96 DPI)
+        self.x = (screen_width - self.width) // 2 - 113
         self.y = (screen_height - self.height) // 2
         self.visible = False
         self.generation_data = None
@@ -58,49 +59,6 @@ class SummaryPopup:
             
         return False
     
-    def add_object_at_coordinates(self, x, y, object_type, world):
-        """Añade un objeto en las coordenadas especificadas (automáticamente alineado a tiles)."""
-        # Alinear automáticamente a la grilla de tiles (16x16)
-        tile_x = (x // 16) * 16
-        tile_y = (y // 16) * 16
-        
-        if object_type == "tree":
-            from ..world.obstacles import Obstacle
-            obstacle = Obstacle(tile_x, tile_y, 20, 20, "tree")
-            world.obstacles.append(obstacle)
-            world.manual_obstacles.append(obstacle)  # Guardar como manual
-            print(f"🌳 Árbol añadido en tile ({tile_x}, {tile_y}) - PERMANENTE")
-        elif object_type == "wall":
-            from ..world.obstacles import Obstacle
-            obstacle = Obstacle(tile_x, tile_y, 20, 20, "wall")
-            world.obstacles.append(obstacle)
-            world.manual_obstacles.append(obstacle)  # Guardar como manual
-            print(f"🧱 Pared añadida en tile ({tile_x}, {tile_y}) - PERMANENTE")
-        elif object_type == "water":
-            from ..world.obstacles import Obstacle
-            obstacle = Obstacle(tile_x, tile_y, 20, 20, "water")
-            world.obstacles.append(obstacle)
-            world.manual_obstacles.append(obstacle)  # Guardar como manual
-            print(f"💧 Agua añadida en tile ({tile_x}, {tile_y}) - PERMANENTE")
-        elif object_type == "hut":
-            from ..world.obstacles import Obstacle
-            obstacle = Obstacle(tile_x, tile_y, 20, 20, "hut")
-            world.obstacles.append(obstacle)
-            world.manual_obstacles.append(obstacle)  # Guardar como manual
-            print(f"🏠 Casa añadida en tile ({tile_x}, {tile_y}) - PERMANENTE")
-        elif object_type == "potion":
-            from ..world.obstacles import Obstacle
-            obstacle = Obstacle(tile_x, tile_y, 16, 16, "potion")
-            world.obstacles.append(obstacle)
-            world.manual_obstacles.append(obstacle)  # Guardar como manual
-            print(f"🧪 Poción añadida en tile ({tile_x}, {tile_y}) - PERMANENTE")
-        elif object_type == "apple":
-            world.food_items.append({'x': tile_x, 'y': tile_y, 'eaten': False})
-            print(f"🍎 Manzana añadida en tile ({tile_x}, {tile_y}) - TEMPORAL")
-        else:
-            print(f"❌ Tipo de objeto '{object_type}' no reconocido")
-            print("💡 Tipos disponibles: tree, wall, water, hut, potion, apple")
-    
     def draw(self, screen):
         """Dibuja el cuadro de resumen."""
         if not self.visible or not self.generation_data:
@@ -111,7 +69,7 @@ class SummaryPopup:
         popup_surface.fill((0, 0, 0, 200))  # Fondo semi-transparente
         
         # Título
-        title = self.title_font.render(f"GENERACIÓN {self.generation_data['generation']} COMPLETADA", True, (100, 255, 150))
+        title = self.title_font.render(f"GENERACIÓN {self.generation_data.get('generation', 0)} COMPLETADA", True, (100, 255, 150))
         popup_surface.blit(title, (20, 20))
         
         # Línea separadora
@@ -130,8 +88,9 @@ class SummaryPopup:
         y_offset += 25
         
         fitness_stats = [
-            f"Promedio: {self.generation_data['avg_fitness']:.1f}/100",
-            f"Máximo: {self.generation_data['max_fitness']:.1f}/100"
+            f"Promedio: {self.generation_data.get('avg_fitness', 0):.1f}",
+            f"Máximo: {self.generation_data.get('max_fitness', 0):.1f}",
+            f"Vivos: {self.generation_data.get('alive_count', 0)}/{self.generation_data.get('total_agents', 50)}"
         ]
         
         for stat in fitness_stats:
@@ -144,9 +103,13 @@ class SummaryPopup:
         popup_surface.blit(behavior_title, (left_x, y_offset + 10))
         y_offset += 35
         
+        # Convertir tiempo a minutos
+        survival_minutes = self.generation_data.get('avg_age', 0) / 60 / 60
+        
         behavior_stats = [
-            f"Vida: {self.generation_data['avg_age']/60:.1f} min",
-            f"Comida: {self.generation_data['avg_food']:.1f}"
+            f"Supervivencia: {survival_minutes:.1f} min",
+            f"Comida: {self.generation_data.get('avg_food', 0):.1f}",
+            f"Exploración: {self.generation_data.get('avg_distance', 0)/100:.0f} m"
         ]
         
         for stat in behavior_stats:
@@ -157,37 +120,36 @@ class SummaryPopup:
         # Columna derecha
         y_offset = 70
         
-        # EFICIENCIA
-        efficiency_title = self.big_font.render("EFICIENCIA", True, (100, 255, 150))
-        popup_surface.blit(efficiency_title, (right_x, y_offset))
+        # PROGRESO DEL PUZZLE
+        puzzle_title = self.big_font.render("PROGRESO PUZZLE", True, (100, 255, 150))
+        popup_surface.blit(puzzle_title, (right_x, y_offset))
         y_offset += 25
         
-        efficiency_stats = [
-            f"Exploración: {self.generation_data['avg_exploration']:.0f} px",
-            f"Supervivencia: {self.generation_data['survival_rate']:.1f}%"
+        # Obtener datos del puzzle del mundo (si están disponibles)
+        puzzle_stats = [
+            f"Llaves rojas: {'✓' if self.generation_data.get('red_key_collected', False) else '✗'}",
+            f"Llaves doradas: {'✓' if self.generation_data.get('gold_key_collected', False) else '✗'}",
+            f"Puertas abiertas: {self.generation_data.get('doors_opened', 0)}/2",
+            f"Cofre abierto: {'✓' if self.generation_data.get('chest_opened', False) else '✗'}"
         ]
         
-        for stat in efficiency_stats:
+        for stat in puzzle_stats:
             text = self.font.render(stat, True, (200, 200, 200))
             popup_surface.blit(text, (right_x + 10, y_offset))
             y_offset += 18
         
-        # HABILIDADES
-        skills_title = self.big_font.render("HABILIDADES (%)", True, (100, 255, 150))
-        popup_surface.blit(skills_title, (right_x, y_offset + 10))
+        # ESTADÍSTICAS ADICIONALES
+        extra_title = self.big_font.render("ESTADÍSTICAS", True, (100, 255, 150))
+        popup_surface.blit(extra_title, (right_x, y_offset + 10))
         y_offset += 35
         
-        # Contar árboles cortados
-        trees_cut = self.generation_data.get('trees_cut', 0)
-        
-        skills_stats = [
-            f"Movimiento: {self.generation_data['avg_movement_skill']:.1f}%",
-            f"Comida: {self.generation_data['avg_food_skill']:.1f}%",
-            f"Obstáculos: {self.generation_data['avg_obstacle_skill']:.1f}%",
-            f"Árboles cortados: {trees_cut}"
+        extra_stats = [
+            f"Árboles cortados: {self.generation_data.get('trees_cut', 0)}",
+            f"Diversidad: {self.generation_data.get('diversity', 0):.2f}",
+            f"Tiempo gen: {self.generation_data.get('generation_time', 0):.1f}s"
         ]
         
-        for stat in skills_stats:
+        for stat in extra_stats:
             text = self.font.render(stat, True, (200, 200, 200))
             popup_surface.blit(text, (right_x + 10, y_offset))
             y_offset += 18

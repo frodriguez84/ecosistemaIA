@@ -450,6 +450,13 @@ class AdvancedAgent:
             # Verificar colisiones con obstáculos
             can_move = not self._check_obstacle_collision(new_x, new_y, world.obstacles)
             
+            # Verificar colisión con perímetro
+            if can_move:
+                for perimeter_obj in world.perimeter_obstacles:
+                    if perimeter_obj.collides_with(new_x, new_y, self.radius, self.radius):
+                        can_move = False
+                        break
+            
             # Verificar colisión con puertas
             if can_move:
                 # Verificar puertas temporalmente
@@ -457,6 +464,13 @@ class AdvancedAgent:
                     can_move = False
                 if world.door_iron and world.door_iron.collides_with(new_x, new_y, self.radius):
                     can_move = False
+            
+            # Verificar colisión con estanque
+            if can_move:
+                for pond_obj in world.pond_obstacles:
+                    if pond_obj.collides_with(new_x, new_y, self.radius, self.radius):
+                        can_move = False
+                        break
             
             if can_move:
                 # Mantener dentro de la pantalla

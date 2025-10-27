@@ -52,9 +52,11 @@ class StatsPanel:
         alive_agents = [a for a in agents if a.alive]
         dead_agents = [a for a in agents if not a.alive]
         
-        # Mostrar minutos de simulación
-        minutes = tick // 60
-        time_str = f"{minutes} min"
+        # Mostrar tiempo en formato mm:ss
+        total_seconds = tick // 60
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        time_str = f"{minutes:02d}:{seconds:02d}"
         
         # Solo 5 datos básicos
         stats = [

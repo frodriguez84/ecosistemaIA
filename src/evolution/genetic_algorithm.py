@@ -50,6 +50,13 @@ class GeneticAlgorithm:
                         valid_position = False
                         break
                 
+                # Verificar colisión con el estanque
+                if valid_position:
+                    for pond_obj in self.world.pond_obstacles:
+                        if pond_obj.collides_with(x, y, 35, 35):
+                            valid_position = False
+                            break
+                
                 # Verificar colisión con comida
                 if valid_position:
                     for food in self.world.food_items:
@@ -117,10 +124,43 @@ class GeneticAlgorithm:
         
         # Aplicar método de selección configurado
         if self.selection_method == "elitism":
-            # Elitismo: mantener los mejores
+            # Elitismo: crear nuevos agentes con cerebros de los mejores (ESTADO RESETEADO)
             for i in range(min(self.elitism, len(agents))):
                 if i < len(agents):
-                    new_agents.append(agents[i])
+                    elite_brain = agents[i].brain
+                    # Crear nuevo agente con cerebro del élite pero estado reseteado
+                    # Buscar posición válida evitando obstáculos y estanque
+                    attempts = 0
+                    max_attempts = 100
+                    valid_position = False
+                    
+                    while not valid_position and attempts < max_attempts:
+                        x = random.randint(50, 900)
+                        y = random.randint(50, 750)
+                        valid_position = True
+                        
+                        # Verificar colisión con obstáculos
+                        for obstacle in self.world.obstacles:
+                            if obstacle.collides_with(x, y, 35):
+                                valid_position = False
+                                break
+                        
+                        # Verificar colisión con el estanque
+                        if valid_position:
+                            for pond_obj in self.world.pond_obstacles:
+                                if pond_obj.collides_with(x, y, 35, 35):
+                                    valid_position = False
+                                    break
+                        
+                        attempts += 1
+                    
+                    # Si no se encontró posición válida, usar posición segura
+                    if not valid_position:
+                        x = 100
+                        y = 100
+                    
+                    elite_agent = AdvancedAgent(x, y, elite_brain)
+                    new_agents.append(elite_agent)
             # Seleccionar padres restantes por torneo
             parents = self._tournament_selection(agents, self.population_size - self.elitism)
         elif self.selection_method == "tournament":
@@ -130,7 +170,40 @@ class GeneticAlgorithm:
             # Fallback: usar elitismo
             for i in range(min(self.elitism, len(agents))):
                 if i < len(agents):
-                    new_agents.append(agents[i])
+                    elite_brain = agents[i].brain
+                    # Crear nuevo agente con cerebro del élite pero estado reseteado
+                    # Buscar posición válida evitando obstáculos y estanque
+                    attempts = 0
+                    max_attempts = 100
+                    valid_position = False
+                    
+                    while not valid_position and attempts < max_attempts:
+                        x = random.randint(50, 900)
+                        y = random.randint(50, 750)
+                        valid_position = True
+                        
+                        # Verificar colisión con obstáculos
+                        for obstacle in self.world.obstacles:
+                            if obstacle.collides_with(x, y, 35):
+                                valid_position = False
+                                break
+                        
+                        # Verificar colisión con el estanque
+                        if valid_position:
+                            for pond_obj in self.world.pond_obstacles:
+                                if pond_obj.collides_with(x, y, 35, 35):
+                                    valid_position = False
+                                    break
+                        
+                        attempts += 1
+                    
+                    # Si no se encontró posición válida, usar posición segura
+                    if not valid_position:
+                        x = 100
+                        y = 100
+                    
+                    elite_agent = AdvancedAgent(x, y, elite_brain)
+                    new_agents.append(elite_agent)
             parents = self._tournament_selection(agents, self.population_size - self.elitism)
         
         # Crear hijos
@@ -166,9 +239,36 @@ class GeneticAlgorithm:
             if random.random() < mutation_rate:
                 child_brain.mutate(mutation_rate)
             
-            # Crear agente hijo
-            x = random.randint(50, 900)
-            y = random.randint(50, 750)
+            # Crear agente hijo con verificación de colisión
+            attempts = 0
+            max_attempts = 100
+            valid_position = False
+            
+            while not valid_position and attempts < max_attempts:
+                x = random.randint(50, 900)
+                y = random.randint(50, 750)
+                valid_position = True
+                
+                # Verificar colisión con obstáculos
+                for obstacle in self.world.obstacles:
+                    if obstacle.collides_with(x, y, 35):
+                        valid_position = False
+                        break
+                
+                # Verificar colisión con el estanque
+                if valid_position:
+                    for pond_obj in self.world.pond_obstacles:
+                        if pond_obj.collides_with(x, y, 35, 35):
+                            valid_position = False
+                            break
+                
+                attempts += 1
+            
+            # Si no se encontró posición válida, usar posición segura
+            if not valid_position:
+                x = 100
+                y = 100
+            
             child = AdvancedAgent(x, y, child_brain)
             new_agents.append(child)
         

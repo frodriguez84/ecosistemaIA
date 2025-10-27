@@ -4,7 +4,7 @@ Mundo del ecosistema con obstáculos, comida y objetos.
 
 import random
 import pygame
-from .obstacles import Obstacle, Key, Door, Chest
+from .obstacles import Obstacle, Key, Door, Chest, PerimeterObstacle, PondObstacle
 
 
 class Tree:
@@ -46,6 +46,8 @@ class World:
         self.obstacles = []
         self.manual_obstacles = []  # Obstáculos creados manualmente
         self.trees = []  # Lista de árboles para corte
+        self.perimeter_obstacles = []  # Obstáculos del perímetro decorativo
+        self.pond_obstacles = []  # Obstáculos del estanque móvil
         self.axe = None  # Hacha del sistema
         self.axe_picked_up = False  # Si alguien agarró el hacha
         self.last_tree_cut_tick = 0  # Último tick que se cortó un árbol
@@ -77,11 +79,17 @@ class World:
         # Inicializar sistema de árboles
         self._initialize_trees()
         
-        # Generar comida inicial (solo una vez por generación)
+        # Generar estanque móvil PRIMERO
+        self._generate_mobile_pond()
+        
+        # Generar comida inicial DESPUÉS del estanque (evitando superposición)
         self._generate_food(self.food_count)  # Usar cantidad configurable
         
         # Generar hacha al inicio
         self._generate_axe()
+        
+        # Generar perímetro decorativo
+        self._generate_perimeter()
     
     def _check_collision_with_objects(self, x, y, radius, existing_objects):
         """Verifica colisión con objetos existentes."""
@@ -94,6 +102,17 @@ class World:
                 distance = ((x - obj['x'])**2 + (y - obj['y'])**2)**0.5
                 if distance < radius + 15:  # Radio de seguridad
                     return True
+        
+        # Verificar colisión con obstáculos del perímetro
+        for perimeter_obj in self.perimeter_obstacles:
+            if perimeter_obj.collides_with(x, y, radius, radius):
+                return True
+        
+        # Verificar colisión con obstáculos del estanque
+        for pond_obj in self.pond_obstacles:
+            if pond_obj.collides_with(x, y, radius, radius):
+                return True
+        
         return False
     
     def _generate_food(self, count):
@@ -116,6 +135,13 @@ class World:
                 if obstacle.collides_with(food_x, food_y, 20):  # Radio más grande
                     valid_position = False
                     break
+            
+            # Verificar que no esté en el estanque
+            if valid_position:
+                for pond_obj in self.pond_obstacles:
+                    if pond_obj.collides_with(food_x, food_y, 20, 20):
+                        valid_position = False
+                        break
             
             # Verificar que no se superponga con otra comida
             if valid_position:
@@ -360,7 +386,11 @@ class World:
         small_pos = self.small_fortress_pos
         large_pos = self.large_fortress_pos
         
+        # Generar estanque móvil PRIMERO (nueva posición cada generación)
+        self._generate_mobile_pond()
+        
         # Regenerar obstáculos automáticos (incluyendo muros normales, SIN muros de fortalezas)
+        # AHORA verificará colisión con el estanque
         self._generate_obstacles_with_manual(manual_obstacles_backup)
         
         # Restaurar posiciones de fortalezas
@@ -394,6 +424,9 @@ class World:
         
         # Reinicializar sistema de árboles
         self._initialize_trees()
+        
+        # Generar perímetro decorativo
+        self._generate_perimeter()
         
         # NO regenerar hacha - se mantiene entre generaciones
         # Solo resetear cooldown de corte
@@ -902,6 +935,13 @@ class World:
                     valid_position = False
                     break
             
+            # Verificar que no esté en el estanque
+            if valid_position:
+                for pond_obj in self.pond_obstacles:
+                    if pond_obj.collides_with(food_x, food_y, 20, 20):
+                        valid_position = False
+                        break
+            
             # Verificar que no esté en comida existente
             if valid_position:
                 if not self._check_collision_with_objects(food_x, food_y, 25, self.food_items):
@@ -999,3 +1039,243 @@ class World:
                         if safe_position:
                             self.red_key = Key(x, y, "red_key")
                             return
+    
+    def _generate_perimeter(self):
+        """Genera el perímetro decorativo del mapa."""
+        tile_size = 20
+        map_width = self.screen_width
+        map_height = self.screen_height
+        
+        # Calcular dimensiones en tiles
+        tiles_x = map_width // tile_size
+        tiles_y = map_height // tile_size
+        
+        # Limpiar perímetro anterior
+        self.perimeter_obstacles.clear()
+        
+        # Generar perímetro según el diagrama:
+        # 028,026,026,026,026,026,029
+        # 024                                  023
+        # 024                                  023
+        # 024                                   023
+        # 024                                  023
+        # 024                                  023
+        # 030,021,021,021,021,021,031
+        
+        # Lado superior (026)
+        for x in range(1, tiles_x - 1):
+            self.perimeter_obstacles.append(
+                PerimeterObstacle(x * tile_size, 0, '026')
+            )
+        
+        # Lado inferior (021)
+        for x in range(1, tiles_x - 1):
+            self.perimeter_obstacles.append(
+                PerimeterObstacle(x * tile_size, (tiles_y - 1) * tile_size, '021')
+            )
+        
+        # Lado izquierdo (024)
+        for y in range(1, tiles_y - 1):
+            self.perimeter_obstacles.append(
+                PerimeterObstacle(0, y * tile_size, '024')
+            )
+        
+        # Lado derecho (023)
+        for y in range(1, tiles_y - 1):
+            self.perimeter_obstacles.append(
+                PerimeterObstacle((tiles_x - 1) * tile_size, y * tile_size, '023')
+            )
+        
+        # Esquinas
+        self.perimeter_obstacles.append(PerimeterObstacle(0, 0, '028'))  # Superior izquierda
+        self.perimeter_obstacles.append(PerimeterObstacle((tiles_x - 1) * tile_size, 0, '029'))  # Superior derecha
+        self.perimeter_obstacles.append(PerimeterObstacle(0, (tiles_y - 1) * tile_size, '030'))  # Inferior izquierda
+        self.perimeter_obstacles.append(PerimeterObstacle((tiles_x - 1) * tile_size, (tiles_y - 1) * tile_size, '031'))  # Inferior derecha
+        
+        
+    
+    def _generate_mobile_pond(self):
+        """Genera dos estanques móviles (3x3 y 4x4) en posiciones aleatorias válidas."""
+        tile_size = 20
+        
+        # Limpiar estanques anteriores
+        self.pond_obstacles.clear()
+        
+        # Generar estanque 3x3
+        self._generate_pond_3x3(tile_size)
+        
+        # Generar estanque 4x4
+        self._generate_pond_4x4(tile_size)
+    
+    def _generate_pond_3x3(self, tile_size):
+        """Genera estanque 3x3 con agua animada."""
+        pond_size = 3
+        
+        # Área válida para el estanque
+        min_x = 60
+        max_x = 900 - (pond_size * tile_size)
+        min_y = 60
+        max_y = 740 - (pond_size * tile_size)
+        
+        # Intentar encontrar posición válida
+        attempts = 0
+        max_attempts = 100
+        
+        while attempts < max_attempts:
+            pond_x = random.randint(min_x, max_x)
+            pond_y = random.randint(min_y, max_y)
+            
+            if self._is_pond_position_valid(pond_x, pond_y, pond_size, tile_size):
+                # Generar estanque 3x3 con agua animada:
+                # 020,021,022
+                # 023,019/018,024
+                # 025,026,027
+                
+                # Fila superior
+                self.pond_obstacles.append(PondObstacle(pond_x, pond_y, '020'))
+                self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y, '021'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y, '022'))
+                
+                # Fila media
+                self.pond_obstacles.append(PondObstacle(pond_x, pond_y + tile_size, '023'))
+                # Agua central animada (alterna entre 019 y 018)
+                water_sprite = '019' if random.random() < 0.5 else '018'
+                self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + tile_size, water_sprite))
+                self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + tile_size, '024'))
+                
+                # Fila inferior
+                self.pond_obstacles.append(PondObstacle(pond_x, pond_y + 2 * tile_size, '025'))
+                self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + 2 * tile_size, '026'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + 2 * tile_size, '027'))
+                
+                
+                return
+            
+            attempts += 1
+        
+        # Posición por defecto si no se encuentra válida
+        pond_x, pond_y = 300, 200
+        self.pond_obstacles.append(PondObstacle(pond_x, pond_y, '020'))
+        self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y, '021'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y, '022'))
+        self.pond_obstacles.append(PondObstacle(pond_x, pond_y + tile_size, '023'))
+        self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + tile_size, '019'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + tile_size, '024'))
+        self.pond_obstacles.append(PondObstacle(pond_x, pond_y + 2 * tile_size, '025'))
+        self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + 2 * tile_size, '026'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + 2 * tile_size, '027'))
+        
+    
+    def _generate_pond_4x4(self, tile_size):
+        """Genera estanque 4x4 con agua animada."""
+        pond_size = 4
+        
+        # Área válida para el estanque
+        min_x = 60
+        max_x = 900 - (pond_size * tile_size)
+        min_y = 60
+        max_y = 740 - (pond_size * tile_size)
+        
+        # Intentar encontrar posición válida
+        attempts = 0
+        max_attempts = 100
+        
+        while attempts < max_attempts:
+            pond_x = random.randint(min_x, max_x)
+            pond_y = random.randint(min_y, max_y)
+            
+            if self._is_pond_position_valid(pond_x, pond_y, pond_size, tile_size):
+                # Generar estanque 4x4 con agua animada:
+                # 020,021,021,022
+                # 023,019/018,019/018,024
+                # 023,019/018,019/018,024
+                # 025,026,026,027
+                
+                # Fila superior
+                self.pond_obstacles.append(PondObstacle(pond_x, pond_y, '020'))
+                self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y, '021'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y, '021'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, pond_y, '022'))
+                
+                # Filas media (2 filas de agua)
+                for row in range(2):
+                    y_pos = pond_y + (row + 1) * tile_size
+                    self.pond_obstacles.append(PondObstacle(pond_x, y_pos, '023'))
+                    
+                    # Agua animada (alterna entre 019 y 018)
+                    for col in range(2):
+                        x_pos = pond_x + (col + 1) * tile_size
+                        water_sprite = '019' if random.random() < 0.5 else '018'
+                        self.pond_obstacles.append(PondObstacle(x_pos, y_pos, water_sprite))
+                    
+                    self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, y_pos, '024'))
+                
+                # Fila inferior
+                self.pond_obstacles.append(PondObstacle(pond_x, pond_y + 3 * tile_size, '025'))
+                self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + 3 * tile_size, '026'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + 3 * tile_size, '026'))
+                self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, pond_y + 3 * tile_size, '027'))
+                
+                
+                return
+            
+            attempts += 1
+        
+        # Posición por defecto si no se encuentra válida
+        pond_x, pond_y = 500, 400
+        # Fila superior
+        self.pond_obstacles.append(PondObstacle(pond_x, pond_y, '020'))
+        self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y, '021'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y, '021'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, pond_y, '022'))
+        
+        # Filas media
+        for row in range(2):
+            y_pos = pond_y + (row + 1) * tile_size
+            self.pond_obstacles.append(PondObstacle(pond_x, y_pos, '023'))
+            self.pond_obstacles.append(PondObstacle(pond_x + tile_size, y_pos, '019'))
+            self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, y_pos, '018'))
+            self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, y_pos, '024'))
+        
+        # Fila inferior
+        self.pond_obstacles.append(PondObstacle(pond_x, pond_y + 3 * tile_size, '025'))
+        self.pond_obstacles.append(PondObstacle(pond_x + tile_size, pond_y + 3 * tile_size, '026'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 2 * tile_size, pond_y + 3 * tile_size, '026'))
+        self.pond_obstacles.append(PondObstacle(pond_x + 3 * tile_size, pond_y + 3 * tile_size, '027'))
+        
+    
+    def _is_pond_position_valid(self, pond_x, pond_y, pond_size, tile_size):
+        """Verifica si la posición del estanque es válida (no bloquea fortalezas)."""
+        # Verificar fortaleza pequeña
+        if self.small_fortress_pos:
+            fortress_x = self.small_fortress_pos['x']
+            fortress_y = self.small_fortress_pos['y']
+            fortress_size = self.small_fortress_pos['size']
+            
+            if (pond_x < fortress_x + fortress_size * tile_size + 40 and
+                pond_x + pond_size * tile_size > fortress_x - 40 and
+                pond_y < fortress_y + fortress_size * tile_size + 40 and
+                pond_y + pond_size * tile_size > fortress_y - 40):
+                return False
+        
+        # Verificar fortaleza grande
+        if self.large_fortress_pos:
+            fortress_x = self.large_fortress_pos['x']
+            fortress_y = self.large_fortress_pos['y']
+            fortress_size = self.large_fortress_pos['size']
+            
+            if (pond_x < fortress_x + fortress_size * tile_size + 40 and
+                pond_x + pond_size * tile_size > fortress_x - 40 and
+                pond_y < fortress_y + fortress_size * tile_size + 40 and
+                pond_y + pond_size * tile_size > fortress_y - 40):
+                return False
+        
+        # Verificar que no se superponga con otros estanques
+        for existing_pond in self.pond_obstacles:
+            if (pond_x < existing_pond.x + pond_size * tile_size and
+                pond_x + pond_size * tile_size > existing_pond.x and
+                pond_y < existing_pond.y + pond_size * tile_size and
+                pond_y + pond_size * tile_size > existing_pond.y):
+                return False
+        
+        return True

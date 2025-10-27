@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import json
 import os
+from .clustering import BehaviorClusterer
 
 
 class LearningMonitor:
@@ -18,6 +19,8 @@ class LearningMonitor:
         self.food_history = []
         self.survival_history = []
         self.diversity_history = []
+        self.clusterer = BehaviorClusterer(n_clusters=3)  # Reducido para mayor velocidad
+        self.clustering_history = []
         self.behavior_patterns = []
         
     def record_generation(self, generation, agents, world):
@@ -46,6 +49,25 @@ class LearningMonitor:
             'diversity': float(self._calculate_diversity(agents)),
             'alive_count': len([a for a in agents if a.alive])
         }
+        
+        # Realizar clustering de comportamientos (solo cada 3 generaciones para velocidad)
+        if len(agents) >= 4 and generation % 3 == 0:  # Solo cada 3 generaciones
+            try:
+                clusters, cluster_stats = self.clusterer.cluster_agents(agents)
+                gen_data['clusters'] = clusters.tolist()
+                gen_data['cluster_stats'] = cluster_stats
+                self.clustering_history.append({
+                    'generation': generation,
+                    'clusters': clusters.tolist(),
+                    'cluster_stats': cluster_stats
+                })
+            except Exception as e:
+                print(f"⚠️ Error en clustering generación {generation}: {e}")
+                gen_data['clusters'] = []
+                gen_data['cluster_stats'] = {}
+        else:
+            gen_data['clusters'] = []
+            gen_data['cluster_stats'] = {}
         
         self.generation_data.append(gen_data)
         self.fitness_history.append(gen_data['avg_fitness'])
@@ -153,6 +175,11 @@ class LearningMonitor:
             print(f"   - Supervivientes: {behaviors['survivors']:.1f}%")
             print(f"   - Movimiento eficiente: {behaviors['efficient_movers']:.1f}%")
             # print(f"   - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
+        
+        # Análisis de clustering
+        if gen_data.get('cluster_stats'):
+            # Crear un reporte simplificado sin necesidad de los agentes originales
+            self._print_cluster_summary(gen_data['cluster_stats'])
     
     def detect_learning_patterns(self):
         """Detecta patrones de aprendizaje."""
@@ -271,3 +298,30 @@ class LearningMonitor:
             print("   - Aprendizaje moderado, continuar observando")
         
         return "Reporte completado"
+    
+    def _print_cluster_summary(self, cluster_stats):
+        """Imprime resumen de clustering resumido para mayor velocidad."""
+        interpretations = self.clusterer.get_cluster_interpretation(cluster_stats)
+        
+        print("\n🧬 CLUSTERING:")
+        
+        # Solo mostrar clusters con más de 1 agente
+        active_clusters = [(cid, count) for cid, count in cluster_stats['cluster_counts'].items() if count > 1]
+        active_clusters.sort(key=lambda x: x[1], reverse=True)
+        
+        for cluster_id, count in active_clusters[:3]:  # Solo top 3 clusters
+            fitness = cluster_stats['cluster_fitness'][cluster_id]
+            strategy = interpretations.get(cluster_id, f"C{cluster_id}")
+            print(f"   {strategy}: {count} agentes (fitness: {fitness['promedio']:.1f})")
+        
+        # Diversidad simplificada
+        total_agents = sum(cluster_stats['cluster_counts'].values())
+        cluster_diversity = len([c for c in cluster_stats['cluster_counts'].values() if c > 0])
+        diversity_ratio = cluster_diversity / self.clusterer.n_clusters
+        
+        if diversity_ratio < 0.5:
+            print(f"   ⚠️ Convergencia prematura ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")
+        elif diversity_ratio > 0.8:
+            print(f"   ✅ Diversidad alta ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")
+        else:
+            print(f"   ⚖️ Diversidad moderada ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")

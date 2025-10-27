@@ -87,14 +87,19 @@ def main():
                 # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
                 attempts = 0
                 while attempts < 500:  # Más intentos para mayor seguridad
-                    # Excluir zona del panel de estadísticas (panel_width = 240, panel_height = 300)
-                    new_x = random.randint(250, screen_width - 50)  # Evitar zona de estadísticas
-                    new_y = random.randint(320, screen_height - 50)  # Evitar zona de estadísticas
+                    # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
+                    # Panel de estadísticas: 240px de ancho, área de pasto: hasta 960px (1200-240)
+                    new_x = random.randint(20, 960 - 20)  # Solo área de pasto, evitando perímetro
+                    new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
                     
-                    # Verificar que no esté en fortaleza Y no colisione con obstáculos
+                    # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
                     if (not world._is_inside_fortress(new_x, new_y) and
                         not any(obstacle.collides_with(new_x, new_y, agent.radius) 
-                               for obstacle in world.obstacles)):
+                               for obstacle in world.obstacles) and
+                        not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                               for perimeter_obj in world.perimeter_obstacles) and
+                        not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                               for pond_obj in world.pond_obstacles)):
                         agent.x = new_x
                         agent.y = new_y
                         break
@@ -244,8 +249,7 @@ def main():
                         # ¡COFRE ABIERTO! Mostrar pantalla de FIN
                         print(f"\n🏆 ¡¡¡COFRE ABIERTO!!! 🏆")
                         print(f"🎯 Agente {agent.id} ha completado la misión en la generación {generation}")
-                        print(f"⏱️ Tick: {tick}")
-                        print(f"🎉 ¡MISIÓN COMPLETADA! 🎉")
+                        print(f"⏱️ Segundos: {tick/60:.1f}")
                         show_final_screen(screen, generation, tick, agents, world, learning_monitor)
                         return
         
@@ -266,7 +270,7 @@ def main():
         if len(alive_agents) == 0 or tick >= max_ticks_per_generation:
             print(f"\n🧬 Generación {generation} terminada")
             print(f"   - Agentes vivos: {len(alive_agents)}")
-            print(f"   - Ticks: {tick}")
+            print(f"   - Segundos: {tick/60:.1f}")
             
             # Contar árboles cortados en esta generación
             trees_cut_this_generation = 0
@@ -295,7 +299,6 @@ def main():
                 
                 print(f"   - Fitness promedio: {avg_fitness:.1f}/100")
                 print(f"   - Fitness máximo: {max_fitness:.1f}/100")
-                print(f"   - Tiempo de vida: {avg_age/60:.1f} min")
                 print(f"   - Comida promedio: {avg_food:.1f}")
                 print(f"   - Supervivencia: {len(alive_agents)/len(agents)*100:.1f}%")
                 
@@ -360,14 +363,19 @@ def main():
                         # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
                         attempts = 0
                         while attempts < 500:  # Más intentos para mayor seguridad
-                            # Excluir zona del panel de estadísticas (panel_width = 240, panel_height = 300)
-                            new_x = random.randint(250, screen_width - 50)  # Evitar zona de estadísticas
-                            new_y = random.randint(320, screen_height - 50)  # Evitar zona de estadísticas
+                            # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
+                            # Panel de estadísticas: 240px de ancho, área de pasto: hasta 960px (1200-240)
+                            new_x = random.randint(20, 960 - 20)  # Solo área de pasto, evitando perímetro
+                            new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
                             
-                            # Verificar que no esté en fortaleza Y no colisione con obstáculos
+                            # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
                             if (not world._is_inside_fortress(new_x, new_y) and
                                 not any(obstacle.collides_with(new_x, new_y, agent.radius) 
-                                       for obstacle in world.obstacles)):
+                                       for obstacle in world.obstacles) and
+                                not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                                       for perimeter_obj in world.perimeter_obstacles) and
+                                not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                                       for pond_obj in world.pond_obstacles)):
                                 agent.x = new_x
                                 agent.y = new_y
                                 break
@@ -393,23 +401,37 @@ def main():
             else:
                 max_ticks_per_generation = config.BASE_TICKS
             
-            print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation} ticks")
+            print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation}/60 seg")
         
         # Renderizar (solo si no está en modo headless)
         if not config.HEADLESS_MODE:
             screen.fill((40, 40, 60))  # Fondo azul oscuro
             
-            # Dibujar fondo solo con pasto
+            # Dibujar fondo: pasto hasta el perímetro, agua después
             for x in range(0, screen_width - 250, 16):
                 for y in range(0, screen_height, 16):
-                    # Solo pasto con variación
-                    grass_variant = 1 if (x // 16 + y // 16) % 2 == 0 else 2
-                    grass_sprite = sprite_manager.get_environment_sprite('grass', grass_variant)
-                    screen.blit(grass_sprite, (x, y))
+                    if x < 960:  # Área de pasto (hasta el perímetro)
+                        # Solo pasto con variación
+                        grass_variant = 1 if (x // 16 + y // 16) % 2 == 0 else 2
+                        grass_sprite = sprite_manager.get_environment_sprite('grass', grass_variant)
+                        screen.blit(grass_sprite, (x, y))
+                    else:  # Área de agua (entre perímetro y estadísticas)
+                        # Agua con variación
+                        water_variant = 1 if (x // 16 + y // 16) % 2 == 0 else 2
+                        water_sprite = sprite_manager.get_environment_sprite('water', water_variant)
+                        screen.blit(water_sprite, (x, y))
             
             # Dibujar obstáculos con sprites
             for obstacle in world.obstacles:
                 obstacle.draw(screen, sprite_manager, tick)
+            
+            # Dibujar perímetro decorativo
+            for perimeter_obj in world.perimeter_obstacles:
+                perimeter_obj.draw(screen, sprite_manager)
+            
+            # Dibujar estanque móvil
+            for pond_obj in world.pond_obstacles:
+                pond_obj.draw(screen, sprite_manager, tick)
             
             # Dibujar hacha si existe y no fue agarrada
             if config.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
@@ -458,7 +480,34 @@ def main():
                 
                 # Dibujar llaves
                 if world.red_key and not world.red_key.collected:
-                    world.red_key.draw(screen, sprite_manager, tick)
+                    # Efecto de halo brillante para red_key (igual que el hacha)
+                    red_key_sprite = sprite_manager.get_environment_sprite('red_key')
+                    if red_key_sprite:
+                        # Efecto de brillo pulsante
+                        glow_intensity = int(50 + 30 * abs(pygame.math.Vector2(1, 1).length() * 0.1 * tick % 1 - 0.5))
+                        glow_color = (255, 100, 100 + glow_intensity)  # Rojo brillante
+                        
+                        # Dibujar halo de brillo suave (sin fondo)
+                        for i in range(3):
+                            glow_radius = 15 + i * 5
+                            glow_alpha = 30 - i * 8  # Más transparente
+                            glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                            pygame.draw.circle(glow_surface, (*glow_color[:3], glow_alpha), 
+                                            (glow_radius, glow_radius), glow_radius)
+                            screen.blit(glow_surface, (world.red_key.x - glow_radius, world.red_key.y - glow_radius))
+                        
+                        # Dibujar red_key original con brillo sutil
+                        world.red_key.draw(screen, sprite_manager, tick)
+                        
+                        # Añadir brillo sutil encima (sin fondo)
+                        bright_overlay = pygame.Surface(red_key_sprite.get_size(), pygame.SRCALPHA)
+                        bright_overlay.fill((*glow_color[:3], 30))  # Muy transparente
+                        bright_overlay.blit(red_key_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
+                        screen.blit(bright_overlay, (world.red_key.x - 10, world.red_key.y - 10))
+                    else:
+                        # Fallback si no hay sprite
+                        world.red_key.draw(screen, sprite_manager, tick)
+                
                 if world.gold_key and not world.gold_key.collected:
                     world.gold_key.draw(screen, sprite_manager, tick)
             
@@ -483,23 +532,7 @@ def main():
             
             # Dibujar cuadro de resumen (si está visible)
             summary_popup.draw(screen)
-            
-            # Mostrar modo comando
-            if command_mode:
-                font = pygame.font.Font(None, 24)
-                command_text = f"MODO COMANDO: {current_command}"
-                command_surface = font.render(command_text, True, (255, 255, 0))
-                screen.blit(command_surface, (10, 10))
-                
-                help_text = "Escribe: tree, wall, water, hut, potion, apple"
-                help_surface = font.render(help_text, True, (200, 200, 200))
-                screen.blit(help_surface, (10, 35))
-                
-                if last_click_coords:
-                    coords_text = f"Click en: {last_click_coords}"
-                    coords_surface = font.render(coords_text, True, (0, 255, 0))
-                    screen.blit(coords_surface, (10, 60))
-            
+                        
             if paused:
                 font = pygame.font.Font(None, 24)
                 pause_text = font.render("PAUSADO - Presiona ESPACIO", True, (255, 0, 0))
@@ -512,7 +545,7 @@ def main():
     pygame.quit()
     
     # Crear reporte final de aprendizaje
-    print(f"\n🎉 Simulación completada - {generation-1} generaciones evolucionadas")
+    print(f"\nSimulación completada - {generation-1} generaciones evolucionadas")
     learning_monitor.create_learning_report()
     
     # Guardar datos para análisis posterior (DESHABILITADO)
@@ -526,13 +559,13 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
     
     # Si estamos en modo headless, solo mostrar estadísticas por consola
     if SimulationConfig.HEADLESS_MODE:
-        print(f"\n🎉 ¡MISIÓN COMPLETADA! 🎉")
-        print(f"📊 Generación: {generation}")
-        print(f"⏱️ Tick: {tick}")
-        print(f"🎯 Agentes vivos: {len([a for a in agents if a.alive])}")
-        print(f"🏆 ¡El cofre ha sido abierto por un agente evolutivo!")
-        print(f"📈 Fitness promedio: {sum(a.fitness for a in agents) / len(agents):.1f}")
-        print(f"📈 Fitness máximo: {max(a.fitness for a in agents):.1f}")
+        print(f"\n ¡MISIÓN COMPLETADA!")
+        print(f"Generación: {generation}")
+        print(f"Tiempo total: {tick // 60 // 60:.1f} minutos")
+        print(f"Agentes vivos: {len([a for a in agents if a.alive])}")
+        print(f"¡El cofre ha sido abierto por un agente evolutivo!")
+        print(f"Fitness promedio: {sum(a.fitness for a in agents) / len(agents):.1f}")
+        print(f"Fitness máximo: {max(a.fitness for a in agents):.1f}")
         return
     
     # Crear reporte final de aprendizaje
@@ -561,6 +594,29 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
     exploration_values = [a.distance_traveled for a in agents]
     max_exploration = max(exploration_values) if exploration_values else 0
     avg_exploration = sum(exploration_values) / len(exploration_values) if exploration_values else 0
+    
+    # Estadísticas históricas de TODAS las generaciones
+    if learning_monitor.generation_data:
+        # Estadísticas de comida totales (solo promedio, no total)
+        avg_food_all_gens = sum(gen_data['avg_food'] for gen_data in learning_monitor.generation_data) / len(learning_monitor.generation_data)
+        
+        # Estadísticas de supervivencia totales (convertir ticks a minutos)
+        total_survival_all_gens = sum(gen_data['avg_age'] for gen_data in learning_monitor.generation_data) / 60 / 60  # ticks a minutos
+        avg_survival_all_gens = sum(gen_data['avg_age'] for gen_data in learning_monitor.generation_data) / len(learning_monitor.generation_data) / 60 / 60
+        
+        # Estadísticas de exploración totales (convertir píxeles a metros/km)
+        total_exploration_all_gens = sum(gen_data['avg_distance'] for gen_data in learning_monitor.generation_data)
+        avg_exploration_all_gens = sum(gen_data['avg_distance'] for gen_data in learning_monitor.generation_data) / len(learning_monitor.generation_data)
+        
+        # Convertir exploración a metros (asumiendo 1 píxel = 1 cm)
+        total_exploration_meters = total_exploration_all_gens / 100
+        avg_exploration_meters = avg_exploration_all_gens / 100
+    else:
+        avg_food_all_gens = 0
+        total_survival_all_gens = 0
+        avg_survival_all_gens = 0
+        total_exploration_meters = 0
+        avg_exploration_meters = 0
     
     # Estadísticas de habilidades
     trees_cut = 0  # No se rastrea individualmente por agente
@@ -603,7 +659,7 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         screen.fill(BLACK)
         
         # Título principal
-        title_text = font_large.render("🎉 ¡MISIÓN COMPLETADA! 🎉", True, GOLD)
+        title_text = font_large.render("¡MISIÓN COMPLETADA!", True, GOLD)
         title_rect = title_text.get_rect(center=(screen.get_width()//2, 80))
         screen.blit(title_text, title_rect)
         
@@ -619,8 +675,10 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         gen_text = font_medium.render(f"Generación: {generation}", True, GREEN)
         screen.blit(gen_text, (50, y_pos))
         
-        tick_text = font_medium.render(f"Tick: {tick}", True, GREEN)
-        screen.blit(tick_text, (300, y_pos))
+        # Convertir tick a tiempo real (minutos)
+        total_minutes = tick // 60 // 60
+        time_text = font_medium.render(f"Tiempo total: {total_minutes:.1f} min", True, GREEN)
+        screen.blit(time_text, (300, y_pos))
         
         y_pos += 50
         
@@ -642,15 +700,14 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         
         y_pos += 20
         
-        # Estadísticas de comida
+        # Estadísticas de comida TOTALES
         food_title = font_title.render("🍎 ESTADÍSTICAS DE COMIDA", True, GOLD)
         screen.blit(food_title, (50, y_pos))
         y_pos += 40
         
         food_texts = [
-            f"Manzanas máximas comidas: {max_food}",
-            f"Manzanas promedio comidas: {avg_food:.1f}",
-            f"Árboles cortados: {trees_cut}"
+            f"Manzanas promedio comidas: {avg_food_all_gens:.1f}",
+            f"Manzanas esta generación: {max_food} (máx), {avg_food:.1f} (prom)"
         ]
         
         for text in food_texts:
@@ -660,15 +717,15 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         
         y_pos += 20
         
-        # Estadísticas de supervivencia
+        # Estadísticas de supervivencia TOTALES
         survival_title = font_title.render("⏱️ ESTADÍSTICAS DE SUPERVIVENCIA", True, GOLD)
         screen.blit(survival_title, (50, y_pos))
         y_pos += 40
         
         survival_texts = [
-            f"Tiempo máximo de supervivencia: {max_survival:.1f} min",
-            f"Tiempo promedio de supervivencia: {avg_survival:.1f} min",
-            f"Obstáculos evitados: {obstacles_avoided}"
+            f"Tiempo total de supervivencia: {total_survival_all_gens:.1f} min",
+            f"Tiempo promedio de supervivencia: {avg_survival_all_gens:.1f} min",
+            f"Tiempo esta generación: {max_survival/60/60:.1f} min (máx), {avg_survival/60/60:.1f} min (prom)"
         ]
         
         for text in survival_texts:
@@ -678,14 +735,26 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         
         y_pos += 20
         
-        # Estadísticas de exploración
+        # Estadísticas de exploración TOTALES
         exploration_title = font_title.render("🗺️ ESTADÍSTICAS DE EXPLORACIÓN", True, GOLD)
         screen.blit(exploration_title, (50, y_pos))
         y_pos += 40
         
+        # Convertir a metros/km
+        if total_exploration_meters >= 1000:
+            total_exploration_display = f"{total_exploration_meters/1000:.1f} km"
+        else:
+            total_exploration_display = f"{total_exploration_meters:.0f} m"
+            
+        if avg_exploration_meters >= 1000:
+            avg_exploration_display = f"{avg_exploration_meters/1000:.1f} km"
+        else:
+            avg_exploration_display = f"{avg_exploration_meters:.0f} m"
+        
         exploration_texts = [
-            f"Distancia máxima recorrida: {max_exploration:.0f} píxeles",
-            f"Distancia promedio recorrida: {avg_exploration:.0f} píxeles"
+            f"Distancia máxima total recorrida: {total_exploration_display}",
+            f"Distancia total promedio recorrida: {avg_exploration_display}",
+            f"Distancia esta generación: {max_exploration/100:.0f} m (máx), {avg_exploration/100:.0f} m (prom)"
         ]
         
         for text in exploration_texts:

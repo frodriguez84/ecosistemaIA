@@ -13,18 +13,18 @@ class SimulationConfig:
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 1500                 # Tiempo base inicial
-    TICKS_INCREMENT_AMOUNT = 750     # Cuántos ticks aumentar cada incremento
-    TICKS_INCREMENT_FREQUENCY = 5      # Cada cuántas generaciones aumentar (ej: cada 5)
+    BASE_TICKS = 500                 # Tiempo base inicial
+    TICKS_INCREMENT_AMOUNT = 500     # Cuántos ticks aumentar cada incremento
+    TICKS_INCREMENT_FREQUENCY = 2      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.2        # 15% de mutación 
-    CROSSOVER_RATE = 0.6        # 70% de cruce 
+    MUTATION_RATE = 0.05        # 15% de mutación 
+    CROSSOVER_RATE = 0.5        # 70% de cruce 
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "elitism"  # "elitism" o "tournament"
-    TOURNAMENT_SIZE = 6             # Tamaño del torneo (AUMENTADO para más presión selectiva)
-    ELITISM = 2                     # Mejores agentes que se mantienen (AUMENTADO para estabilidad)
+    TOURNAMENT_SIZE = 6             # Tamaño del torneo 
+    ELITISM = 2                     # Mejores agentes que se mantienen 
     
     # === RED NEURONAL ===
     INPUT_SIZE = 23              # 23 sensores (8 básicos + 15 de fortalezas/árboles)
@@ -35,7 +35,7 @@ class SimulationConfig:
     AGENT_SPEED = 3.0            # Velocidad de movimiento
     VISION_RANGE = 150           # Rango de visión
     AGENT_ENERGY = 150.0         # Energía inicial
-    AGENT_ENERGY_CONSUMPTION = 0.04  # Consumo de energía por tick 
+    AGENT_ENERGY_CONSUMPTION = 0.05  # Consumo de energía por tick 
     AGENT_ENERGY_GAIN_FOOD = 15      # Energía ganada al comer 
     AGENT_RADIUS = 8             # Tamaño del agente
     
