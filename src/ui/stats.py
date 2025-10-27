@@ -69,6 +69,12 @@ class StatsPanel:
         if hasattr(world, 'axe_picked_up') and world.axe_picked_up:
             stats.append("🪓 Pueden cortar árboles!")
         
+        # Añadir texto de llaves recogidas
+        if hasattr(world, 'red_key_collected') and world.red_key_collected:
+            stats.append("🔑 Pueden abrir puerta madera!")
+        if hasattr(world, 'gold_key_collected') and world.gold_key_collected:
+            stats.append("🔑 Pueden abrir puerta hierro!")
+        
         # Dibujar estadísticas
         y_offset = 50
         for stat in stats:

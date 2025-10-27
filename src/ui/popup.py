@@ -192,8 +192,8 @@ class SummaryPopup:
             popup_surface.blit(text, (right_x + 10, y_offset))
             y_offset += 18
         
-        # Gráfico de evolución (más compacto)
-        self._draw_fitness_graph(popup_surface, 300)
+        # Gráfico de evolución (más alto y menos ancho)
+        self._draw_fitness_graph(popup_surface, 280)  # Posición ajustada para el gráfico más alto
         
         # Botón cerrar
         close_button = pygame.Rect(self.width - 120, self.height - 50, 100, 30)
@@ -212,9 +212,9 @@ class SummaryPopup:
         if len(self.fitness_history) < 2:
             return
             
-        graph_width = self.width - 80  # Más espacio para etiquetas
-        graph_height = 60  # Más corto
-        graph_x = 50  # Más espacio a la izquierda para etiquetas
+        graph_width = self.width - 120  # Más corto (menos ancho)
+        graph_height = 120  # Más alto (doble de altura)
+        graph_x = 60  # Más espacio a la izquierda para etiquetas
         graph_y = y_start
         
         # Fondo del gráfico

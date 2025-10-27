@@ -1,9 +1,0 @@
-agents
-ai
-analytics
-core
-ecosistema
-env
-persistence
-ui
-utils

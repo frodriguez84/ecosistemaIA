@@ -6,9 +6,9 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    POPULATION_SIZE = 30
+    POPULATION_SIZE = 40
     TARGET_FPS = 60
-    MAX_GENERATIONS = 20  # Extendido para ver tendencias a largo plazo
+    MAX_GENERATIONS = 30    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
@@ -18,7 +18,7 @@ class SimulationConfig:
     TICKS_INCREMENT_FREQUENCY = 5      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.25         # 25% de mutación (EQUILIBRADO)
+    MUTATION_RATE = 0.15        # 15% de mutación (REDUCIDO para evitar convergencia prematura)
     CROSSOVER_RATE = 0.7         # 70% de cruce (REDUCIDO para más exploración)
     
     # === SELECCIÓN DE PADRES ===
@@ -27,8 +27,8 @@ class SimulationConfig:
     ELITISM = 2                     # Mejores agentes que se mantienen (AUMENTADO para estabilidad)
     
     # === RED NEURONAL ===
-    INPUT_SIZE = 8               # 8 sensores
-    HIDDEN_SIZE = 16             # 20 neuronas ocultas (AUMENTADO para capacidad)
+    INPUT_SIZE = 23              # 23 sensores (8 básicos + 15 de fortalezas/árboles)
+    HIDDEN_SIZE = 16             # 16 neuronas ocultas
     OUTPUT_SIZE = 4              # 4 acciones
     
     # === AGENTE ===
@@ -42,19 +42,47 @@ class SimulationConfig:
     # === MUNDO ===
     SCREEN_WIDTH = 1200          # Ancho de pantalla
     SCREEN_HEIGHT = 800          # Alto de pantalla
-    FOOD_COUNT = 60              # Cantidad de comida inicial
+    FOOD_COUNT = 80              # Cantidad de comida inicial
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
-    TREE_CUTTING_THRESHOLD = 30  # Umbral para activar corte (≤25 manzanas)
-    TREE_HITS_TO_CUT = 3         # Golpes necesarios para cortar árbol
-    TREE_CUT_REWARD = 10         # Fitness ganado por cortar árbol
-    TREE_CUT_FOOD_REWARD = 10      # Manzanas generadas al cortar árbol
+    TREE_CUTTING_THRESHOLD = 30  # Umbral para activar corte (≤30 manzanas)
+    TREE_HITS_TO_CUT = 2         # Golpes necesarios para cortar árbol
+    TREE_CUT_REWARD = 7         # Fitness ganado por cortar árbol
+    TREE_CUT_FOOD_REWARD = 20      # Manzanas generadas al cortar árbol
     
-    # === SISTEMA FUTURO (LLAVES/PUERTAS/COFRE) ===
-    KEYS_SYSTEM_ENABLED = False   # Habilitar sistema de llaves (FUTURO)
-    DOORS_SYSTEM_ENABLED = False  # Habilitar sistema de puertas (FUTURO)
-    CHEST_SYSTEM_ENABLED = False  # Habilitar sistema de cofre (FUTURO)
+    # === SISTEMA DE CORTE DE HUTS ===
+    HUT_CUTTING_ENABLED = True     # Habilitar sistema de corte de huts
+    HUT_CUTTING_THRESHOLD = 20     # Umbral para activar corte (≤20 manzanas)
+    HUT_HITS_TO_CUT = 4            # Golpes necesarios para destruir hut
+    HUT_CUT_REWARD = 15            # Fitness ganado por destruir hut
+    HUT_CUT_FOOD_REWARD = 25       # Manzanas generadas al destruir hut
+    
+    # === SISTEMA DE AGUA ===
+    WATER_FITNESS_PENALTY = 5      # Fitness perdido por tick en agua (equilibrado con comida)
+    
+    # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
+    FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas
+    
+    # Fortalezas
+    SMALL_FORTRESS_SIZE = 5       # Tamaño de fortaleza pequeña (4x5 tiles)
+    LARGE_FORTRESS_SIZE = 6       # Tamaño de fortaleza grande (6x6 tiles)
+    TILE_SIZE = 32                # Tamaño de cada tile en píxeles
+    
+    # Llaves
+    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente (cambiado de 11 a 1)
+    RED_KEY_REWARD = 5            # Fitness por recoger red_key
+    GOLD_KEY_REWARD = 15          # Fitness por recoger gold_key
+    
+    # Puertas
+    DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
+    DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
+    DOOR_OPEN_REWARD = 10         # Fitness por abrir door
+    DOOR_IRON_OPEN_REWARD = 20    # Fitness por abrir door_iron
+    DOOR_HIT_COOLDOWN = 120       # Cooldown entre golpes (ticks)
+    
+    # Cofre
+    CHEST_REWARD = 50             # Fitness por abrir cofre
     
     # === RENDIMIENTO ===
     STATS_UPDATE_FREQUENCY = 5   # Actualizar stats cada N frames

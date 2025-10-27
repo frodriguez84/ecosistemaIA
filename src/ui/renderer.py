@@ -44,6 +44,14 @@ class SpriteManager:
         self.sprites['potion'] = self._load_sprite(f"{sprite_dir}/environment/035.png")
         self.sprites['apple'] = self._load_sprite(f"{sprite_dir}/environment/034.png")
         self.sprites['axe'] = self._load_sprite(f"{sprite_dir}/environment/axe.png")
+        
+        # Sprites de fortalezas
+        self.sprites['door'] = self._load_sprite(f"{sprite_dir}/environment/door.png")
+        self.sprites['door_iron'] = self._load_sprite(f"{sprite_dir}/environment/door_iron.png")
+        self.sprites['chest'] = self._load_sprite(f"{sprite_dir}/environment/chest.png")
+        self.sprites['chest_opened'] = self._load_sprite(f"{sprite_dir}/environment/chest_opened.png")
+        self.sprites['gold_key'] = self._load_sprite(f"{sprite_dir}/environment/gold_key.png")
+        self.sprites['red_key'] = self._load_sprite(f"{sprite_dir}/environment/red_key.png")
     
     def _load_sprite(self, path):
         """Carga un sprite desde archivo."""
@@ -111,6 +119,18 @@ class SpriteManager:
             return self.sprites.get('apple')
         elif sprite_type == 'axe':
             return self.sprites.get('axe')
+        elif sprite_type == 'door':
+            return self.sprites.get('door')
+        elif sprite_type == 'door_iron':
+            return self.sprites.get('door_iron')
+        elif sprite_type == 'chest':
+            return self.sprites.get('chest')
+        elif sprite_type == 'chest_opened':
+            return self.sprites.get('chest_opened')
+        elif sprite_type == 'gold_key':
+            return self.sprites.get('gold_key')
+        elif sprite_type == 'red_key':
+            return self.sprites.get('red_key')
         else:
             return None
 

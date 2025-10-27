@@ -83,7 +83,12 @@ class GeneticAlgorithm:
                         valid_position = False
             
             if valid_position:
-                brain = SimpleNeuralNetwork()
+                from config import SimulationConfig
+                brain = SimpleNeuralNetwork(
+                    SimulationConfig.INPUT_SIZE,
+                    SimulationConfig.HIDDEN_SIZE,
+                    SimulationConfig.OUTPUT_SIZE
+                )
                 agent = AdvancedAgent(x, y, brain)
                 agents.append(agent)
             
@@ -137,8 +142,13 @@ class GeneticAlgorithm:
                 # Cruza
                 child_brain = parent1.brain.crossover(parent2.brain)
             else:
-                # Copia
-                child_brain = SimpleNeuralNetwork()
+                # Copia (elite directa)
+                from config import SimulationConfig
+                child_brain = SimpleNeuralNetwork(
+                    SimulationConfig.INPUT_SIZE,
+                    SimulationConfig.HIDDEN_SIZE,
+                    SimulationConfig.OUTPUT_SIZE
+                )
                 child_brain.W1 = parent1.brain.W1.copy()
                 child_brain.b1 = parent1.brain.b1.copy()
                 child_brain.W2 = parent1.brain.W2.copy()

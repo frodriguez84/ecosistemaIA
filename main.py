@@ -47,7 +47,7 @@ def main():
     pygame.init()
     if not config.HEADLESS_MODE:
         screen = pygame.display.set_mode((screen_width, screen_height))
-        pygame.display.set_caption("Ecosistema Evolutivo IA - Avanzado con Sprites")
+        pygame.display.set_caption("Ecosistema Evolutivo IA")
     else:
         screen = None
         print("🚀 MODO HEADLESS ACTIVADO - Sin render")
@@ -73,6 +73,39 @@ def main():
     
     # Crear población inicial
     agents = ga._create_random_population()
+    
+    # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos
+    if config.FORTRESSES_ENABLED:
+        import random
+        for agent in agents:
+            # Verificar si está dentro de fortalezas O sobre obstáculos
+            needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
+                                  any(obstacle.collides_with(agent.x, agent.y, agent.radius) 
+                                      for obstacle in world.obstacles))
+            
+            if needs_repositioning:
+                # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
+                attempts = 0
+                while attempts < 500:  # Más intentos para mayor seguridad
+                    # Excluir zona del panel de estadísticas (panel_width = 240, panel_height = 300)
+                    new_x = random.randint(250, screen_width - 50)  # Evitar zona de estadísticas
+                    new_y = random.randint(320, screen_height - 50)  # Evitar zona de estadísticas
+                    
+                    # Verificar que no esté en fortaleza Y no colisione con obstáculos
+                    if (not world._is_inside_fortress(new_x, new_y) and
+                        not any(obstacle.collides_with(new_x, new_y, agent.radius) 
+                               for obstacle in world.obstacles)):
+                        agent.x = new_x
+                        agent.y = new_y
+                        break
+                    attempts += 1
+                
+                # Si no se pudo reposicionar después de 500 intentos, usar posición segura
+                if attempts >= 500:
+                    # Posición segura en el centro del área de juego
+                    agent.x = screen_width // 2
+                    agent.y = screen_height // 2
+                    print(f"⚠️ Agente {agent.id} reposicionado a posición segura")
     
     # Crear panel de estadísticas (más alto)
     stats_panel = StatsPanel(screen_width - 240, 10, 230, 300)  # Panel más corto
@@ -197,10 +230,32 @@ def main():
                     
                     # Intentar cortar árbol
                     agent._try_cut_tree(world, tick)
+                
+                # Sistema de fortalezas/llaves/puertas/cofre
+                if config.FORTRESSES_ENABLED:
+                    # Intentar recoger llaves
+                    agent._try_pickup_key(world, generation)
+                    
+                    # Intentar golpear puertas
+                    agent._try_hit_door(world, tick)
+                    
+                    # Intentar abrir cofre
+                    if agent._try_open_chest(world):
+                        # ¡COFRE ABIERTO! Mostrar pantalla de FIN
+                        print(f"\n🏆 ¡¡¡COFRE ABIERTO!!! 🏆")
+                        print(f"🎯 Agente {agent.id} ha completado la misión en la generación {generation}")
+                        print(f"⏱️ Tick: {tick}")
+                        print(f"🎉 ¡MISIÓN COMPLETADA! 🎉")
+                        show_final_screen(screen, generation, tick, agents, world, learning_monitor)
+                        return
         
         # Actualizar sistema de corte de árboles (solo si no está pausado)
         if not paused and config.TREE_CUTTING_ENABLED:
             world.update_tree_cutting_status()
+        
+        # Generar red_key en gen 11+ si no existe (solo una vez por generación)
+        if config.FORTRESSES_ENABLED and generation >= config.RED_KEY_SPAWN_GEN and not world.red_key:
+            world._generate_red_key(generation)
         
         # Actualizar mundo (solo si no está pausado)
         if not paused:
@@ -222,17 +277,15 @@ def main():
                 max_fitness = max(agent.fitness for agent in agents)
                 avg_age = sum(agent.age for agent in agents) / len(agents)
                 avg_food = sum(agent.food_eaten for agent in agents) / len(agents)
-                avg_avoidance = sum(agent.obstacles_avoided for agent in agents) / len(agents)
                 avg_energy = sum(agent.energy for agent in alive_agents) / len(alive_agents) if alive_agents else 0
                 
                 print(f"   - Fitness promedio: {avg_fitness:.1f}/100")
                 print(f"   - Fitness máximo: {max_fitness:.1f}/100")
                 print(f"   - Tiempo de vida: {avg_age/60:.1f} min")
                 print(f"   - Comida promedio: {avg_food:.1f}")
-                print(f"   - Esquives exitosos: {avg_avoidance:.0f}")
                 print(f"   - Supervivencia: {len(alive_agents)/len(agents)*100:.1f}%")
             else:
-                avg_fitness = max_fitness = avg_age = avg_food = avg_avoidance = avg_energy = 0
+                avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
             
             # Contar árboles cortados en esta generación
             trees_cut_this_generation = 0
@@ -246,7 +299,6 @@ def main():
                 'max_fitness': max_fitness,
                 'avg_age': avg_age,
                 'avg_food': avg_food,
-                'avg_avoidance': avg_avoidance,
                 'avg_energy': avg_energy,
                 'avg_exploration': sum(agent.distance_traveled for agent in agents)/len(agents) if agents else 0,
                 'survival_rate': len(alive_agents)/len(agents)*100 if agents else 0,
@@ -276,6 +328,40 @@ def main():
             
             # Evolucionar
             agents = ga.evolve(agents)
+            
+            # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos (después de evolucionar)
+            if config.FORTRESSES_ENABLED:
+                import random
+                for agent in agents:
+                    # Verificar si está dentro de fortalezas O sobre obstáculos
+                    needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
+                                          any(obstacle.collides_with(agent.x, agent.y, agent.radius) 
+                                              for obstacle in world.obstacles))
+                    
+                    if needs_repositioning:
+                        # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
+                        attempts = 0
+                        while attempts < 500:  # Más intentos para mayor seguridad
+                            # Excluir zona del panel de estadísticas (panel_width = 240, panel_height = 300)
+                            new_x = random.randint(250, screen_width - 50)  # Evitar zona de estadísticas
+                            new_y = random.randint(320, screen_height - 50)  # Evitar zona de estadísticas
+                            
+                            # Verificar que no esté en fortaleza Y no colisione con obstáculos
+                            if (not world._is_inside_fortress(new_x, new_y) and
+                                not any(obstacle.collides_with(new_x, new_y, agent.radius) 
+                                       for obstacle in world.obstacles)):
+                                agent.x = new_x
+                                agent.y = new_y
+                                break
+                            attempts += 1
+                        
+                        # Si no se pudo reposicionar después de 500 intentos, usar posición segura
+                        if attempts >= 500:
+                            # Posición segura en el centro del área de juego
+                            agent.x = screen_width // 2
+                            agent.y = screen_height // 2
+                            print(f"⚠️ Agente {agent.id} reposicionado a posición segura")
+            
             world.reset_food()
             world.tick = 0
             tick = 0
@@ -340,6 +426,24 @@ def main():
                     apple_sprite = sprite_manager.get_environment_sprite('apple')
                     screen.blit(apple_sprite, (int(food['x'] - 8), int(food['y'] - 8)))
             
+            # Dibujar fortalezas, llaves, puertas y cofre (DESPUÉS de obstáculos para que se vean)
+            if config.FORTRESSES_ENABLED:
+                # Dibujar puertas (encima de los muros)
+                if world.door:
+                    world.door.draw(screen, sprite_manager, tick)
+                if world.door_iron:
+                    world.door_iron.draw(screen, sprite_manager, tick)
+                
+                # Dibujar cofre
+                if world.chest:
+                    world.chest.draw(screen, sprite_manager, tick)
+                
+                # Dibujar llaves
+                if world.red_key and not world.red_key.collected:
+                    world.red_key.draw(screen, sprite_manager, tick)
+                if world.gold_key and not world.gold_key.collected:
+                    world.gold_key.draw(screen, sprite_manager, tick)
+            
             # Actualizar sistema de partículas (cada 2 frames para mejor rendimiento)
             if tick % 2 == 0:
                 particle_system.update()
@@ -395,6 +499,207 @@ def main():
     
     # Guardar datos para análisis posterior (DESHABILITADO)
     # learning_monitor.save_data(f"learning_data_gen_{generation-1}.json")
+
+
+def show_final_screen(screen, generation, tick, agents, world, learning_monitor):
+    """Muestra la pantalla de FIN cuando se abre el cofre."""
+    import pygame
+    from config import SimulationConfig
+    
+    # Crear reporte final de aprendizaje
+    learning_monitor.create_learning_report()
+    
+    # Calcular estadísticas finales
+    alive_agents = [a for a in agents if a.alive]
+    total_agents = len(agents)
+    
+    # Estadísticas de fitness
+    fitness_values = [a.fitness for a in agents]
+    max_fitness = max(fitness_values) if fitness_values else 0
+    avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
+    
+    # Estadísticas de comida
+    food_eaten_values = [a.food_eaten for a in agents]
+    max_food = max(food_eaten_values) if food_eaten_values else 0
+    avg_food = sum(food_eaten_values) / len(food_eaten_values) if food_eaten_values else 0
+    
+    # Estadísticas de supervivencia
+    survival_times = [a.age for a in agents]
+    max_survival = max(survival_times) if survival_times else 0
+    avg_survival = sum(survival_times) / len(survival_times) if survival_times else 0
+    
+    # Estadísticas de exploración
+    exploration_values = [a.distance_traveled for a in agents]
+    max_exploration = max(exploration_values) if exploration_values else 0
+    avg_exploration = sum(exploration_values) / len(exploration_values) if exploration_values else 0
+    
+    # Estadísticas de habilidades
+    trees_cut = 0  # No se rastrea individualmente por agente
+    obstacles_avoided = sum(a.obstacles_avoided for a in agents)
+    
+    # Estadísticas de fortalezas (usar atributos del mundo, no de agentes individuales)
+    red_keys_collected = 1 if world.red_key_collected else 0
+    gold_keys_collected = 1 if world.gold_key_collected else 0
+    doors_opened = 0
+    if world.door and world.door.is_open:
+        doors_opened += 1
+    if world.door_iron and world.door_iron.is_open:
+        doors_opened += 1
+    
+    # Configurar fuente
+    font_large = pygame.font.Font(None, 72)
+    font_title = pygame.font.Font(None, 48)
+    font_medium = pygame.font.Font(None, 36)
+    font_small = pygame.font.Font(None, 28)
+    
+    # Colores
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    GOLD = (255, 215, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 100, 255)
+    RED = (255, 0, 0)
+    
+    # Pantalla de FIN
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN:
+                    running = False
+        
+        # Fondo negro
+        screen.fill(BLACK)
+        
+        # Título principal
+        title_text = font_large.render("🎉 ¡MISIÓN COMPLETADA! 🎉", True, GOLD)
+        title_rect = title_text.get_rect(center=(screen.get_width()//2, 80))
+        screen.blit(title_text, title_rect)
+        
+        # Subtítulo
+        subtitle_text = font_title.render("El cofre ha sido abierto por un agente evolutivo", True, WHITE)
+        subtitle_rect = subtitle_text.get_rect(center=(screen.get_width()//2, 130))
+        screen.blit(subtitle_text, subtitle_rect)
+        
+        # Estadísticas principales
+        y_pos = 200
+        
+        # Generación y tick
+        gen_text = font_medium.render(f"Generación: {generation}", True, GREEN)
+        screen.blit(gen_text, (50, y_pos))
+        
+        tick_text = font_medium.render(f"Tick: {tick}", True, GREEN)
+        screen.blit(tick_text, (300, y_pos))
+        
+        y_pos += 50
+        
+        # Estadísticas de fitness
+        fitness_title = font_title.render("📊 ESTADÍSTICAS DE FITNESS", True, GOLD)
+        screen.blit(fitness_title, (50, y_pos))
+        y_pos += 40
+        
+        fitness_texts = [
+            f"Fitness máximo: {max_fitness:.1f}",
+            f"Fitness promedio: {avg_fitness:.1f}",
+            f"Agentes vivos: {len(alive_agents)}/{total_agents}"
+        ]
+        
+        for text in fitness_texts:
+            fitness_text = font_small.render(text, True, WHITE)
+            screen.blit(fitness_text, (70, y_pos))
+            y_pos += 30
+        
+        y_pos += 20
+        
+        # Estadísticas de comida
+        food_title = font_title.render("🍎 ESTADÍSTICAS DE COMIDA", True, GOLD)
+        screen.blit(food_title, (50, y_pos))
+        y_pos += 40
+        
+        food_texts = [
+            f"Manzanas máximas comidas: {max_food}",
+            f"Manzanas promedio comidas: {avg_food:.1f}",
+            f"Árboles cortados: {trees_cut}"
+        ]
+        
+        for text in food_texts:
+            food_text = font_small.render(text, True, WHITE)
+            screen.blit(food_text, (70, y_pos))
+            y_pos += 30
+        
+        y_pos += 20
+        
+        # Estadísticas de supervivencia
+        survival_title = font_title.render("⏱️ ESTADÍSTICAS DE SUPERVIVENCIA", True, GOLD)
+        screen.blit(survival_title, (50, y_pos))
+        y_pos += 40
+        
+        survival_texts = [
+            f"Tiempo máximo de supervivencia: {max_survival:.1f} min",
+            f"Tiempo promedio de supervivencia: {avg_survival:.1f} min",
+            f"Obstáculos evitados: {obstacles_avoided}"
+        ]
+        
+        for text in survival_texts:
+            survival_text = font_small.render(text, True, WHITE)
+            screen.blit(survival_text, (70, y_pos))
+            y_pos += 30
+        
+        y_pos += 20
+        
+        # Estadísticas de exploración
+        exploration_title = font_title.render("🗺️ ESTADÍSTICAS DE EXPLORACIÓN", True, GOLD)
+        screen.blit(exploration_title, (50, y_pos))
+        y_pos += 40
+        
+        exploration_texts = [
+            f"Distancia máxima recorrida: {max_exploration:.0f} píxeles",
+            f"Distancia promedio recorrida: {avg_exploration:.0f} píxeles"
+        ]
+        
+        for text in exploration_texts:
+            exploration_text = font_small.render(text, True, WHITE)
+            screen.blit(exploration_text, (70, y_pos))
+            y_pos += 30
+        
+        y_pos += 20
+        
+        # Estadísticas de fortalezas
+        fortress_title = font_title.render("🏰 ESTADÍSTICAS DE FORTALEZAS", True, GOLD)
+        screen.blit(fortress_title, (50, y_pos))
+        y_pos += 40
+        
+        fortress_texts = [
+            f"Llaves rojas recogidas: {red_keys_collected}",
+            f"Llaves doradas recogidas: {gold_keys_collected}",
+            f"Puertas abiertas: {doors_opened}"
+        ]
+        
+        for text in fortress_texts:
+            fortress_text = font_small.render(text, True, WHITE)
+            screen.blit(fortress_text, (70, y_pos))
+            y_pos += 30
+        
+        y_pos += 40
+        
+        # Mensaje final
+        final_text = font_medium.render("🎯 ¡Los agentes evolutivos han completado su misión!", True, GREEN)
+        final_rect = final_text.get_rect(center=(screen.get_width()//2, y_pos))
+        screen.blit(final_text, final_rect)
+        
+        y_pos += 50
+        
+        # Instrucciones
+        instructions_text = font_small.render("Presiona ESC o ENTER para salir", True, WHITE)
+        instructions_rect = instructions_text.get_rect(center=(screen.get_width()//2, y_pos))
+        screen.blit(instructions_text, instructions_rect)
+        
+        pygame.display.flip()
+    
+    # Cerrar pygame
+    pygame.quit()
 
 
 if __name__ == "__main__":
