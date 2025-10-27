@@ -107,10 +107,25 @@ def main():
                 
                 # Si no se pudo reposicionar después de 500 intentos, usar posición segura
                 if attempts >= 500:
-                    # Posición segura en el centro del área de juego
-                    agent.x = screen_width // 2
-                    agent.y = screen_height // 2
-                    print(f"⚠️ Agente {agent.id} reposicionado a posición segura")
+                    # Buscar posición segura que no esté en estanque
+                    safe_x, safe_y = 100, 100  # Posición por defecto
+                    for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
+                        for test_y in [100, 200, 300, 400, 500, 600]:
+                            # Verificar que no esté en estanque
+                            safe_position = True
+                            for pond_obj in world.pond_obstacles:
+                                if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
+                                    safe_position = False
+                                    break
+                            if safe_position:
+                                safe_x, safe_y = test_x, test_y
+                                break
+                        if safe_position:
+                            break
+                    
+                    agent.x = safe_x
+                    agent.y = safe_y
+                    print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
     
     # Crear panel de estadísticas (más alto)
     stats_panel = StatsPanel(screen_width - 240, 10, 230, 300)  # Panel más corto
@@ -383,10 +398,25 @@ def main():
                         
                         # Si no se pudo reposicionar después de 500 intentos, usar posición segura
                         if attempts >= 500:
-                            # Posición segura en el centro del área de juego
-                            agent.x = screen_width // 2
-                            agent.y = screen_height // 2
-                            print(f"⚠️ Agente {agent.id} reposicionado a posición segura")
+                            # Buscar posición segura que no esté en estanque
+                            safe_x, safe_y = 100, 100  # Posición por defecto
+                            for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
+                                for test_y in [100, 200, 300, 400, 500, 600]:
+                                    # Verificar que no esté en estanque
+                                    safe_position = True
+                                    for pond_obj in world.pond_obstacles:
+                                        if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
+                                            safe_position = False
+                                            break
+                                    if safe_position:
+                                        safe_x, safe_y = test_x, test_y
+                                        break
+                                if safe_position:
+                                    break
+                            
+                            agent.x = safe_x
+                            agent.y = safe_y
+                            print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
             
             world.reset_food()
             world.tick = 0

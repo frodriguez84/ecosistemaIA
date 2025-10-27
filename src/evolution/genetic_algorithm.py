@@ -154,10 +154,24 @@ class GeneticAlgorithm:
                         
                         attempts += 1
                     
-                    # Si no se encontró posición válida, usar posición segura
+                    # Si no se encontró posición válida, buscar posición segura
                     if not valid_position:
-                        x = 100
-                        y = 100
+                        # Buscar posición segura que no esté en estanque
+                        safe_x, safe_y = 100, 100  # Posición por defecto
+                        for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
+                            for test_y in [100, 200, 300, 400, 500, 600]:
+                                # Verificar que no esté en estanque
+                                safe_position = True
+                                for pond_obj in self.world.pond_obstacles:
+                                    if pond_obj.collides_with(test_x, test_y, 35, 35):
+                                        safe_position = False
+                                        break
+                                if safe_position:
+                                    safe_x, safe_y = test_x, test_y
+                                    break
+                            if safe_position:
+                                break
+                        x, y = safe_x, safe_y
                     
                     elite_agent = AdvancedAgent(x, y, elite_brain)
                     new_agents.append(elite_agent)
@@ -197,10 +211,24 @@ class GeneticAlgorithm:
                         
                         attempts += 1
                     
-                    # Si no se encontró posición válida, usar posición segura
+                    # Si no se encontró posición válida, buscar posición segura
                     if not valid_position:
-                        x = 100
-                        y = 100
+                        # Buscar posición segura que no esté en estanque
+                        safe_x, safe_y = 100, 100  # Posición por defecto
+                        for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
+                            for test_y in [100, 200, 300, 400, 500, 600]:
+                                # Verificar que no esté en estanque
+                                safe_position = True
+                                for pond_obj in self.world.pond_obstacles:
+                                    if pond_obj.collides_with(test_x, test_y, 35, 35):
+                                        safe_position = False
+                                        break
+                                if safe_position:
+                                    safe_x, safe_y = test_x, test_y
+                                    break
+                            if safe_position:
+                                break
+                        x, y = safe_x, safe_y
                     
                     elite_agent = AdvancedAgent(x, y, elite_brain)
                     new_agents.append(elite_agent)

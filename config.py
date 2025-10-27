@@ -9,7 +9,7 @@ class SimulationConfig:
     POPULATION_SIZE = 50
     TARGET_FPS = 60
     MAX_GENERATIONS = 100    # Extendido para ver tendencias a largo plazo
-    HEADLESS_MODE = True             # True = sin render (rápido), False = con render (visual)
+    HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
@@ -18,7 +18,7 @@ class SimulationConfig:
     TICKS_INCREMENT_FREQUENCY = 2      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.05        # 15% de mutación 
+    MUTATION_RATE = 0.15        # 15% de mutación 
     CROSSOVER_RATE = 0.5        # 70% de cruce 
     
     # === SELECCIÓN DE PADRES ===
@@ -40,8 +40,8 @@ class SimulationConfig:
     AGENT_RADIUS = 8             # Tamaño del agente
     
     # === MUNDO ===
-    SCREEN_WIDTH = 1200          # Ancho de pantalla
-    SCREEN_HEIGHT = 800          # Alto de pantalla
+    SCREEN_WIDTH = 800          # Ancho de pantalla
+    SCREEN_HEIGHT = 600          # Alto de pantalla
     FOOD_COUNT = 80              # Cantidad de comida inicial
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
