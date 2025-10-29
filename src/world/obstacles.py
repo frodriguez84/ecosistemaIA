@@ -247,8 +247,10 @@ class Door:
     def collides_with(self, x, y, radius):
         """Verifica si hay colisión con la puerta."""
         if self.is_open:
-            return False  # Puerta abierta no bloquea
+            # Cuando la puerta está abierta, NO hay colisión - los agentes pueden pasar libremente
+            return False
         
+        # Puerta cerrada: colisión normal
         dx = abs(x - (self.x + self.width // 2))
         dy = abs(y - (self.y + self.height // 2))
         

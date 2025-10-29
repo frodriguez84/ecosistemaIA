@@ -127,10 +127,10 @@ class SummaryPopup:
         
         # Obtener datos del puzzle del mundo (si están disponibles)
         puzzle_stats = [
-            f"Llaves rojas: {'✓' if self.generation_data.get('red_key_collected', False) else '✗'}",
-            f"Llaves doradas: {'✓' if self.generation_data.get('gold_key_collected', False) else '✗'}",
+            f"Llaves rojas: {'SI' if self.generation_data.get('red_key_collected', False) else 'NO'}",
+            f"Llaves doradas: {'SI' if self.generation_data.get('gold_key_collected', False) else 'NO'}",
             f"Puertas abiertas: {self.generation_data.get('doors_opened', 0)}/2",
-            f"Cofre abierto: {'✓' if self.generation_data.get('chest_opened', False) else '✗'}"
+            f"Cofre abierto: {'SI' if self.generation_data.get('chest_opened', False) else 'NO'}"
         ]
         
         for stat in puzzle_stats:

@@ -20,17 +20,115 @@ from src.ui.popup import SummaryPopup
 from src.analytics.learning_monitor import LearningMonitor
 
 
+def find_safe_position(world, agents, radius=16):
+    """Encuentra una posición segura para un agente, evitando todos los obstáculos."""
+    import random
+    
+    max_attempts = 100
+    grass_area_width = 960  # Área de pasto válida
+    
+    for attempt in range(max_attempts):
+        # Generar posición aleatoria en área de pasto
+        x = random.randint(radius, grass_area_width - radius)
+        y = random.randint(radius, 800 - radius)
+        
+        # Verificar colisiones con obstáculos
+        collision = False
+        
+        # Verificar colisión con obstáculos normales
+        for obstacle in world.obstacles:
+            if obstacle.collides_with(x, y, radius):
+                collision = True
+                break
+        
+        # Verificar colisión con perímetro
+        if not collision:
+            for perimeter_obj in world.perimeter_obstacles:
+                if perimeter_obj.collides_with(x, y, radius * 2, radius * 2):
+                    collision = True
+                    break
+        
+        # Verificar colisión con estanques
+        if not collision:
+            for pond_obj in world.pond_obstacles:
+                if pond_obj.collides_with(x, y, radius * 2, radius * 2):
+                    collision = True
+                    break
+        
+        # Verificar colisión con fortalezas (IMPORTANTE!)
+        if not collision and hasattr(world, '_is_inside_fortress'):
+            if world._is_inside_fortress(x, y):
+                collision = True
+        
+        # Verificar colisión con otros agentes
+        if not collision:
+            for agent in agents:
+                if agent.alive and abs(agent.x - x) < radius * 2 and abs(agent.y - y) < radius * 2:
+                    collision = True
+                    break
+        
+        # Si no hay colisión, esta es una posición segura
+        if not collision:
+            return (x, y)
+    
+    # Si no se encuentra posición segura después de 100 intentos, usar posición por defecto
+    print("⚠️ No se pudo encontrar posición segura, usando posición por defecto")
+    return (100, 100)
+
+
+def fix_agent_positions(world, agents):
+    """Detecta y corrige agentes en posiciones inválidas."""
+    fixed_count = 0
+    
+    for agent in agents:
+        if not agent.alive:
+            continue
+            
+        # Verificar si el agente está en posición inválida
+        needs_fixing = False
+        
+        # Verificar colisión con obstáculos normales
+        for obstacle in world.obstacles:
+            if obstacle.collides_with(agent.x, agent.y, agent.radius):
+                needs_fixing = True
+                break
+        
+        # Verificar colisión con perímetro
+        if not needs_fixing:
+            for perimeter_obj in world.perimeter_obstacles:
+                if perimeter_obj.collides_with(agent.x, agent.y, agent.radius * 2, agent.radius * 2):
+                    needs_fixing = True
+                    break
+        
+        # Verificar colisión con estanques
+        if not needs_fixing:
+            for pond_obj in world.pond_obstacles:
+                if pond_obj.collides_with(agent.x, agent.y, agent.radius * 2, agent.radius * 2):
+                    needs_fixing = True
+                    break
+        
+        # Verificar colisión con fortalezas (IMPORTANTE!)
+        if not needs_fixing and hasattr(world, '_is_inside_fortress'):
+            if world._is_inside_fortress(agent.x, agent.y):
+                needs_fixing = True
+        
+        # Si necesita corrección, mover a posición segura
+        if needs_fixing:
+            safe_x, safe_y = find_safe_position(world, agents, agent.radius)
+            agent.x = safe_x
+            agent.y = safe_y
+            fixed_count += 1
+            
+    
+    if fixed_count > 0:
+        pass  # Se removió el print para reducir spam en consola
+        
+
+
 def main():
     """Función principal."""
     print("🎨 Ecosistema Evolutivo IA")
-    print("=" * 70)
-    print("💡 FUNCIONES DISPONIBLES:")
-    print("   - Presiona 'C' para activar modo comando")
-    print("   - Escribe: tree, wall, water, hut, potion, apple")
-    print("   - Haz click en el mapa donde quieres colocar el objeto")
-    print("   - Presiona ENTER para colocar el objeto")
-    print("   - Presiona 'C' nuevamente para salir del modo comando")
-    print("=" * 70)
+    
     
     # Configuración centralizada
     config = SimulationConfig()
@@ -46,10 +144,23 @@ def main():
     # Inicializar Pygame
     pygame.init()
     if not config.HEADLESS_MODE:
-        screen = pygame.display.set_mode((screen_width, screen_height))
+        # Crear ventana de visualización (tamaño deseado)
+        display_screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("Ecosistema Evolutivo IA")
+        
+        # Crear superficie de renderizado (tamaño base fijo)
+        render_surface = pygame.Surface((1200, 800))
+        
+        # Calcular factor de escalado
+        scale_x = screen_width / 1200.0
+        scale_y = screen_height / 800.0
+        scale_factor = min(scale_x, scale_y)  # Usar el menor para mantener proporciones
+        
+        print(f"🎨 Factor de escalado: {scale_factor:.2f}x")
     else:
-        screen = None
+        display_screen = None
+        render_surface = None
+        scale_factor = 1.0
         print("🚀 MODO HEADLESS ACTIVADO - Sin render")
     clock = pygame.time.Clock()
     
@@ -65,7 +176,7 @@ def main():
     learning_monitor = LearningMonitor()
     
     # Crear mundo (sistema original) con cantidad de comida configurable
-    world = World(screen_width - 250, screen_height, config.FOOD_COUNT)  # Usar config
+    world = World(config.get_game_area_width(), screen_height, config.FOOD_COUNT)  # Usar área de juego dinámica
     
     # Crear algoritmo genético con configuración
     ga = GeneticAlgorithm(**config.get_genetic_params())
@@ -88,8 +199,8 @@ def main():
                 attempts = 0
                 while attempts < 500:  # Más intentos para mayor seguridad
                     # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
-                    # Panel de estadísticas: 240px de ancho, área de pasto: hasta 960px (1200-240)
-                    new_x = random.randint(20, 960 - 20)  # Solo área de pasto, evitando perímetro
+                    # Usar dimensiones escaladas dinámicamente
+                    new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
                     new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
                     
                     # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
@@ -128,12 +239,18 @@ def main():
                     print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
     
     # Crear panel de estadísticas (más alto)
-    stats_panel = StatsPanel(screen_width - 240, 10, 230, 300)  # Panel más corto
+    stats_panel = StatsPanel(screen_width - config.get_stats_panel_width(), 10, config.get_stats_panel_width() - 10, 300)  # Panel dinámico
     
     print(f"✅ {len(agents)} agentes avanzados creados")
     print(f"✅ {len(world.food_items)} piezas de comida generadas")
     print(f"✅ {len(world.obstacles)} obstáculos generados")
     print("✅ Sistema de sprites inicializado")
+    print("🎮 CONTROLES:")
+    print("   ESC - Salir")
+    print("   ESPACIO - Pausar/Reanudar")
+    print("   +/= - Zoom IN (agrandar ventana)")
+    print("   - - Zoom OUT (achicar ventana)")
+    print("   C - Modo comando")
     print("✅ Sistema de partículas activado")
     
     # Bucle principal
@@ -181,6 +298,36 @@ def main():
                         current_command = ""
                         if command_mode:
                             print("🎯 MODO COMANDO ACTIVADO")
+                    elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:
+                        # Zoom in
+                        screen_width = min(screen_width + 100, 1600)
+                        screen_height = min(screen_height + 67, 1067)
+                        display_screen = pygame.display.set_mode((screen_width, screen_height))
+                        
+                        # Recalcular factor de escalado
+                        scale_x = screen_width / 1200.0
+                        scale_y = screen_height / 800.0
+                        scale_factor = min(scale_x, scale_y)
+                        
+                        print(f"🔍 Zoom IN: {screen_width}x{screen_height} (factor: {scale_factor:.2f}x)")
+                    elif event.key == pygame.K_MINUS:
+                        # Zoom out
+                        screen_width = max(screen_width - 100, 800)
+                        screen_height = max(screen_height - 67, 533)
+                        display_screen = pygame.display.set_mode((screen_width, screen_height))
+                        
+                        # Recalcular factor de escalado
+                        scale_x = screen_width / 1200.0
+                        scale_y = screen_height / 800.0
+                        scale_factor = min(scale_x, scale_y)
+                        
+                        print(f"🔍 Zoom OUT: {screen_width}x{screen_height} (factor: {scale_factor:.2f}x)")
+                    elif event.key == pygame.K_c:
+                        # Activar modo comando
+                        command_mode = not command_mode
+                        current_command = ""
+                        if command_mode:
+                            print("🎯 MODO COMANDO ACTIVADO")
                             print("💡 Escribe: tree, wall, water, hut, potion, apple")
                             print("💡 Luego haz click en el mapa para colocar el objeto")
                         else:
@@ -206,13 +353,18 @@ def main():
                                 current_command += char
                                 print(f"📝 Comando: {current_command}")
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Escalar coordenadas de click de ventana pequeña a superficie grande
+                    click_x = int(event.pos[0] / scale_factor)
+                    click_y = int(event.pos[1] / scale_factor)
+                    scaled_click_pos = (click_x, click_y)
+                    
                     # Manejar clicks en el cuadro de resumen
-                    if summary_popup.handle_click(event.pos):
+                    if summary_popup.handle_click(scaled_click_pos):
                         pass  # El cuadro se cierra automáticamente
                     else:
                         # Mostrar coordenadas del click
-                        x, y = event.pos
-                        if x < screen_width - 250:  # Solo en el área del juego
+                        x, y = scaled_click_pos
+                        if x < config.get_game_area_width():  # Solo en el área del juego
                             # Convertir a coordenadas de tile (16x16)
                             tile_x = (x // 16) * 16
                             tile_y = (y // 16) * 16
@@ -265,7 +417,7 @@ def main():
                         print(f"\n🏆 ¡¡¡COFRE ABIERTO!!! 🏆")
                         print(f"🎯 Agente {agent.id} ha completado la misión en la generación {generation}")
                         print(f"⏱️ Segundos: {tick/60:.1f}")
-                        show_final_screen(screen, generation, tick, agents, world, learning_monitor)
+                        show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system)
                         return
         
         # Actualizar sistema de corte de árboles (solo si no está pausado)
@@ -293,15 +445,18 @@ def main():
                 trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
             
             # Estadísticas de puzzle (llaves, puertas, cofre)
-            red_key_status = "🔑 RECOGIDA" if world.red_key_collected else "❌ NO RECOGIDA"
-            gold_key_status = "🔑 RECOGIDA" if world.gold_key_collected else "❌ NO RECOGIDA"
+            red_key_status = "LLAVE RECOGIDA" if world.red_key_collected else "NO RECOGIDA"
+            gold_key_status = "LLAVE RECOGIDA" if world.gold_key_collected else "NO RECOGIDA"
             
-            door_status = "🚪 ABIERTA" if world.door and world.door.is_open else "🔒 CERRADA"
-            iron_door_status = "🚪 ABIERTA" if world.door_iron and world.door_iron.is_open else "🔒 CERRADA"
+            door_status = "PUERTA ABIERTA" if world.door and world.door.is_open else "PUERTA CERRADA"
+            iron_door_status = "PUERTA ABIERTA" if world.door_iron and world.door_iron.is_open else "PUERTA CERRADA"
             
-            chest_status = "📦 ABIERTO" if world.chest and world.chest.is_open else "🔒 CERRADO"
+            chest_status = "COFRE ABIERTO" if world.chest and world.chest.is_open else "COFRE CERRADO"
             
             if agents:
+                # Recalcular agentes vivos para las estadísticas
+                alive_agents_for_stats = [a for a in agents if a.alive]
+                
                 # Calcular fitness de todos los agentes antes de las estadísticas
                 for agent in agents:
                     agent._calculate_fitness()
@@ -310,12 +465,12 @@ def main():
                 max_fitness = max(agent.fitness for agent in agents)
                 avg_age = sum(agent.age for agent in agents) / len(agents)
                 avg_food = sum(agent.food_eaten for agent in agents) / len(agents)
-                avg_energy = sum(agent.energy for agent in alive_agents) / len(alive_agents) if alive_agents else 0
+                avg_energy = sum(agent.energy for agent in alive_agents_for_stats) / len(alive_agents_for_stats) if alive_agents_for_stats else 0
                 
                 print(f"   - Fitness promedio: {avg_fitness:.1f}/100")
                 print(f"   - Fitness máximo: {max_fitness:.1f}/100")
                 print(f"   - Comida promedio: {avg_food:.1f}")
-                print(f"   - Supervivencia: {len(alive_agents)/len(agents)*100:.1f}%")
+                print(f"   - Supervivencia: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
                 
                 # Estadísticas de puzzle
                 print(f"   🧩 PUZZLE:")
@@ -327,6 +482,7 @@ def main():
                 print(f"      - Árboles cortados: {trees_cut_this_generation}")
             else:
                 avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
+                alive_agents_for_stats = []  # Lista vacía si no hay agentes
             
             # Preparar datos para el cuadro de resumen
             generation_data = {
@@ -342,7 +498,17 @@ def main():
                 'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents) if agents else 0,
                 'avg_obstacle_skill': sum(agent.get_obstacle_skill() for agent in agents) / len(agents) if agents else 0,
                 'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents) if agents else 0,
-                'trees_cut': trees_cut_this_generation
+                'trees_cut': trees_cut_this_generation,
+                # Datos del puzzle
+                'red_key_collected': world.red_key_collected,
+                'gold_key_collected': world.gold_key_collected,
+                'doors_opened': (1 if world.door and world.door.is_open else 0) + (1 if world.door_iron and world.door_iron.is_open else 0),
+                'chest_opened': world.chest.is_open if world.chest else False,
+                'total_agents': len(agents),
+                'alive_count': len(alive_agents_for_stats),
+                'diversity': learning_monitor.calculate_diversity(agents) if hasattr(learning_monitor, 'calculate_diversity') else 0,
+                'generation_time': 0,  # Se puede calcular si es necesario
+                'generation_time_ticks': tick  # Tiempo en ticks de esta generación
             }
             
             # Añadir fitness promedio al historial
@@ -365,6 +531,10 @@ def main():
             # Evolucionar
             agents = ga.evolve(agents)
             
+            # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
+            print("🔍 Verificando posiciones de agentes...")
+            fix_agent_positions(world, agents)
+            
             # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos (después de evolucionar)
             if config.FORTRESSES_ENABLED:
                 import random
@@ -379,8 +549,8 @@ def main():
                         attempts = 0
                         while attempts < 500:  # Más intentos para mayor seguridad
                             # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
-                            # Panel de estadísticas: 240px de ancho, área de pasto: hasta 960px (1200-240)
-                            new_x = random.randint(20, 960 - 20)  # Solo área de pasto, evitando perímetro
+                            # Usar dimensiones escaladas dinámicamente
+                            new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
                             new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
                             
                             # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
@@ -431,37 +601,36 @@ def main():
             else:
                 max_ticks_per_generation = config.BASE_TICKS
             
-            print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation}/60 seg")
+            print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation/60} seg")
+            
+            # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
+            
+            fix_agent_positions(world, agents)
         
         # Renderizar (solo si no está en modo headless)
         if not config.HEADLESS_MODE:
-            screen.fill((40, 40, 60))  # Fondo azul oscuro
+            render_surface.fill((40, 40, 60))  # Fondo azul oscuro
             
             # Dibujar fondo: pasto hasta el perímetro, agua después
-            for x in range(0, screen_width - 250, 16):
-                for y in range(0, screen_height, 16):
-                    if x < 960:  # Área de pasto (hasta el perímetro)
+            for x in range(0, 960, 16):  # Área de juego fija (1200 - 240 panel)
+                for y in range(0, 800, 16):  # Alto fijo
+                    if x < 1200:  # Todo el área de juego debe ser pasto
                         # Solo pasto con variación
                         grass_variant = 1 if (x // 16 + y // 16) % 2 == 0 else 2
                         grass_sprite = sprite_manager.get_environment_sprite('grass', grass_variant)
-                        screen.blit(grass_sprite, (x, y))
-                    else:  # Área de agua (entre perímetro y estadísticas)
-                        # Agua con variación
-                        water_variant = 1 if (x // 16 + y // 16) % 2 == 0 else 2
-                        water_sprite = sprite_manager.get_environment_sprite('water', water_variant)
-                        screen.blit(water_sprite, (x, y))
+                        render_surface.blit(grass_sprite, (x, y))
             
             # Dibujar obstáculos con sprites
             for obstacle in world.obstacles:
-                obstacle.draw(screen, sprite_manager, tick)
+                obstacle.draw(render_surface, sprite_manager, tick)
             
             # Dibujar perímetro decorativo
             for perimeter_obj in world.perimeter_obstacles:
-                perimeter_obj.draw(screen, sprite_manager)
+                perimeter_obj.draw(render_surface, sprite_manager)
             
             # Dibujar estanque móvil
             for pond_obj in world.pond_obstacles:
-                pond_obj.draw(screen, sprite_manager, tick)
+                pond_obj.draw(render_surface, sprite_manager, tick)
             
             # Dibujar hacha si existe y no fue agarrada
             if config.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
@@ -478,35 +647,35 @@ def main():
                         glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                         pygame.draw.circle(glow_surface, (*glow_color[:3], glow_alpha), 
                                         (glow_radius, glow_radius), glow_radius)
-                        screen.blit(glow_surface, (world.axe['x'] - glow_radius, world.axe['y'] - glow_radius))
+                        render_surface.blit(glow_surface, (world.axe['x'] - glow_radius, world.axe['y'] - glow_radius))
                     
                     # Dibujar hacha original con brillo sutil
-                    screen.blit(axe_sprite, (world.axe['x'] - 10, world.axe['y'] - 10))
+                    render_surface.blit(axe_sprite, (world.axe['x'] - 10, world.axe['y'] - 10))
                     
                     # Añadir brillo sutil encima (sin fondo)
                     bright_overlay = pygame.Surface(axe_sprite.get_size(), pygame.SRCALPHA)
                     bright_overlay.fill((*glow_color[:3], 30))  # Muy transparente
                     bright_overlay.blit(axe_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
-                    screen.blit(bright_overlay, (world.axe['x'] - 10, world.axe['y'] - 10))
+                    render_surface.blit(bright_overlay, (world.axe['x'] - 10, world.axe['y'] - 10))
             
             # Dibujar manzanas (comida)
             for food in world.food_items:
                 if not food['eaten']:
                     # Dibujar manzana con sprite
                     apple_sprite = sprite_manager.get_environment_sprite('apple')
-                    screen.blit(apple_sprite, (int(food['x'] - 8), int(food['y'] - 8)))
+                    render_surface.blit(apple_sprite, (int(food['x'] - 8), int(food['y'] - 8)))
             
             # Dibujar fortalezas, llaves, puertas y cofre (DESPUÉS de obstáculos para que se vean)
             if config.FORTRESSES_ENABLED:
                 # Dibujar puertas (encima de los muros)
                 if world.door:
-                    world.door.draw(screen, sprite_manager, tick)
+                    world.door.draw(render_surface, sprite_manager, tick)
                 if world.door_iron:
-                    world.door_iron.draw(screen, sprite_manager, tick)
+                    world.door_iron.draw(render_surface, sprite_manager, tick)
                 
                 # Dibujar cofre
                 if world.chest:
-                    world.chest.draw(screen, sprite_manager, tick)
+                    world.chest.draw(render_surface, sprite_manager, tick)
                 
                 # Dibujar llaves
                 if world.red_key and not world.red_key.collected:
@@ -524,22 +693,22 @@ def main():
                             glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                             pygame.draw.circle(glow_surface, (*glow_color[:3], glow_alpha), 
                                             (glow_radius, glow_radius), glow_radius)
-                            screen.blit(glow_surface, (world.red_key.x - glow_radius, world.red_key.y - glow_radius))
+                            render_surface.blit(glow_surface, (world.red_key.x - glow_radius, world.red_key.y - glow_radius))
                         
                         # Dibujar red_key original con brillo sutil
-                        world.red_key.draw(screen, sprite_manager, tick)
+                        world.red_key.draw(render_surface, sprite_manager, tick)
                         
                         # Añadir brillo sutil encima (sin fondo)
                         bright_overlay = pygame.Surface(red_key_sprite.get_size(), pygame.SRCALPHA)
                         bright_overlay.fill((*glow_color[:3], 30))  # Muy transparente
                         bright_overlay.blit(red_key_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
-                        screen.blit(bright_overlay, (world.red_key.x - 10, world.red_key.y - 10))
+                        render_surface.blit(bright_overlay, (world.red_key.x - 10, world.red_key.y - 10))
                     else:
                         # Fallback si no hay sprite
-                        world.red_key.draw(screen, sprite_manager, tick)
+                        world.red_key.draw(render_surface, sprite_manager, tick)
                 
                 if world.gold_key and not world.gold_key.collected:
-                    world.gold_key.draw(screen, sprite_manager, tick)
+                    world.gold_key.draw(render_surface, sprite_manager, tick)
             
             # Actualizar sistema de partículas (cada 2 frames para mejor rendimiento)
             if tick % 2 == 0:
@@ -552,22 +721,27 @@ def main():
             
             # Dibujar agentes
             for agent in agents:
-                agent.draw(screen, tick, sprite_manager, particle_system)
+                agent.draw(render_surface, tick, sprite_manager, particle_system)
             
             # Dibujar partículas
-            particle_system.draw(screen)
+            particle_system.draw(render_surface)
             
             # Dibujar panel de estadísticas simplificado
-            stats_panel.draw(screen, generation, agents, world, tick)
+            stats_panel.draw(render_surface, generation, agents, world, tick)
             
             # Dibujar cuadro de resumen (si está visible)
-            summary_popup.draw(screen)
+            summary_popup.draw(render_surface)
                         
             if paused:
                 font = pygame.font.Font(None, 24)
                 pause_text = font.render("PAUSADO - Presiona ESPACIO", True, (255, 0, 0))
-                screen.blit(pause_text, (10, 40))
+                render_surface.blit(pause_text, (10, 40))
             
+            # Escalar y mostrar la superficie renderizada
+            scaled_surface = pygame.transform.scale(render_surface, (screen_width, screen_height))
+            display_screen.blit(scaled_surface, (0, 0))
+            
+            # Actualizar pantalla
             pygame.display.flip()
         
         clock.tick(target_fps)  # Usar FPS objetivo
@@ -582,7 +756,7 @@ def main():
     # learning_monitor.save_data(f"learning_data_gen_{generation-1}.json")
 
 
-def show_final_screen(screen, generation, tick, agents, world, learning_monitor):
+def show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system):
     """Muestra la pantalla de FIN cuando se abre el cofre."""
     import pygame
     from config import SimulationConfig
@@ -661,11 +835,11 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
     if world.door_iron and world.door_iron.is_open:
         doors_opened += 1
     
-    # Configurar fuente
-    font_large = pygame.font.Font(None, 72)
-    font_title = pygame.font.Font(None, 48)
-    font_medium = pygame.font.Font(None, 36)
-    font_small = pygame.font.Font(None, 28)
+    # Configurar fuentes (más pequeñas, como el popup de generación)
+    font_large = pygame.font.Font(None, 48)   # Título principal
+    font_title = pygame.font.Font(None, 22)   # Secciones
+    font_medium = pygame.font.Font(None, 18)  # Subtítulos/ítems destacados
+    font_small = pygame.font.Font(None, 16)   # Texto
     
     # Colores
     BLACK = (0, 0, 0)
@@ -685,37 +859,154 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN:
                     running = False
         
-        # Fondo negro
-        screen.fill(BLACK)
+        # Renderizar la simulación de fondo primero
+        # Dibujar fondo de pasto
+        grass_sprite = sprite_manager.get_environment_sprite('grass')
+        if grass_sprite:
+            for x in range(0, render_surface.get_width(), grass_sprite.get_width()):
+                for y in range(0, render_surface.get_height(), grass_sprite.get_height()):
+                    render_surface.blit(grass_sprite, (x, y))
         
+        # Dibujar obstáculos
+        for obstacle in world.obstacles:
+            obstacle.draw(render_surface, sprite_manager, tick)
+        
+        # Dibujar perímetro decorativo
+        for perimeter_obj in world.perimeter_obstacles:
+            perimeter_obj.draw(render_surface, sprite_manager)
+        
+        # Dibujar estanque móvil
+        for pond_obj in world.pond_obstacles:
+            pond_obj.draw(render_surface, sprite_manager, tick)
+        
+        # Dibujar comida
+        for food in world.food_items:
+            if not food['eaten']:
+                apple_sprite = sprite_manager.get_environment_sprite('apple')
+                render_surface.blit(apple_sprite, (int(food['x'] - 8), int(food['y'] - 8)))
+        
+        # Dibujar fortalezas, llaves, puertas y cofre
+        if world.door:
+            world.door.draw(render_surface, sprite_manager, tick)
+        if world.door_iron:
+            world.door_iron.draw(render_surface, sprite_manager, tick)
+        if world.chest:
+            world.chest.draw(render_surface, sprite_manager, tick)
+        if world.red_key and not world.red_key.collected:
+            # Efecto de halo brillante para red_key (igual que el hacha)
+            red_key_sprite = sprite_manager.get_environment_sprite('red_key')
+            if red_key_sprite:
+                # Efecto de brillo pulsante
+                glow_intensity = int(50 + 30 * abs(pygame.math.Vector2(1, 0).rotate(tick * 2).x))
+                glow_radius = 20
+                
+                # Crear superficie de brillo
+                glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surface, (255, 0, 0, glow_intensity),
+                                (glow_radius, glow_radius), glow_radius)
+                render_surface.blit(glow_surface, (world.red_key.x - glow_radius, world.red_key.y - glow_radius))
+                
+                # Dibujar red_key original con brillo sutil
+                world.red_key.draw(render_surface, sprite_manager, tick)
+                
+                # Añadir brillo sutil encima (sin fondo)
+                bright_overlay = pygame.Surface(red_key_sprite.get_size(), pygame.SRCALPHA)
+                bright_overlay.fill((255, 0, 0, 30))
+                bright_overlay.blit(red_key_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
+                render_surface.blit(bright_overlay, (world.red_key.x - 10, world.red_key.y - 10))
+            else:
+                # Fallback si no hay sprite
+                world.red_key.draw(render_surface, sprite_manager, tick)
+        if world.gold_key and not world.gold_key.collected:
+            world.gold_key.draw(render_surface, sprite_manager, tick)
+        
+        # Dibujar hacha si existe y no fue agarrada (con efectos de brillo)
+        if SimulationConfig.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
+            axe_sprite = sprite_manager.get_environment_sprite('axe')
+            if axe_sprite:
+                # Efecto de brillo pulsante
+                glow_intensity = int(50 + 30 * abs(pygame.math.Vector2(1, 0).rotate(tick * 2).x))
+                glow_radius = 20
+                
+                # Crear superficie de brillo
+                glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surface, (255, 255, 0, glow_intensity),
+                                (glow_radius, glow_radius), glow_radius)
+                render_surface.blit(glow_surface, (world.axe['x'] - glow_radius, world.axe['y'] - glow_radius))
+                
+                # Dibujar hacha original con brillo sutil
+                render_surface.blit(axe_sprite, (world.axe['x'] - 10, world.axe['y'] - 10))
+                
+                # Añadir brillo sutil encima (sin fondo)
+                bright_overlay = pygame.Surface(axe_sprite.get_size(), pygame.SRCALPHA)
+                bright_overlay.fill((255, 255, 0, 30))
+                bright_overlay.blit(axe_sprite, (0, 0), special_flags=pygame.BLEND_ADD)
+                render_surface.blit(bright_overlay, (world.axe['x'] - 10, world.axe['y'] - 10))
+        
+        # Dibujar agentes
+        for agent in agents:
+            if agent.alive:
+                agent.draw(render_surface, tick, sprite_manager, particle_system)                                                                              
+        
+        # Actualizar y dibujar sistema de partículas
+        particle_system.update()
+        particle_system.draw(render_surface)
+        
+        # Crear panel semi-transparente como el popup de generación
+        panel_width, panel_height = 800, 600
+        panel_x = (render_surface.get_width() - panel_width) // 2 - 113
+        panel_y = (render_surface.get_height() - panel_height) // 2
+        final_surface = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        final_surface.fill((0, 0, 0, 200))
+
         # Título principal
         title_text = font_large.render("¡MISIÓN COMPLETADA!", True, GOLD)
-        title_rect = title_text.get_rect(center=(screen.get_width()//2, 80))
-        screen.blit(title_text, title_rect)
-        
+        title_rect = title_text.get_rect(center=(panel_width // 2, 40))
+        final_surface.blit(title_text, title_rect)
+
         # Subtítulo
-        subtitle_text = font_title.render("El cofre ha sido abierto por un agente evolutivo", True, WHITE)
-        subtitle_rect = subtitle_text.get_rect(center=(screen.get_width()//2, 130))
-        screen.blit(subtitle_text, subtitle_rect)
-        
+        subtitle_text = font_medium.render("El cofre ha sido abierto por un agente evolutivo", True, WHITE)
+        subtitle_rect = subtitle_text.get_rect(center=(panel_width // 2, 70))
+        final_surface.blit(subtitle_text, subtitle_rect)
+
+        # Línea separadora
+        import pygame as _pg
+        _pg.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
+
         # Estadísticas principales
-        y_pos = 200
+        y_pos = 110
         
         # Generación y tick
-        gen_text = font_medium.render(f"Generación: {generation}", True, GREEN)
-        screen.blit(gen_text, (50, y_pos))
+        gen_text = font_medium.render(f"Generación: {generation}", True, (100, 255, 150))
+        final_surface.blit(gen_text, (30, y_pos))
         
         # Convertir tick a tiempo real (minutos)
-        total_minutes = tick // 60 // 60
-        time_text = font_medium.render(f"Tiempo total: {total_minutes:.1f} min", True, GREEN)
-        screen.blit(time_text, (300, y_pos))
+        # Calcular tiempo total acumulado de todas las generaciones
+        total_ticks = 0
+        if learning_monitor.generation_data:
+            # Sumar todos los ticks de todas las generaciones
+            for gen_data in learning_monitor.generation_data:
+                if 'generation_time_ticks' in gen_data:
+                    total_ticks += gen_data['generation_time_ticks']
+                else:
+                    # Estimación basada en tiempo promedio por generación
+                    avg_age = gen_data.get('avg_age', 0)
+                    total_ticks += avg_age
         
-        y_pos += 50
+        # Si no hay datos históricos, usar el tick actual como estimación
+        if total_ticks == 0:
+            total_ticks = tick
+        
+        total_minutes = total_ticks // 60 // 60
+        time_text = font_medium.render(f"Tiempo total: {total_minutes:.1f} min", True, (100, 255, 150))
+        final_surface.blit(time_text, (260, y_pos))
+        
+        y_pos += 25
         
         # Estadísticas de fitness
-        fitness_title = font_title.render("📊 ESTADÍSTICAS DE FITNESS", True, GOLD)
-        screen.blit(fitness_title, (50, y_pos))
-        y_pos += 40
+        fitness_title = font_title.render("FITNESS", True, (100, 255, 150))
+        final_surface.blit(fitness_title, (30, y_pos))
+        y_pos += 20
         
         fitness_texts = [
             f"Fitness máximo: {max_fitness:.1f}",
@@ -724,16 +1015,16 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         ]
         
         for text in fitness_texts:
-            fitness_text = font_small.render(text, True, WHITE)
-            screen.blit(fitness_text, (70, y_pos))
-            y_pos += 30
+            fitness_text = font_small.render(text, True, (200, 200, 200))
+            final_surface.blit(fitness_text, (40, y_pos))
+            y_pos += 18
         
-        y_pos += 20
+        y_pos += 10
         
         # Estadísticas de comida TOTALES
-        food_title = font_title.render("🍎 ESTADÍSTICAS DE COMIDA", True, GOLD)
-        screen.blit(food_title, (50, y_pos))
-        y_pos += 40
+        food_title = font_title.render("COMIDA", True, (100, 255, 150))
+        final_surface.blit(food_title, (30, y_pos))
+        y_pos += 20
         
         food_texts = [
             f"Manzanas promedio comidas: {avg_food_all_gens:.1f}",
@@ -741,16 +1032,16 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         ]
         
         for text in food_texts:
-            food_text = font_small.render(text, True, WHITE)
-            screen.blit(food_text, (70, y_pos))
-            y_pos += 30
+            food_text = font_small.render(text, True, (200, 200, 200))
+            final_surface.blit(food_text, (40, y_pos))
+            y_pos += 18
         
-        y_pos += 20
+        y_pos += 10
         
         # Estadísticas de supervivencia TOTALES
-        survival_title = font_title.render("⏱️ ESTADÍSTICAS DE SUPERVIVENCIA", True, GOLD)
-        screen.blit(survival_title, (50, y_pos))
-        y_pos += 40
+        survival_title = font_title.render("SUPERVIVENCIA", True, (100, 255, 150))
+        final_surface.blit(survival_title, (30, y_pos))
+        y_pos += 20
         
         survival_texts = [
             f"Tiempo total de supervivencia: {total_survival_all_gens:.1f} min",
@@ -759,16 +1050,16 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         ]
         
         for text in survival_texts:
-            survival_text = font_small.render(text, True, WHITE)
-            screen.blit(survival_text, (70, y_pos))
-            y_pos += 30
+            survival_text = font_small.render(text, True, (200, 200, 200))
+            final_surface.blit(survival_text, (40, y_pos))
+            y_pos += 18
         
-        y_pos += 20
+        y_pos += 10
         
         # Estadísticas de exploración TOTALES
-        exploration_title = font_title.render("🗺️ ESTADÍSTICAS DE EXPLORACIÓN", True, GOLD)
-        screen.blit(exploration_title, (50, y_pos))
-        y_pos += 40
+        exploration_title = font_title.render("EXPLORACIÓN", True, (100, 255, 150))
+        final_surface.blit(exploration_title, (30, y_pos))
+        y_pos += 20
         
         # Convertir a metros/km
         if total_exploration_meters >= 1000:
@@ -788,16 +1079,16 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         ]
         
         for text in exploration_texts:
-            exploration_text = font_small.render(text, True, WHITE)
-            screen.blit(exploration_text, (70, y_pos))
-            y_pos += 30
+            exploration_text = font_small.render(text, True, (200, 200, 200))
+            final_surface.blit(exploration_text, (40, y_pos))
+            y_pos += 18
         
-        y_pos += 20
+        y_pos += 10
         
         # Estadísticas de fortalezas
-        fortress_title = font_title.render("🏰 ESTADÍSTICAS DE FORTALEZAS", True, GOLD)
-        screen.blit(fortress_title, (50, y_pos))
-        y_pos += 40
+        fortress_title = font_title.render("FORTALEZAS", True, (100, 255, 150))
+        final_surface.blit(fortress_title, (30, y_pos))
+        y_pos += 20
         
         fortress_texts = [
             f"Llaves rojas recogidas: {red_keys_collected}",
@@ -806,23 +1097,30 @@ def show_final_screen(screen, generation, tick, agents, world, learning_monitor)
         ]
         
         for text in fortress_texts:
-            fortress_text = font_small.render(text, True, WHITE)
-            screen.blit(fortress_text, (70, y_pos))
-            y_pos += 30
+            fortress_text = font_small.render(text, True, (200, 200, 200))
+            final_surface.blit(fortress_text, (40, y_pos))
+            y_pos += 18
         
-        y_pos += 40
+        y_pos += 24
         
         # Mensaje final
-        final_text = font_medium.render("🎯 ¡Los agentes evolutivos han completado su misión!", True, GREEN)
-        final_rect = final_text.get_rect(center=(screen.get_width()//2, y_pos))
-        screen.blit(final_text, final_rect)
+        final_text = font_medium.render("¡Los agentes evolutivos han completado su misión!", True, (100, 255, 150))
+        final_rect = final_text.get_rect(center=(panel_width // 2, y_pos))
+        final_surface.blit(final_text, final_rect)
         
-        y_pos += 50
+        y_pos += 28
         
         # Instrucciones
-        instructions_text = font_small.render("Presiona ESC o ENTER para salir", True, WHITE)
-        instructions_rect = instructions_text.get_rect(center=(screen.get_width()//2, y_pos))
-        screen.blit(instructions_text, instructions_rect)
+        instructions_text = font_small.render("Presiona ESC o ENTER para salir", True, (220, 220, 220))
+        instructions_rect = instructions_text.get_rect(center=(panel_width // 2, y_pos))
+        final_surface.blit(instructions_text, instructions_rect)
+
+        # Dibujar el panel sobre la simulación
+        render_surface.blit(final_surface, (panel_x, panel_y))
+        
+        # Escalar y mostrar la superficie renderizada
+        scaled_surface = pygame.transform.scale(render_surface, (screen_width, screen_height))
+        display_screen.blit(scaled_surface, (0, 0))
         
         pygame.display.flip()
     

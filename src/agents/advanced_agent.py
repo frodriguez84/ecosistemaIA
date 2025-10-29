@@ -71,7 +71,7 @@ class AdvancedAgent:
         self.tree_hit_cooldown = 120  # 120 ticks entre golpes (2 segundos a 60 FPS)
     
     def perceive(self, world, other_agents):
-        """Recopila información del entorno."""
+        """Recopila información del entorno (10 sensores)."""
         perceptions = []
         
         # 1. Energía normalizada
@@ -100,15 +100,7 @@ class AdvancedAgent:
         else:
             perceptions.append(0.0)
         
-        # 4. Distancia a otros agentes
-        min_agent_dist = float('inf')
-        for agent in other_agents:
-            if agent != self and agent.alive:
-                dist = float(np.sqrt((float(self.x) - float(agent.x))**2 + (float(self.y) - float(agent.y))**2))
-                min_agent_dist = min(min_agent_dist, dist)
-        perceptions.append(min(min_agent_dist / self.vision_range, 1.0) if min_agent_dist != float('inf') else 1.0)
-        
-        # 5. Distancia a obstáculos
+        # 4. Distancia a obstáculos
         min_obstacle_dist = float('inf')
         for obstacle in world.obstacles:
             if obstacle.type in ["wall", "tree", "hut"]:
@@ -116,134 +108,32 @@ class AdvancedAgent:
                 min_obstacle_dist = min(min_obstacle_dist, dist)
         perceptions.append(min(min_obstacle_dist / self.vision_range, 1.0) if min_obstacle_dist != float('inf') else 1.0)
         
-        # 6. Posición normalizada
+        # 5. Posición X normalizada
         perceptions.append(self.x / world.screen_width)
+        
+        # 6. Posición Y normalizada
         perceptions.append(self.y / world.screen_height)
         
-        # 7. Ángulo normalizado
+        # 7. Ángulo actual normalizado
         perceptions.append(self.angle / (2 * np.pi))
         
-        # 8-22. SENSORES DE FORTALEZAS/LLAVES/PUERTAS/COFRE/ÁRBOLES
-        from config import SimulationConfig
+        # 8. Estado combinado de llaves (0=ninguna, 0.5=una, 1=ambas)
+        red_key_collected = 1.0 if (hasattr(world, 'red_key_collected') and world.red_key_collected) else 0.0
+        gold_key_collected = 1.0 if (hasattr(world, 'gold_key_collected') and world.gold_key_collected) else 0.0
+        key_status = (red_key_collected + gold_key_collected) / 2.0
+        perceptions.append(key_status)
         
-        # 8-9. Distancia y dirección a red_key
-        if world.red_key and not world.red_key.collected:
-            red_key_dist = float(np.sqrt((float(self.x) - world.red_key.x)**2 + (float(self.y) - world.red_key.y)**2))
-            perceptions.append(min(red_key_dist / self.vision_range, 1.0))
-            
-            dx = world.red_key.x - float(self.x)
-            dy = world.red_key.y - float(self.y)
-            target_angle = float(np.arctan2(dy, dx))
-            angle_diff = target_angle - self.angle
-            while angle_diff > np.pi:
-                angle_diff -= 2 * np.pi
-            while angle_diff < -np.pi:
-                angle_diff += 2 * np.pi
-            perceptions.append(angle_diff / np.pi)
-        else:
-            perceptions.append(1.0)  # No visible (distancia máxima)
-            perceptions.append(0.0)   # Sin dirección
+        # 9. Estado combinado de puertas (0=cerradas, 1=abiertas)
+        door_open = 1.0 if (hasattr(world, 'door') and world.door and world.door.is_open) else 0.0
+        door_iron_open = 1.0 if (hasattr(world, 'door_iron') and world.door_iron and world.door_iron.is_open) else 0.0
+        door_status = max(door_open, door_iron_open)  # Al menos una abierta
+        perceptions.append(door_status)
         
-        # 10-11. Distancia y dirección a gold_key
-        if world.gold_key and not world.gold_key.collected:
-            gold_key_dist = float(np.sqrt((float(self.x) - world.gold_key.x)**2 + (float(self.y) - world.gold_key.y)**2))
-            perceptions.append(min(gold_key_dist / self.vision_range, 1.0))
-            
-            dx = world.gold_key.x - float(self.x)
-            dy = world.gold_key.y - float(self.y)
-            target_angle = float(np.arctan2(dy, dx))
-            angle_diff = target_angle - self.angle
-            while angle_diff > np.pi:
-                angle_diff -= 2 * np.pi
-            while angle_diff < -np.pi:
-                angle_diff += 2 * np.pi
-            perceptions.append(angle_diff / np.pi)
-        else:
-            perceptions.append(1.0)  # No visible
-            perceptions.append(0.0)   # Sin dirección
-        
-        # 12-13. Distancia y dirección a door
-        if world.door and not world.door.is_open:
-            door_dist = float(np.sqrt((float(self.x) - (world.door.x + world.door.width // 2))**2 + 
-                                  (float(self.y) - (world.door.y + world.door.height // 2))**2))
-            perceptions.append(min(door_dist / self.vision_range, 1.0))
-            
-            dx = (world.door.x + world.door.width // 2) - float(self.x)
-            dy = (world.door.y + world.door.height // 2) - float(self.y)
-            target_angle = float(np.arctan2(dy, dx))
-            angle_diff = target_angle - self.angle
-            while angle_diff > np.pi:
-                angle_diff -= 2 * np.pi
-            while angle_diff < -np.pi:
-                angle_diff += 2 * np.pi
-            perceptions.append(angle_diff / np.pi)
-        else:
-            perceptions.append(1.0)  # No visible
-            perceptions.append(0.0)   # Sin dirección
-        
-        # 14-15. Distancia y dirección a door_iron
-        if world.door_iron and not world.door_iron.is_open:
-            door_iron_dist = float(np.sqrt((float(self.x) - (world.door_iron.x + world.door_iron.width // 2))**2 + 
-                                        (float(self.y) - (world.door_iron.y + world.door_iron.height // 2))**2))
-            perceptions.append(min(door_iron_dist / self.vision_range, 1.0))
-            
-            dx = (world.door_iron.x + world.door_iron.width // 2) - float(self.x)
-            dy = (world.door_iron.y + world.door_iron.height // 2) - float(self.y)
-            target_angle = float(np.arctan2(dy, dx))
-            angle_diff = target_angle - self.angle
-            while angle_diff > np.pi:
-                angle_diff -= 2 * np.pi
-            while angle_diff < -np.pi:
-                angle_diff += 2 * np.pi
-            perceptions.append(angle_diff / np.pi)
-        else:
-            perceptions.append(1.0)  # No visible
-            perceptions.append(0.0)   # Sin dirección
-        
-        # 16-17. Distancia y dirección a chest
-        if world.chest and not world.chest.is_open:
-            chest_dist = float(np.sqrt((float(self.x) - (world.chest.x + world.chest.width // 2))**2 + 
-                                  (float(self.y) - (world.chest.y + world.chest.height // 2))**2))
-            perceptions.append(min(chest_dist / self.vision_range, 1.0))
-            
-            dx = (world.chest.x + world.chest.width // 2) - float(self.x)
-            dy = (world.chest.y + world.chest.height // 2) - float(self.y)
-            target_angle = float(np.arctan2(dy, dx))
-            angle_diff = target_angle - self.angle
-            while angle_diff > np.pi:
-                angle_diff -= 2 * np.pi
-            while angle_diff < -np.pi:
-                angle_diff += 2 * np.pi
-            perceptions.append(angle_diff / np.pi)
-        else:
-            perceptions.append(1.0)  # No visible
-            perceptions.append(0.0)   # Sin dirección
-        
-        # 18. Estado: red_key recogida (0 o 1)
-        perceptions.append(1.0 if (hasattr(world, 'red_key_collected') and world.red_key_collected) else 0.0)
-        
-        # 19. Estado: gold_key recogida (0 o 1)
-        perceptions.append(1.0 if (hasattr(world, 'gold_key_collected') and world.gold_key_collected) else 0.0)
-        
-        # 20. Estado: puede cortar árboles (0 o 1)
-        perceptions.append(1.0 if (hasattr(world, 'axe_picked_up') and world.axe_picked_up) else 0.0)
-        
-        # 21. Ratio de comida disponible (normalizado)
+        # 10. Ratio de comida disponible
         from config import SimulationConfig
         available_food = len([f for f in world.food_items if not f['eaten']])
         food_ratio = available_food / SimulationConfig.FOOD_COUNT if SimulationConfig.FOOD_COUNT > 0 else 0.0
         perceptions.append(min(food_ratio, 1.0))
-        
-        # 22. Distancia al árbol más cercano cortable
-        if hasattr(world, 'trees') and hasattr(world, 'axe_picked_up') and world.axe_picked_up:
-            min_tree_dist = float('inf')
-            for tree in world.trees:
-                if tree.can_be_cut and not tree.is_cut:
-                    tree_dist = float(np.sqrt((float(self.x) - tree.x)**2 + (float(self.y) - tree.y)**2))
-                    min_tree_dist = min(min_tree_dist, tree_dist)
-            perceptions.append(min(min_tree_dist / self.vision_range, 1.0) if min_tree_dist != float('inf') else 1.0)
-        else:
-            perceptions.append(1.0)  # No hay árboles cortables o no tiene hacha
         
         return np.array(perceptions, dtype=np.float32)
     
@@ -255,8 +145,8 @@ class AdvancedAgent:
         # Aplicar lógica adicional para comportamiento inteligente (sistema mejorado)
         if self.fitness > 30:  # Agentes con fitness medio-alto
             # Verificar si hay poca comida y puede cortar árboles
-            food_ratio = perceptions[20] if len(perceptions) > 20 else 1.0
-            has_axe = perceptions[19] if len(perceptions) > 19 else 0.0
+            food_ratio = perceptions[9] if len(perceptions) > 9 else 1.0  # Sensor 10: ratio de comida
+            has_axe = 1.0 if (hasattr(world, 'axe_picked_up') and world.axe_picked_up) else 0.0
             
             # Si hay poca comida (<40%) y tiene hacha, buscar árboles para cortar
             if food_ratio < 0.4 and has_axe > 0.5:
@@ -394,18 +284,18 @@ class AdvancedAgent:
                 self.angle += random.uniform(-0.3, 0.3)
                 self.exploration_timer = 0
         
-        # Agregar exploración continua pero reducida
-        exploration_factor = 0.08  # Más exploración para evitar patrones circulares
+        # Agregar exploración continua pero reducida (MEJORADO)
+        exploration_factor = 0.02  # Reducido de 0.08 a 0.02 para movimiento más dirigido
         decisions['move_forward'] += random.uniform(-exploration_factor, exploration_factor)
         decisions['turn_left'] += random.uniform(-exploration_factor, exploration_factor)
         decisions['turn_right'] += random.uniform(-exploration_factor, exploration_factor)
         
-        # Agregar movimiento aleatorio ocasional para romper patrones
-        if random.random() < 0.1:  # 10% de las veces
+        # Agregar movimiento aleatorio ocasional para romper patrones (REDUCIDO)
+        if random.random() < 0.02:  # Reducido de 10% a 2% para menos aleatoriedad
             # Movimiento en línea recta aleatoria
             random_direction = random.uniform(0, 2 * np.pi)
             self.angle = random_direction
-            decisions['move_forward'] += 0.3
+            decisions['move_forward'] += 0.2  # Reducido de 0.3 a 0.2
         
         # Normalizar decisiones
         decisions['move_forward'] = max(0, min(1, decisions['move_forward']))
@@ -447,8 +337,10 @@ class AdvancedAgent:
             new_x = self.x + dx
             new_y = self.y + dy
             
-            # Verificar colisiones con obstáculos
+            # Verificar colisiones con obstáculos y puertas
             can_move = not self._check_obstacle_collision(new_x, new_y, world.obstacles)
+            if can_move:
+                can_move = not self._check_door_collision(new_x, new_y, world)
             
             # Verificar colisión con perímetro
             if can_move:
@@ -515,10 +407,22 @@ class AdvancedAgent:
             self.target_food = None  # Limpiar objetivo al morir
     
     def _check_obstacle_collision(self, x, y, obstacles):
-        """Verifica colisión con obstáculos (paredes, árboles y casitas). El agua NO tiene colisión."""
+        """Verifica colisión con obstáculos (paredes, árboles, casitas y puertas). El agua NO tiene colisión."""
         for obstacle in obstacles:
             if obstacle.type in ["wall", "tree", "hut"] and obstacle.collides_with(x, y, self.radius):
                 return True
+        return False
+    
+    def _check_door_collision(self, x, y, world):
+        """Verifica colisión con puertas (incluyendo el espacio reducido cuando están abiertas)."""
+        # Verificar colisión con door
+        if world.door and world.door.collides_with(x, y, self.radius):
+            return True
+        
+        # Verificar colisión con door_iron
+        if world.door_iron and world.door_iron.collides_with(x, y, self.radius):
+            return True
+        
         return False
     
     def _check_zone_effects(self, world):
@@ -738,27 +642,27 @@ class AdvancedAgent:
     def _calculate_fitness(self):
         """Calcula el fitness del agente."""
         # Fitness base por supervivencia (MÁS IMPORTANTE)
-        survival_fitness = min(self.age * 0.008, 15)  # Máximo 15 puntos por supervivencia
+        survival_fitness = min(self.age * 0.005, 10)  # Máximo 10 puntos por supervivencia
         
         # Fitness por comida (VALOR INTERMEDIO)
-        food_fitness = self.food_eaten * 5  # 5 puntos por manzana
+        food_fitness = self.food_eaten * 3  # 3 puntos por manzana
         
         # Fitness por exploración (VALOR INTERMEDIO)
-        exploration_fitness = min(self.distance_traveled / 1000, 6)  # Máximo 6 puntos
+        exploration_fitness = min(self.distance_traveled / 1000, 6)  # Máximo 4 puntos
         
         # Fitness por evitar obstáculos (MANTENER BAJO)
         obstacle_fitness = 0
         # Usar fitness base en lugar de self.fitness para evitar dependencia circular
         base_fitness = survival_fitness + food_fitness + exploration_fitness
-        if base_fitness > 15:  # Umbral ajustado para obstáculos
-            obstacle_fitness = self.obstacles_avoided * 1  # Recompensa moderada
+        if base_fitness > 10:  # Umbral ajustado para obstáculos
+            obstacle_fitness = self.obstacles_avoided * 0.5  # Recompensa moderada
         
         # Penalización por movimiento circular
         circular_penalty = 0
         if self.total_moves > 0:
             efficiency = self.distance_traveled / self.total_moves
             if efficiency < 0.5:  # Movimiento muy ineficiente
-                circular_penalty = -5
+                circular_penalty = -3
         
         # Fitness total
         total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + circular_penalty

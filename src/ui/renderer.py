@@ -13,6 +13,7 @@ class SpriteManager:
     
     def __init__(self):
         self.sprites = {}
+        self.sprite_paths = {}  # Almacenar rutas para recarga
         self._load_sprites()
     
     def _load_sprites(self):
@@ -74,12 +75,23 @@ class SpriteManager:
         self.sprites['pond_026'] = self._load_sprite(f"{sprite_dir}/environment/026.png")  # Lado inferior
         self.sprites['pond_027'] = self._load_sprite(f"{sprite_dir}/environment/027.png")  # Esquina inferior derecha
     
-    def _load_sprite(self, path):
+    def _load_sprite(self, path, sprite_key=None):
         """Carga un sprite desde archivo."""
         try:
             if os.path.exists(path):
                 sprite = pygame.image.load(path)
-                # No escalar automáticamente, mantener tamaño original
+                # Escalar sprite según el factor de escalado actual
+                from config import SimulationConfig
+                scale_factor = SimulationConfig.SPRITE_SCALE_FACTOR
+                if scale_factor != 1.0:
+                    original_size = sprite.get_size()
+                    new_size = (int(original_size[0] * scale_factor), int(original_size[1] * scale_factor))
+                    sprite = pygame.transform.scale(sprite, new_size)
+                
+                # Almacenar ruta para recarga
+                if sprite_key:
+                    self.sprite_paths[sprite_key] = path
+                
                 return sprite
             else:
                 print(f"⚠️ Sprite no encontrado: {path}")
@@ -87,6 +99,12 @@ class SpriteManager:
         except Exception as e:
             print(f"❌ Error cargando sprite {path}: {e}")
             return None
+    
+    def reload_sprites(self):
+        """Recarga todos los sprites con el nuevo factor de escalado."""
+        print(f"🔄 Recargando sprites con factor {SimulationConfig.SPRITE_SCALE_FACTOR:.2f}x")
+        for sprite_key, path in self.sprite_paths.items():
+            self.sprites[sprite_key] = self._load_sprite(path, sprite_key)
     
     def get_agent_sprite(self, angle=0, tick=0, moving=False):
         """Obtiene sprite del agente según dirección y animación."""
