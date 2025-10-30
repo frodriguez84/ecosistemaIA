@@ -7,6 +7,7 @@ import pygame
 import random
 import math
 from config import SimulationConfig
+from collections import deque
 
 
 class AdvancedAgent:
@@ -58,6 +59,17 @@ class AdvancedAgent:
         self.food_found_count = 0
         self.obstacle_avoidance_count = 0
         self.total_obstacle_encounters = 0
+        
+        # Ventanas deslizantes para métricas anti-círculo
+        window = int(getattr(SimulationConfig, 'ANTI_CIRCLE_WINDOW_TICKS', 180))
+        self.recent_positions = deque(maxlen=window)
+        self.recent_angles = deque(maxlen=window)
+        self.recent_cells = deque(maxlen=window)
+        self.recent_step_distances = deque(maxlen=window)
+        self.metric_sr = 0.0
+        self.metric_turn_smooth = 1.0
+        self.metric_novelty = 0.0
+        self.fitness_env_penalty = 0.0  # penalizaciones acumuladas del entorno (agua, etc.)
         
         # Objetivo de comida
         self.target_food = None
@@ -379,6 +391,9 @@ class AdvancedAgent:
                 self.y = new_y
                 self.moving = True
                 
+                # Actualizar ventanas para métricas anti-círculo
+                self._update_movement_metrics(move_distance)
+                
                 # Actualizar fitness cada 50 movimientos para feedback visual
                 if self.total_moves % 50 == 0:
                     self._calculate_fitness()
@@ -437,9 +452,9 @@ class AdvancedAgent:
                 elif "energy_gain" in effect:
                     self.energy = min(self.max_energy, self.energy + effect["energy_gain"])
                 
-                # Aplicar efectos de fitness
+                # Acumular penalización de fitness (no sobrescribir cálculo)
                 if "fitness_loss" in effect:
-                    self.fitness = max(0, self.fitness - effect["fitness_loss"])
+                    self.fitness_env_penalty = max(0.0, self.fitness_env_penalty + effect["fitness_loss"])
                 
                 # Aplicar efectos de velocidad
                 if "speed_reduction" in effect:
@@ -641,36 +656,90 @@ class AdvancedAgent:
     
     def _calculate_fitness(self):
         """Calcula el fitness del agente."""
-        # Fitness base por supervivencia (MÁS IMPORTANTE)
-        survival_fitness = min(self.age * 0.005, 10)  # Máximo 10 puntos por supervivencia
+        # Fitness base por supervivencia (MÁS IMPORTANTE) - AUMENTADO
+        survival_fitness = min(self.age * 0.015, 15)  # Máximo 15 puntos por supervivencia
         
-        # Fitness por comida (VALOR INTERMEDIO)
-        food_fitness = self.food_eaten * 3  # 3 puntos por manzana
+        # Fitness por comida (VALOR INTERMEDIO) - AUMENTADO
+        food_fitness = self.food_eaten * 8  # 8 puntos por manzana (era 4)
         
-        # Fitness por exploración (VALOR INTERMEDIO)
-        exploration_fitness = min(self.distance_traveled / 1000, 6)  # Máximo 4 puntos
+        # Fitness por exploración (VALOR INTERMEDIO) - AUMENTADO
+        exploration_fitness = min(self.distance_traveled / 500, 10)  # Máximo 10 puntos (era 8)
         
-        # Fitness por evitar obstáculos (MANTENER BAJO)
+        # Fitness por evitar obstáculos (MANTENER BAJO) - AUMENTADO
         obstacle_fitness = 0
         # Usar fitness base en lugar de self.fitness para evitar dependencia circular
         base_fitness = survival_fitness + food_fitness + exploration_fitness
-        if base_fitness > 10:  # Umbral ajustado para obstáculos
-            obstacle_fitness = self.obstacles_avoided * 0.5  # Recompensa moderada
+        if base_fitness > 15:  # Umbral ajustado para obstáculos
+            obstacle_fitness = self.obstacles_avoided * 0.75  # Recompensa aumentada (era 0.75)
         
-        # Penalización por movimiento circular
-        circular_penalty = 0
-        if self.total_moves > 0:
-            efficiency = self.distance_traveled / self.total_moves
-            if efficiency < 0.5:  # Movimiento muy ineficiente
-                circular_penalty = -3
+        # Métricas anti-círculo - AUMENTADO
+        w1 = getattr(SimulationConfig, 'ANTI_CIRCLE_W1_SR', 0.4)
+        w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
+        w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
+        anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
+        anti_circle_bonus = 10.0 * anti_circle_score  # hasta 10 puntos extra (era 6)
         
         # Fitness total
-        total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + circular_penalty
+        total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + anti_circle_bonus
+        
+        # Restar penalizaciones acumuladas del entorno (agua, etc.) - CON CLAMP
+        total_fitness -= min(self.fitness_env_penalty, 20)  # Clamp para evitar penalización excesiva
         
         # Normalizar a 0-100
         self.fitness = max(0, min(100, total_fitness))
         
         return self.fitness
+
+    def _update_movement_metrics(self, move_distance: float):
+        """Actualiza ventanas y métricas anti-círculo después de cada movimiento."""
+        # Registrar posición/ángulo y distancia de paso
+        self.recent_positions.append((float(self.x), float(self.y)))
+        self.recent_angles.append(float(self.angle))
+        self.recent_step_distances.append(float(move_distance))
+
+        cell_size = int(getattr(SimulationConfig, 'NOVELTY_CELL_SIZE', 16))
+        cell = (int(self.x) // cell_size, int(self.y) // cell_size)
+        self.recent_cells.append(cell)
+
+        # Straightness ratio
+        if len(self.recent_positions) >= 2:
+            x0, y0 = self.recent_positions[0]
+            xN, yN = self.recent_positions[-1]
+            net_displacement = float(np.hypot(xN - x0, yN - y0))
+            total_path = 0.0
+            px, py = self.recent_positions[0]
+            for (qx, qy) in list(self.recent_positions)[1:]:
+                total_path += float(np.hypot(qx - px, qy - py))
+                px, py = qx, qy
+            self.metric_sr = 0.0 if total_path <= 1e-6 else max(0.0, min(1.0, net_displacement / total_path))
+        else:
+            self.metric_sr = 0.0
+
+        # Giro medio absoluto normalizado (1 = muy recto, 0 = giro fuerte)
+        if len(self.recent_angles) >= 2:
+            deltas = []
+            prev = self.recent_angles[0]
+            for a in list(self.recent_angles)[1:]:
+                d = a - prev
+                # normalizar a [-pi, pi]
+                while d > math.pi:
+                    d -= 2 * math.pi
+                while d < -math.pi:
+                    d += 2 * math.pi
+                deltas.append(abs(d))
+                prev = a
+            mean_abs = float(np.mean(deltas)) if deltas else 0.0
+            tmax = float(getattr(SimulationConfig, 'TURN_MEAN_ABS_MAX', 0.2))
+            self.metric_turn_smooth = 1.0 - max(0.0, min(1.0, mean_abs / max(tmax, 1e-6)))
+        else:
+            self.metric_turn_smooth = 1.0
+
+        # Novedad espacial en la ventana
+        denom = len(self.recent_cells)
+        if denom > 0:
+            self.metric_novelty = len(set(self.recent_cells)) / float(denom)
+        else:
+            self.metric_novelty = 0.0
     
     def get_movement_skill(self):
         """Calcula el porcentaje de habilidad de movimiento."""

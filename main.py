@@ -946,7 +946,7 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         # Dibujar agentes
         for agent in agents:
             if agent.alive:
-                agent.draw(render_surface, tick, sprite_manager, particle_system)                                                                              
+                 agent.draw(render_surface, tick, sprite_manager, particle_system)                                                                              
         
         # Actualizar y dibujar sistema de partículas
         particle_system.update()

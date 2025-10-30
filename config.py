@@ -13,13 +13,13 @@ class SimulationConfig:
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 1200                 # Tiempo base inicial
-    TICKS_INCREMENT_AMOUNT = 500     # Cuántos ticks aumentar cada incremento
-    TICKS_INCREMENT_FREQUENCY = 2      # Cada cuántas generaciones aumentar (ej: cada 5)
+    BASE_TICKS = 1500                 # Tiempo base inicial
+    TICKS_INCREMENT_AMOUNT = 300     # Cuántos ticks aumentar cada incremento
+    TICKS_INCREMENT_FREQUENCY = 3      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.15        # 15% de mutación 
-    CROSSOVER_RATE = 0.55        # 55% de cruce 
+    MUTATION_RATE = 0.30        # 15% de mutación 
+    CROSSOVER_RATE = 0.60        # 55% de cruce 
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "tournament"  # "elitism" o "tournament"
@@ -61,18 +61,26 @@ class SimulationConfig:
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
     TREE_CUTTING_THRESHOLD = 30  # Umbral para activar corte (≤30 manzanas)
     TREE_HITS_TO_CUT = 2         # Golpes necesarios para cortar árbol
-    TREE_CUT_REWARD = 7         # Fitness ganado por cortar árbol
+    TREE_CUT_REWARD = 7         # Fitness ganado por cortar árbol (era 7)
     TREE_CUT_FOOD_REWARD = 20      # Manzanas generadas al cortar árbol
     
     # === SISTEMA DE CORTE DE HUTS ===
     HUT_CUTTING_ENABLED = True     # Habilitar sistema de corte de huts
     HUT_CUTTING_THRESHOLD = 20     # Umbral para activar corte (≤20 manzanas)
     HUT_HITS_TO_CUT = 4            # Golpes necesarios para destruir hut
-    HUT_CUT_REWARD = 15            # Fitness ganado por destruir hut
+    HUT_CUT_REWARD = 15           # Fitness ganado por destruir hut (era 15)
     HUT_CUT_FOOD_REWARD = 30       # Manzanas generadas al destruir hut
     
     # === SISTEMA DE AGUA ===
     WATER_FITNESS_PENALTY = 5      # Fitness perdido por tick en agua (equilibrado con comida)
+    
+    # === MÉTRICAS ANTI-CÍRCULO ===
+    ANTI_CIRCLE_WINDOW_TICKS = 180   # ~3s a 60 FPS
+    ANTI_CIRCLE_W1_SR = 0.5          # Peso rectitud
+    ANTI_CIRCLE_W2_TURN = 0.3        # Peso giro medio (suavidad)
+    ANTI_CIRCLE_W3_NOVELTY = 0.2     # Peso novedad espacial
+    TURN_MEAN_ABS_MAX = 0.2          # rad/tick para normalizar giro promedio
+    NOVELTY_CELL_SIZE = 16           # tamaño de celda para novedad
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas
@@ -84,18 +92,18 @@ class SimulationConfig:
     
     # Llaves
     RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente
-    RED_KEY_REWARD = 5            # Fitness por recoger red_key
-    GOLD_KEY_REWARD = 15          # Fitness por recoger gold_key
+    RED_KEY_REWARD = 10           # Fitness por recoger red_key (era 5)
+    GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (era 15)
     
     # Puertas
     DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
     DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
-    DOOR_OPEN_REWARD = 10         # Fitness por abrir door
-    DOOR_IRON_OPEN_REWARD = 20    # Fitness por abrir door_iron
+    DOOR_OPEN_REWARD = 20         # Fitness por abrir door (era 10)
+    DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (era 20)
     DOOR_HIT_COOLDOWN = 120       # Cooldown entre golpes (ticks)
     
     # Cofre
-    CHEST_REWARD = 50             # Fitness por abrir cofre
+    CHEST_REWARD = 60             # Fitness por abrir cofre (era 50)
     
     # === RENDIMIENTO ===
     STATS_UPDATE_FREQUENCY = 5   # Actualizar stats cada N frames
