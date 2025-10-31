@@ -13,52 +13,31 @@ import config as SimulationConfig
 class BehaviorClusterer:
     """Analizador de clustering para comportamientos emergentes de agentes."""
     
-    def __init__(self, n_clusters: int = 4):
+    def __init__(self, n_clusters: int = 3):
         self.n_clusters = n_clusters
         self.scaler = StandardScaler()
         self.pca = PCA(n_components=2)
         self.kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         self.cluster_names = [
-            "Estrategia Puzzle",
-            "Estrategia Supervivencia", 
-            "Estrategia Híbrida",
-            "Estrategia Élite",
-            "Estrategia Intermedia",
-            "Estrategia Básica",
-            "Estrategia Fallida"
+            "Exploradores",
+            "Recolectores",
+            "Exitosos"
         ]
     
     def extract_agent_features(self, agents: List[Any]) -> np.ndarray:
-        """Extrae características de comportamiento de los agentes."""
+        """Extrae características REALES de comportamiento de los agentes."""
         features = []
         
         for agent in agents:
-            # Características de la red neuronal (pesos)
-            neural_features = []
-            if hasattr(agent, 'brain') and hasattr(agent.brain, 'weights'):
-                # Aplanar todos los pesos de la red neuronal
-                for layer_weights in agent.brain.weights:
-                    neural_features.extend(layer_weights.flatten())
-            
-            # Características de comportamiento
+            # SOLO usar características que realmente existen en AdvancedAgent
             behavior_features = [
-                getattr(agent, 'food_eaten', 0),
-                getattr(agent, 'exploration_distance', 0),
-                getattr(agent, 'survival_time', 0),
-                getattr(agent, 'fitness', 0),
-                getattr(agent, 'trees_cut', 0),
-                getattr(agent, 'huts_destroyed', 0),
-                getattr(agent, 'keys_collected', 0),
-                getattr(agent, 'doors_opened', 0),
-                getattr(agent, 'chest_opened', 0),
-                getattr(agent, 'water_penalties', 0),
-                getattr(agent, 'energy_efficiency', 0),
-                getattr(agent, 'movement_efficiency', 0)
+                float(getattr(agent, 'fitness', 0)),           # Desempeño general
+                float(getattr(agent, 'food_eaten', 0)),        # Estrategia de recursos
+                float(getattr(agent, 'distance_traveled', 0)),  # Exploración
+                float(getattr(agent, 'age', 0))                # Supervivencia
             ]
             
-            # Combinar características neuronales y de comportamiento
-            all_features = neural_features + behavior_features
-            features.append(all_features)
+            features.append(behavior_features)
         
         return np.array(features)
     
@@ -120,15 +99,12 @@ class BehaviorClusterer:
                 'desviacion': np.std(fitness_values)
             }
             
-            # Calcular comportamientos promedio
+            # Calcular comportamientos promedio (solo características REALES)
             behaviors = {
                 'comida': np.mean([getattr(agent, 'food_eaten', 0) for agent in cluster_agents]),
-                'exploracion': np.mean([getattr(agent, 'exploration_distance', 0) for agent in cluster_agents]),
-                'supervivencia': np.mean([getattr(agent, 'survival_time', 0) for agent in cluster_agents]),
-                'arboles_cortados': np.mean([getattr(agent, 'trees_cut', 0) for agent in cluster_agents]),
-                'llaves_recogidas': np.mean([getattr(agent, 'keys_collected', 0) for agent in cluster_agents]),
-                'puertas_abiertas': np.mean([getattr(agent, 'doors_opened', 0) for agent in cluster_agents]),
-                'cofre_abierto': np.mean([getattr(agent, 'chest_opened', 0) for agent in cluster_agents])
+                'exploracion': np.mean([getattr(agent, 'distance_traveled', 0) for agent in cluster_agents]),
+                'supervivencia': np.mean([getattr(agent, 'age', 0) for agent in cluster_agents]),
+                'fitness': np.mean([getattr(agent, 'fitness', 0) for agent in cluster_agents])
             }
             
             stats['cluster_behaviors'][cluster_id] = behaviors
@@ -136,30 +112,38 @@ class BehaviorClusterer:
         return stats
     
     def get_cluster_interpretation(self, cluster_stats: Dict[str, Any]) -> Dict[int, str]:
-        """Interpreta cada cluster basado en sus características."""
+        """Interpreta cada cluster en 3 tipos claros: Exploradores, Recolectores, Exitosos."""
         interpretations = {}
+        
+        # Primero identificar qué cluster es cada tipo
+        cluster_scores = {}  # cluster_id -> (tipo_score, tipo_name)
         
         for cluster_id in cluster_stats['cluster_counts'].keys():
             behaviors = cluster_stats['cluster_behaviors'][cluster_id]
             fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
+            exploracion = behaviors.get('exploracion', 0)
+            comida = behaviors.get('comida', 0)
             
-            # Determinar tipo de estrategia basado en comportamientos (criterios más flexibles)
-            if behaviors['cofre_abierto'] > 0.1:  # Más flexible
-                strategy = "Estrategia Puzzle"
-            elif behaviors['comida'] > 8 and fitness > 40:  # Más flexible
-                strategy = "Estrategia Supervivencia"
-            elif fitness > 70 and behaviors['exploracion'] > 500:  # Más flexible
-                strategy = "Estrategia Híbrida"
-            elif fitness > 80:  # Agentes de alto rendimiento
-                strategy = "Estrategia Élite"
-            elif fitness > 50:  # Agentes de rendimiento medio
-                strategy = "Estrategia Intermedia"
-            elif fitness > 30:  # Agentes de rendimiento bajo
-                strategy = "Estrategia Básica"
-            else:  # Agentes con muy bajo rendimiento
-                strategy = "Estrategia Fallida"
+            # Calcular score para cada tipo
+            # Exploradores: alta exploración, fitness bajo-medio, poca comida
+            explorador_score = exploracion * 0.4 + (100 - fitness) * 0.3 - comida * 0.3
             
-            interpretations[cluster_id] = strategy
+            # Recolectores: mucha comida, fitness medio, exploración moderada
+            recolector_score = comida * 0.5 + fitness * 0.3 - abs(exploracion - 500) * 0.2
+            
+            # Exitosos: fitness alto (combinan bien todo)
+            exitoso_score = fitness * 0.6 + comida * 0.2 + exploracion * 0.2
+            
+            # Determinar tipo con mayor score
+            scores = [
+                (explorador_score, "Exploradores"),
+                (recolector_score, "Recolectores"),
+                (exitoso_score, "Exitosos")
+            ]
+            scores.sort(reverse=True, key=lambda x: x[0])
+            
+            # Asignar el tipo con mayor score
+            interpretations[cluster_id] = scores[0][1]
         
         return interpretations
     

@@ -19,7 +19,7 @@ class LearningMonitor:
         self.food_history = []
         self.survival_history = []
         self.diversity_history = []
-        self.clusterer = BehaviorClusterer(n_clusters=3)  # Reducido para mayor velocidad
+        self.clusterer = BehaviorClusterer(n_clusters=3)  # 3 clusters claros: Exploradores, Recolectores, Exitosos
         self.clustering_history = []
         self.behavior_patterns = []
         
@@ -81,8 +81,8 @@ class LearningMonitor:
         
         return gen_data
     
-    def _calculate_diversity(self, agents):
-        """Calcula diversidad genética de la población."""
+    def calculate_diversity(self, agents):
+        """Calcula diversidad genética de la población"""
         if len(agents) < 2:
             return 0.0
             
@@ -103,8 +103,12 @@ class LearningMonitor:
         diversity = np.mean(np.var(all_weights, axis=0))
         return float(diversity)
     
+    def _calculate_diversity(self, agents):
+        """Calcula diversidad genética de la población"""
+        return self.calculate_diversity(agents)
+    
     def _analyze_behaviors(self, agents):
-        """Analiza patrones de comportamiento emergentes."""
+        """Analiza patrones de comportamiento emergentes"""
         behaviors = {
             'food_seekers': 0,      # Agentes que buscan comida activamente
             'explorers': 0,          # Agentes que exploran mucho
@@ -144,37 +148,34 @@ class LearningMonitor:
         return behaviors
     
     def print_generation_summary(self, gen_data):
-        """Imprime resumen detallado de la generación."""
+        """Imprime resumen detallado de la generación (formato estandarizado)."""
         print(f"\n🔬 ANÁLISIS DETALLADO - GENERACIÓN {gen_data['generation']}")
         print("=" * 60)
-        print(f"📊 FITNESS:")
-        print(f"   - Promedio: {gen_data['avg_fitness']:.1f}")
-        print(f"   - Máximo: {gen_data['max_fitness']:.1f}")
-        print(f"   - Mínimo: {gen_data['min_fitness']:.1f}")
-        print(f"   - Desviación: {gen_data['std_fitness']:.1f}")
-        print(f"")
-        print(f"🍎 COMIDA:")
-        print(f"   - Promedio: {gen_data['avg_food']:.1f}")
-        print(f"   - Máximo: {gen_data['max_food']:.0f}")
-        print(f"")
-        print(f"⏱️ SUPERVIVENCIA:")
-        print(f"   - Tiempo promedio: {gen_data['avg_age']/60:.1f} min")
-        print(f"   - Tiempo máximo: {gen_data['max_age']/60:.1f} min")
-        print(f"   - Agentes vivos: {gen_data['alive_count']}")
-        print(f"")
-        print(f"🧬 DIVERSIDAD GENÉTICA: {gen_data['diversity']:.4f}")
-        print(f"📏 EXPLORACIÓN: {gen_data['avg_distance']:.0f} píxeles")
+        # Formato estandarizado igual que los logs básicos
+        print(f"   📊 FITNESS:")
+        print(f"      - Promedio: {gen_data['avg_fitness']:.1f}/100")
+        print(f"      - Máximo: {gen_data['max_fitness']:.1f}/100")
+        print(f"      - Mínimo: {gen_data['min_fitness']:.1f}/100")
+        print(f"      - Desviación: {gen_data['std_fitness']:.1f}")
+        print(f"   🍎 COMIDA:")
+        print(f"      - Promedio: {gen_data['avg_food']:.1f}")
+        print(f"      - Máximo: {gen_data['max_food']:.0f}")
+        print(f"   ⏱️ SUPERVIVENCIA:")
+        print(f"      - Tasa: {(gen_data['alive_count']/gen_data.get('total_agents', 50)*100):.1f}%")
+        print(f"      - Tiempo promedio: {gen_data['avg_age']/60/60:.1f} min")
+        print(f"      - Tiempo máximo: {gen_data['max_age']/60/60:.1f} min")
+        print(f"   🧬 DIVERSIDAD GENÉTICA: {gen_data['diversity']:.4f}")
+        print(f"   📏 EXPLORACIÓN: {gen_data['avg_distance']:.0f} píxeles")
         
-        # Análisis de comportamiento
+        # Análisis de comportamiento (información extra del análisis detallado)
         if self.behavior_patterns:
             behaviors = self.behavior_patterns[-1]
-            print(f"")
-            print(f"🎮 COMPORTAMIENTOS EMERGENTES:")
-            print(f"   - Buscadores de comida: {behaviors['food_seekers']:.1f}%")
-            print(f"   - Exploradores: {behaviors['explorers']:.1f}%")
-            print(f"   - Supervivientes: {behaviors['survivors']:.1f}%")
-            print(f"   - Movimiento eficiente: {behaviors['efficient_movers']:.1f}%")
-            # print(f"   - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
+            print(f"   🎮 COMPORTAMIENTOS EMERGENTES:")
+            print(f"      - Buscadores de comida: {behaviors['food_seekers']:.1f}%")
+            print(f"      - Exploradores: {behaviors['explorers']:.1f}%")
+            print(f"      - Supervivientes: {behaviors['survivors']:.1f}%")
+            print(f"      - Movimiento eficiente: {behaviors['efficient_movers']:.1f}%")
+            # print(f"      - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
         
         # Análisis de clustering
         if gen_data.get('cluster_stats'):
@@ -300,28 +301,27 @@ class LearningMonitor:
         return "Reporte completado"
     
     def _print_cluster_summary(self, cluster_stats):
-        """Imprime resumen de clustering resumido para mayor velocidad."""
+        """Imprime resumen de clustering con 3 clusters claros."""
         interpretations = self.clusterer.get_cluster_interpretation(cluster_stats)
         
-        print("\n🧬 CLUSTERING:")
+        print("   🧬 CLUSTERING:")
         
-        # Solo mostrar clusters con más de 1 agente
-        active_clusters = [(cid, count) for cid, count in cluster_stats['cluster_counts'].items() if count > 1]
-        active_clusters.sort(key=lambda x: x[1], reverse=True)
+        # Ordenar clusters por interpretación (Exploradores, Recolectores, Exitosos)
+        cluster_order = ["Exploradores", "Recolectores", "Exitosos"]
+        sorted_clusters = []
         
-        for cluster_id, count in active_clusters[:3]:  # Solo top 3 clusters
-            fitness = cluster_stats['cluster_fitness'][cluster_id]
-            strategy = interpretations.get(cluster_id, f"C{cluster_id}")
-            print(f"   {strategy}: {count} agentes (fitness: {fitness['promedio']:.1f})")
+        for cluster_id in cluster_stats['cluster_counts'].keys():
+            count = cluster_stats['cluster_counts'][cluster_id]
+            if count > 0:
+                strategy = interpretations.get(cluster_id, f"Cluster {cluster_id}")
+                fitness = cluster_stats['cluster_fitness'][cluster_id]
+                behaviors = cluster_stats['cluster_behaviors'][cluster_id]
+                sorted_clusters.append((cluster_id, count, strategy, fitness, behaviors))
         
-        # Diversidad simplificada
-        total_agents = sum(cluster_stats['cluster_counts'].values())
-        cluster_diversity = len([c for c in cluster_stats['cluster_counts'].values() if c > 0])
-        diversity_ratio = cluster_diversity / self.clusterer.n_clusters
+        # Ordenar por tipo (Exploradores primero, luego Recolectores, luego Exitosos)
+        sorted_clusters.sort(key=lambda x: (cluster_order.index(x[2]) if x[2] in cluster_order else 999, -x[1]))
         
-        if diversity_ratio < 0.5:
-            print(f"   ⚠️ Convergencia prematura ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")
-        elif diversity_ratio > 0.8:
-            print(f"   ✅ Diversidad alta ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")
-        else:
-            print(f"   ⚖️ Diversidad moderada ({cluster_diversity}/{self.clusterer.n_clusters} clusters)")
+        for cluster_id, count, strategy, fitness, behaviors in sorted_clusters:
+            comida = behaviors.get('comida', 0)
+            exploracion = behaviors.get('exploracion', 0) / 100  # En metros
+            print(f"      - {strategy}: {count} agentes | Fitness: {fitness['promedio']:.1f} | Comida: {comida:.1f} | Exploracion: {exploracion:.0f} m")

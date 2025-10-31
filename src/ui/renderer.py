@@ -15,6 +15,24 @@ class SpriteManager:
         self.sprites = {}
         self.sprite_paths = {}  # Almacenar rutas para recarga
         self._load_sprites()
+
+    def _make_white_transparent(self, surface, tolerance=40):
+        """Convierte en transparente los píxeles casi blancos (para eliminar halos).
+        tolerance: 0-255, mayor = más agresivo.
+        """
+        if surface is None:
+            return surface
+        surface = surface.convert_alpha()
+        width, height = surface.get_size()
+        for x in range(width):
+            for y in range(height):
+                r, g, b, a = surface.get_at((x, y))
+                if a == 0:
+                    continue
+                # Condición de casi blanco (alto brillo y poca saturación)
+                if r > 255 - tolerance and g > 255 - tolerance and b > 255 - tolerance:
+                    surface.set_at((x, y), (r, g, b, 0))
+        return surface
     
     def _load_sprites(self):
         """Carga todos los sprites del juego."""
@@ -45,6 +63,7 @@ class SpriteManager:
         self.sprites['potion'] = self._load_sprite(f"{sprite_dir}/environment/035.png")
         self.sprites['apple'] = self._load_sprite(f"{sprite_dir}/environment/034.png")
         self.sprites['axe'] = self._load_sprite(f"{sprite_dir}/environment/axe.png")
+        self.sprites['grave'] = self._load_sprite(f"{sprite_dir}/environment/grave.png")
         
         # Sprites de fortalezas
         self.sprites['door'] = self._load_sprite(f"{sprite_dir}/environment/door.png")
@@ -79,7 +98,7 @@ class SpriteManager:
         """Carga un sprite desde archivo."""
         try:
             if os.path.exists(path):
-                sprite = pygame.image.load(path)
+                sprite = pygame.image.load(path).convert_alpha()
                 # Escalar sprite según el factor de escalado actual
                 from config import SimulationConfig
                 scale_factor = SimulationConfig.SPRITE_SCALE_FACTOR
@@ -87,6 +106,10 @@ class SpriteManager:
                     original_size = sprite.get_size()
                     new_size = (int(original_size[0] * scale_factor), int(original_size[1] * scale_factor))
                     sprite = pygame.transform.scale(sprite, new_size)
+                
+                # Limpiar fondo casi blanco en la tumba
+                if 'grave' in path.lower():
+                    sprite = self._make_white_transparent(sprite, tolerance=60)
                 
                 # Almacenar ruta para recarga
                 if sprite_key:
@@ -97,7 +120,7 @@ class SpriteManager:
                 print(f"⚠️ Sprite no encontrado: {path}")
                 return None
         except Exception as e:
-            print(f"❌ Error cargando sprite {path}: {e}")
+            #print(f"❌ Error cargando sprite {path}: {e}")
             return None
     
     def reload_sprites(self):
@@ -158,6 +181,8 @@ class SpriteManager:
             return self.sprites.get('apple')
         elif sprite_type == 'axe':
             return self.sprites.get('axe')
+        elif sprite_type == 'grave':
+            return self.sprites.get('grave')
         elif sprite_type == 'door':
             return self.sprites.get('door')
         elif sprite_type == 'door_iron':

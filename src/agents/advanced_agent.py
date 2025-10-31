@@ -657,27 +657,27 @@ class AdvancedAgent:
     def _calculate_fitness(self):
         """Calcula el fitness del agente."""
         # Fitness base por supervivencia (MÁS IMPORTANTE) - AUMENTADO
-        survival_fitness = min(self.age * 0.015, 15)  # Máximo 15 puntos por supervivencia
+        survival_fitness = min(self.age * 0.012, 15)  # Máximo 10 puntos por supervivencia
         
         # Fitness por comida (VALOR INTERMEDIO) - AUMENTADO
-        food_fitness = self.food_eaten * 8  # 8 puntos por manzana (era 4)
+        food_fitness = self.food_eaten * 6  # 6 puntos por manzana (era 4)
         
         # Fitness por exploración (VALOR INTERMEDIO) - AUMENTADO
-        exploration_fitness = min(self.distance_traveled / 500, 10)  # Máximo 10 puntos (era 8)
+        exploration_fitness = min(self.distance_traveled / 500, 8)  # Máximo 10 puntos (era 8)
         
         # Fitness por evitar obstáculos (MANTENER BAJO) - AUMENTADO
         obstacle_fitness = 0
         # Usar fitness base en lugar de self.fitness para evitar dependencia circular
         base_fitness = survival_fitness + food_fitness + exploration_fitness
         if base_fitness > 15:  # Umbral ajustado para obstáculos
-            obstacle_fitness = self.obstacles_avoided * 0.75  # Recompensa aumentada (era 0.75)
+            obstacle_fitness = self.obstacles_avoided * 0.50  # Recompensa aumentada (era 0.75)
         
         # Métricas anti-círculo - AUMENTADO
         w1 = getattr(SimulationConfig, 'ANTI_CIRCLE_W1_SR', 0.4)
         w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
         w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
         anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
-        anti_circle_bonus = 10.0 * anti_circle_score  # hasta 10 puntos extra (era 6)
+        anti_circle_bonus = 6.0 * anti_circle_score  # hasta 10 puntos extra (era 6)
         
         # Fitness total
         total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + anti_circle_bonus

@@ -138,6 +138,37 @@ class SummaryPopup:
             popup_surface.blit(text, (right_x + 10, y_offset))
             y_offset += 18
         
+        # CLUSTERING (si está disponible)
+        cluster_stats = self.generation_data.get('cluster_stats', {})
+        if cluster_stats and cluster_stats.get('cluster_counts'):
+            from src.analytics.clustering import BehaviorClusterer
+            clusterer = BehaviorClusterer(n_clusters=3)
+            interpretations = clusterer.get_cluster_interpretation(cluster_stats)
+            
+            clustering_title = self.big_font.render("CLUSTERING", True, (100, 255, 150))
+            popup_surface.blit(clustering_title, (right_x, y_offset + 10))
+            y_offset += 35
+            
+            # Ordenar clusters por tipo
+            cluster_order = ["Exploradores", "Recolectores", "Exitosos"]
+            sorted_clusters = []
+            for cluster_id in cluster_stats['cluster_counts'].keys():
+                count = cluster_stats['cluster_counts'][cluster_id]
+                if count > 0:
+                    strategy = interpretations.get(cluster_id, f"C{cluster_id}")
+                    fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
+                    sorted_clusters.append((strategy, count, fitness))
+            sorted_clusters.sort(key=lambda x: (cluster_order.index(x[0]) if x[0] in cluster_order else 999, -x[1]))
+            
+            for strategy, count, fitness in sorted_clusters[:3]:
+                cluster_text = f"{strategy}: {count} ({fitness:.1f})"
+                text = self.font.render(cluster_text, True, (200, 200, 200))
+                popup_surface.blit(text, (right_x + 10, y_offset))
+                y_offset += 18
+            
+            if len(sorted_clusters) < 3:
+                y_offset += 18
+        
         # ESTADÍSTICAS ADICIONALES
         extra_title = self.big_font.render("ESTADÍSTICAS", True, (100, 255, 150))
         popup_surface.blit(extra_title, (right_x, y_offset + 10))

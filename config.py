@@ -9,7 +9,7 @@ class SimulationConfig:
     POPULATION_SIZE = 50
     TARGET_FPS = 60
     MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
-    HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
+    HEADLESS_MODE = True             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
@@ -18,11 +18,11 @@ class SimulationConfig:
     TICKS_INCREMENT_FREQUENCY = 3      # Cada cuántas generaciones aumentar (ej: cada 5)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.30        # 15% de mutación 
-    CROSSOVER_RATE = 0.60        # 55% de cruce 
+    MUTATION_RATE = 0.08       # 15% de mutación 
+    CROSSOVER_RATE = 0.70        # 55% de cruce 
     
     # === SELECCIÓN DE PADRES ===
-    SELECTION_METHOD = "tournament"  # "elitism" o "tournament"
+    SELECTION_METHOD = "elitism"  # "elitism" o "tournament"
     TOURNAMENT_SIZE = 3             # Tamaño del torneo 
     ELITISM = 2                     # Mejores agentes que se mantienen 
     
@@ -75,12 +75,12 @@ class SimulationConfig:
     WATER_FITNESS_PENALTY = 5      # Fitness perdido por tick en agua (equilibrado con comida)
     
     # === MÉTRICAS ANTI-CÍRCULO ===
-    ANTI_CIRCLE_WINDOW_TICKS = 180   # ~3s a 60 FPS
-    ANTI_CIRCLE_W1_SR = 0.5          # Peso rectitud
-    ANTI_CIRCLE_W2_TURN = 0.3        # Peso giro medio (suavidad)
-    ANTI_CIRCLE_W3_NOVELTY = 0.2     # Peso novedad espacial
+    ANTI_CIRCLE_WINDOW_TICKS = 240   # ~3s a 60 FPS
+    ANTI_CIRCLE_W1_SR = 0.75          # Peso rectitud
+    ANTI_CIRCLE_W2_TURN = 0.15        # Peso giro medio (suavidad)
+    ANTI_CIRCLE_W3_NOVELTY = 0.40     # Peso novedad espacial
     TURN_MEAN_ABS_MAX = 0.2          # rad/tick para normalizar giro promedio
-    NOVELTY_CELL_SIZE = 16           # tamaño de celda para novedad
+    NOVELTY_CELL_SIZE = 12           # tamaño de celda para novedad
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas

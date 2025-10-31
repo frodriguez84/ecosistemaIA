@@ -167,6 +167,8 @@ def main():
     # Crear sistemas de sprites y partículas
     sprite_manager = SpriteManager()
     particle_system = ParticleSystem()
+    graves = []  # Tumbas persistentes hasta la próxima generación
+    dead_ids = set()  # Para detectar muertes nuevas sin duplicar tumbas
     
     # Crear cuadro de resumen
     summary_popup = SummaryPopup(screen_width, screen_height)
@@ -420,6 +422,13 @@ def main():
                         show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system)
                         return
         
+        # Registrar tumbas para agentes que acaban de morir (sin colisión)
+        if not paused:
+            for agent in agents:
+                if not agent.alive and agent.id not in dead_ids:
+                    graves.append({'x': int(agent.x), 'y': int(agent.y)})
+                    dead_ids.add(agent.id)
+
         # Actualizar sistema de corte de árboles (solo si no está pausado)
         if not paused and config.TREE_CUTTING_ENABLED:
             world.update_tree_cutting_status()
@@ -463,16 +472,27 @@ def main():
                 
                 avg_fitness = sum(agent.fitness for agent in agents) / len(agents)
                 max_fitness = max(agent.fitness for agent in agents)
+                min_fitness = min(agent.fitness for agent in agents)
                 avg_age = sum(agent.age for agent in agents) / len(agents)
                 avg_food = sum(agent.food_eaten for agent in agents) / len(agents)
+                max_food = max(agent.food_eaten for agent in agents)
                 avg_energy = sum(agent.energy for agent in alive_agents_for_stats) / len(alive_agents_for_stats) if alive_agents_for_stats else 0
                 
-                print(f"   - Fitness promedio: {avg_fitness:.1f}/100")
-                print(f"   - Fitness máximo: {max_fitness:.1f}/100")
-                print(f"   - Comida promedio: {avg_food:.1f}")
-                print(f"   - Supervivencia: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
+                # Calcular diversidad genética
+                diversity = learning_monitor.calculate_diversity(agents)
                 
-                # Estadísticas de puzzle
+                # ESTANDARIZAR LOGS - Siempre el mismo formato y orden
+                print(f"   📊 FITNESS:")
+                print(f"      - Promedio: {avg_fitness:.1f}/100")
+                print(f"      - Máximo: {max_fitness:.1f}/100")
+                print(f"      - Mínimo: {min_fitness:.1f}/100")
+                print(f"   🍎 COMIDA:")
+                print(f"      - Promedio: {avg_food:.1f}")
+                print(f"      - Máximo: {max_food}")
+                print(f"   ⏱️ SUPERVIVENCIA:")
+                print(f"      - Tasa: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
+                print(f"      - Tiempo promedio: {avg_age/60/60:.1f} min")
+                print(f"   🧬 DIVERSIDAD GENÉTICA: {diversity:.4f}")
                 print(f"   🧩 PUZZLE:")
                 print(f"      - Llave roja: {red_key_status}")
                 print(f"      - Llave dorada: {gold_key_status}")
@@ -517,8 +537,12 @@ def main():
             # Registrar datos en el monitor de aprendizaje
             gen_data = learning_monitor.record_generation(generation, agents, world)
             
-            # Mostrar análisis detallado cada 5 generaciones
-            if generation % 5 == 0 or generation == 1:
+            # Clustering (después de crear gen_data)
+            if gen_data and gen_data.get('cluster_stats'):
+                learning_monitor._print_cluster_summary(gen_data['cluster_stats'])
+            
+            # Mostrar análisis detallado cada 5 generaciones (sin gen 1 para evitar duplicados)
+            if generation % 5 == 0 and generation != 1:
                 learning_monitor.print_generation_summary(gen_data)
             
             # Detectar patrones de aprendizaje cada 10 generaciones
@@ -592,6 +616,10 @@ def main():
             world.tick = 0
             tick = 0
             generation += 1
+
+            # Limpiar tumbas al iniciar nueva generación
+            graves.clear()
+            dead_ids.clear()
             
             # Recalcular tiempo máximo para la nueva generación con incremento gradual
             if config.ADAPTIVE_TIME_ENABLED:
@@ -719,6 +747,14 @@ def main():
                 if not agent.alive and hasattr(agent, 'target_food'):
                     agent.target_food = None
             
+            # Dibujar tumbas antes de los agentes (decoración sin colisión)
+            if graves:
+                grave_sprite = sprite_manager.get_environment_sprite('grave')
+                if grave_sprite:
+                    for g in graves:
+                        rect = grave_sprite.get_rect(center=(g['x'], g['y']))
+                        render_surface.blit(grave_sprite, rect)
+
             # Dibujar agentes
             for agent in agents:
                 agent.draw(render_surface, tick, sprite_manager, particle_system)
@@ -821,6 +857,49 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         avg_survival_all_gens = 0
         total_exploration_meters = 0
         avg_exploration_meters = 0
+
+    # Datos para Modo Compacto
+    import statistics as _stats
+    # Trayectoria de fitness: delta vs gen 1
+    if learning_monitor.generation_data:
+        initial_avg_fitness = learning_monitor.generation_data[0].get('avg_fitness', avg_fitness)
+        fitness_delta = avg_fitness - initial_avg_fitness
+        fitness_stdev = _stats.pstdev(fitness_values) if len(fitness_values) > 1 else 0.0
+    else:
+        initial_avg_fitness = avg_fitness
+        fitness_delta = 0.0
+        fitness_stdev = 0.0
+
+    # Diversidad: inicial → mínima → final
+    if learning_monitor.generation_data and any('diversity' in d for d in learning_monitor.generation_data):
+        diversities = [d.get('diversity', 0) for d in learning_monitor.generation_data]
+        diversity_initial = diversities[0]
+        diversity_min = min(diversities)
+        diversity_final = diversities[-1]
+        convergence_flag = 'Sí' if diversity_min < (diversity_initial * 0.6) else 'No'
+    else:
+        diversity_initial = diversity_min = diversity_final = 0
+        convergence_flag = 'N/A'
+
+    # Hitos del puzzle (sobre historial)
+    if learning_monitor.generation_data:
+        total_gens = len(learning_monitor.generation_data)
+        pct_red = int(100 * sum(1 for d in learning_monitor.generation_data if d.get('red_key_collected', False)) / total_gens)
+        pct_gold = int(100 * sum(1 for d in learning_monitor.generation_data if d.get('gold_key_collected', False)) / total_gens)
+        pct_doors = int(100 * sum(1 for d in learning_monitor.generation_data if d.get('doors_opened', 0) > 0) / total_gens)
+        pct_chest = int(100 * sum(1 for d in learning_monitor.generation_data if d.get('chest_opened', False)) / total_gens)
+        first_chest_gen = next((d.get('generation') for d in learning_monitor.generation_data if d.get('chest_opened', False)), generation)
+        trees_cut_total = sum(d.get('trees_cut', 0) for d in learning_monitor.generation_data)
+    else:
+        pct_red = pct_gold = pct_doors = pct_chest = 0
+        first_chest_gen = generation
+        trees_cut_total = 0
+
+    # Movimiento (compacto)
+    avg_distance_this_gen_m = (avg_exploration / 100) if avg_exploration else 0
+
+    # Penalizaciones ambientales acumuladas (esta generación)
+    total_env_penalty = sum(getattr(a, 'fitness_env_penalty', 0.0) for a in agents)
     
     # Estadísticas de habilidades
     trees_cut = 0  # No se rastrea individualmente por agente
@@ -973,144 +1052,155 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         import pygame as _pg
         _pg.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
 
-        # Estadísticas principales
+        # Estadísticas principales (Modo compacto)
         y_pos = 110
-        
-        # Generación y tick
+
+        # Encabezado corto
         gen_text = font_medium.render(f"Generación: {generation}", True, (100, 255, 150))
         final_surface.blit(gen_text, (30, y_pos))
         
-        # Convertir tick a tiempo real (minutos)
-        # Calcular tiempo total acumulado de todas las generaciones
+        # Tiempo total acumulado (minutos) estimado a partir del historial
         total_ticks = 0
         if learning_monitor.generation_data:
-            # Sumar todos los ticks de todas las generaciones
             for gen_data in learning_monitor.generation_data:
                 if 'generation_time_ticks' in gen_data:
                     total_ticks += gen_data['generation_time_ticks']
                 else:
-                    # Estimación basada en tiempo promedio por generación
-                    avg_age = gen_data.get('avg_age', 0)
-                    total_ticks += avg_age
-        
-        # Si no hay datos históricos, usar el tick actual como estimación
+                    total_ticks += gen_data.get('avg_age', 0)
         if total_ticks == 0:
             total_ticks = tick
-        
         total_minutes = total_ticks // 60 // 60
         time_text = font_medium.render(f"Tiempo total: {total_minutes:.1f} min", True, (100, 255, 150))
         final_surface.blit(time_text, (260, y_pos))
-        
-        y_pos += 25
-        
-        # Estadísticas de fitness
-        fitness_title = font_title.render("FITNESS", True, (100, 255, 150))
-        final_surface.blit(fitness_title, (30, y_pos))
-        y_pos += 20
-        
-        fitness_texts = [
-            f"Fitness máximo: {max_fitness:.1f}",
-            f"Fitness promedio: {avg_fitness:.1f}",
-            f"Agentes vivos: {len(alive_agents)}/{total_agents}"
-        ]
-        
-        for text in fitness_texts:
-            fitness_text = font_small.render(text, True, (200, 200, 200))
-            final_surface.blit(fitness_text, (40, y_pos))
-            y_pos += 18
-        
-        y_pos += 10
-        
-        # Estadísticas de comida TOTALES
-        food_title = font_title.render("COMIDA", True, (100, 255, 150))
-        final_surface.blit(food_title, (30, y_pos))
-        y_pos += 20
-        
-        food_texts = [
-            f"Manzanas promedio comidas: {avg_food_all_gens:.1f}",
-            f"Manzanas esta generación: {max_food} (máx), {avg_food:.1f} (prom)"
-        ]
-        
-        for text in food_texts:
-            food_text = font_small.render(text, True, (200, 200, 200))
-            final_surface.blit(food_text, (40, y_pos))
-            y_pos += 18
-        
-        y_pos += 10
-        
-        # Estadísticas de supervivencia TOTALES
-        survival_title = font_title.render("SUPERVIVENCIA", True, (100, 255, 150))
-        final_surface.blit(survival_title, (30, y_pos))
-        y_pos += 20
-        
-        survival_texts = [
-            f"Tiempo total de supervivencia: {total_survival_all_gens:.1f} min",
-            f"Tiempo promedio de supervivencia: {avg_survival_all_gens:.1f} min",
-            f"Tiempo esta generación: {max_survival/60/60:.1f} min (máx), {avg_survival/60/60:.1f} min (prom)"
-        ]
-        
-        for text in survival_texts:
-            survival_text = font_small.render(text, True, (200, 200, 200))
-            final_surface.blit(survival_text, (40, y_pos))
-            y_pos += 18
-        
-        y_pos += 10
-        
-        # Estadísticas de exploración TOTALES
-        exploration_title = font_title.render("EXPLORACIÓN", True, (100, 255, 150))
-        final_surface.blit(exploration_title, (30, y_pos))
-        y_pos += 20
-        
-        # Convertir a metros/km
-        if total_exploration_meters >= 1000:
-            total_exploration_display = f"{total_exploration_meters/1000:.1f} km"
+
+        y_pos += 28
+
+        # 1) Objetivo y resultado
+        goal_title = font_title.render("OBJETIVO", True, (100, 255, 150))
+        final_surface.blit(goal_title, (30, y_pos))
+        y_pos += 18
+        goal_line_1 = font_small.render("Objetivo: Abrir el cofre", True, (200, 200, 200))
+        goal_line_2 = font_small.render("Resultado: Completado", True, (200, 255, 200))
+        final_surface.blit(goal_line_1, (40, y_pos)); y_pos += 18
+        final_surface.blit(goal_line_2, (40, y_pos)); y_pos += 20
+
+        # 2) Pasos clave del reto (checklist)
+        steps_title = font_title.render("PASOS CLAVE", True, (100, 255, 150))
+        final_surface.blit(steps_title, (30, y_pos))
+        y_pos += 18
+        step_red = "SI" if world.red_key_collected else "NO"
+        step_gold = "SI" if world.gold_key_collected else "NO"
+        step_door_wood = "SI" if (world.door and world.door.is_open) else "NO"
+        step_door_iron = "SI" if (world.door_iron and world.door_iron.is_open) else "NO"
+        step_chest = "SI"  # Estamos en pantalla de FIN
+        steps_line_1 = font_small.render(f"Llave roja: {step_red}   Llave dorada: {step_gold}", True, (200, 200, 200))
+        steps_line_2 = font_small.render(f"Puerta madera: {step_door_wood}   Puerta hierro: {step_door_iron}", True, (200, 200, 200))
+        steps_line_3 = font_small.render(f"Cofre: {step_chest}", True, (200, 200, 200))
+        final_surface.blit(steps_line_1, (40, y_pos)); y_pos += 18
+        final_surface.blit(steps_line_2, (40, y_pos)); y_pos += 18
+        final_surface.blit(steps_line_3, (40, y_pos)); y_pos += 20
+
+        # 3) ¿Aprendieron?
+        learned_title = font_title.render("¿APRENDIERON?", True, (100, 255, 150))
+        final_surface.blit(learned_title, (30, y_pos))
+        y_pos += 18
+        improved_flag = "SI" if fitness_delta > 0.5 else "NO"
+        # Explorar más: comparar distancia promedio gen1 vs última
+        if learning_monitor.generation_data:
+            first_avg_dist = learning_monitor.generation_data[0].get('avg_distance', 0)
+            last_avg_dist = learning_monitor.generation_data[-1].get('avg_distance', avg_exploration)
+            explored_more_flag = "SI" if last_avg_dist > first_avg_dist else "NO"
         else:
-            total_exploration_display = f"{total_exploration_meters:.0f} m"
-            
-        if avg_exploration_meters >= 1000:
-            avg_exploration_display = f"{avg_exploration_meters/1000:.1f} km"
-        else:
-            avg_exploration_display = f"{avg_exploration_meters:.0f} m"
+            explored_more_flag = "N/A"
+        learn_line_1 = font_small.render(f"Mejoraron con el tiempo: {improved_flag}", True, (200, 200, 200))
+        learn_line_2 = font_small.render(f"Antes vs ahora (fitness prom): {initial_avg_fitness:.1f} → {avg_fitness:.1f}", True, (200, 200, 200))
+        learn_line_3 = font_small.render(f"Exploraron más: {explored_more_flag}", True, (200, 200, 200))
+        final_surface.blit(learn_line_1, (40, y_pos)); y_pos += 18
+        final_surface.blit(learn_line_2, (40, y_pos)); y_pos += 18
+        final_surface.blit(learn_line_3, (40, y_pos)); y_pos += 20
+
+        # 4) Línea de tiempo mínima
+        timeline_title = font_title.render("LÍNEA DE TIEMPO", True, (100, 255, 150))
+        final_surface.blit(timeline_title, (30, y_pos))
+        y_pos += 18
+        timeline_line_1 = font_small.render(f"Primera vez con cofre abierto: Gen {first_chest_gen}", True, (200, 200, 200))
+        timeline_line_2 = font_small.render(f"Tiempo total de simulación: {total_minutes:.1f} min", True, (200, 200, 200))
+        final_surface.blit(timeline_line_1, (40, y_pos)); y_pos += 18
+        final_surface.blit(timeline_line_2, (40, y_pos)); y_pos += 20
+
+        # 5) Top agente (ID corto)
+        top_title = font_title.render("TOP AGENTE", True, (100, 255, 150))
+        final_surface.blit(top_title, (30, y_pos))
+        y_pos += 18
+        top_agent = max(agents, key=lambda a: a.fitness) if agents else None
+        if top_agent:
+            raw_id = str(top_agent.id)
+            short_id = f"#{raw_id[-4:]}" if len(raw_id) > 4 else f"#{raw_id}"
+            top_km = top_agent.distance_traveled/100/1000  # px -> m -> km (1px=1cm)
+            top_fitness_capped = min(100.0, getattr(top_agent, 'fitness', 0.0))
+            top_line = font_small.render(
+                f"Agente {short_id}: fitness {top_fitness_capped:.1f}, comida {top_agent.food_eaten} manzanas, recorrio {top_km:.2f} km",
+                True, (200, 200, 200)
+            )
+            final_surface.blit(top_line, (40, y_pos)); y_pos += 20
+
+        # 6) Sello de movimiento
+        move_title = font_title.render("MOVIMIENTO", True, (100, 255, 150))
+        final_surface.blit(move_title, (30, y_pos))
+        y_pos += 18
+        try:
+            avg_sr = sum(getattr(a, 'metric_sr', 0.0) for a in agents) / len(agents) if agents else 0.0
+            movement_flag = "Mas recto y con menos vueltas" if avg_sr >= 0.5 else "Aun con vueltas"
+        except Exception:
+            movement_flag = "Aun con vueltas"
+        move_line = font_small.render(movement_flag, True, (200, 200, 200))
+        final_surface.blit(move_line, (40, y_pos)); y_pos += 20
+
+        # 7) Clustering (última generación)
+        cluster_title = font_title.render("CLUSTERING", True, (100, 255, 150))
+        final_surface.blit(cluster_title, (30, y_pos))
+        y_pos += 18
         
-        exploration_texts = [
-            f"Distancia máxima total recorrida: {total_exploration_display}",
-            f"Distancia total promedio recorrida: {avg_exploration_display}",
-            f"Distancia esta generación: {max_exploration/100:.0f} m (máx), {avg_exploration/100:.0f} m (prom)"
-        ]
-        
-        for text in exploration_texts:
-            exploration_text = font_small.render(text, True, (200, 200, 200))
-            final_surface.blit(exploration_text, (40, y_pos))
+        # Calcular clustering de la última generación
+        try:
+            if agents and len(agents) >= 3:
+                from src.analytics.clustering import BehaviorClusterer
+                clusterer = BehaviorClusterer(n_clusters=3)
+                clusters, cluster_stats = clusterer.cluster_agents(agents)
+                interpretations = clusterer.get_cluster_interpretation(cluster_stats)
+                
+                # Ordenar clusters por tipo
+                cluster_order = ["Exploradores", "Recolectores", "Exitosos"]
+                sorted_clusters = []
+                for cluster_id in cluster_stats['cluster_counts'].keys():
+                    count = cluster_stats['cluster_counts'][cluster_id]
+                    if count > 0:
+                        strategy = interpretations.get(cluster_id, f"C{cluster_id}")
+                        fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
+                        sorted_clusters.append((strategy, count, fitness))
+                sorted_clusters.sort(key=lambda x: (cluster_order.index(x[0]) if x[0] in cluster_order else 999, -x[1]))
+                
+                for strategy, count, fitness in sorted_clusters[:3]:
+                    cluster_text = f"{strategy}: {count} agentes (fitness {fitness:.1f})"
+                    cluster_line = font_small.render(cluster_text, True, (200, 200, 200))
+                    final_surface.blit(cluster_line, (40, y_pos))
+                    y_pos += 18
+            else:
+                no_cluster_line = font_small.render("No disponible (pocos agentes)", True, (150, 150, 150))
+                final_surface.blit(no_cluster_line, (40, y_pos))
+                y_pos += 18
+        except Exception as e:
+            error_line = font_small.render("Error en clustering", True, (150, 150, 150))
+            final_surface.blit(error_line, (40, y_pos))
             y_pos += 18
         
-        y_pos += 10
-        
-        # Estadísticas de fortalezas
-        fortress_title = font_title.render("FORTALEZAS", True, (100, 255, 150))
-        final_surface.blit(fortress_title, (30, y_pos))
-        y_pos += 20
-        
-        fortress_texts = [
-            f"Llaves rojas recogidas: {red_keys_collected}",
-            f"Llaves doradas recogidas: {gold_keys_collected}",
-            f"Puertas abiertas: {doors_opened}"
-        ]
-        
-        for text in fortress_texts:
-            fortress_text = font_small.render(text, True, (200, 200, 200))
-            final_surface.blit(fortress_text, (40, y_pos))
-            y_pos += 18
-        
-        y_pos += 24
-        
-        # Mensaje final
+        y_pos += 8
+
+        # Mensaje final + instrucciones
         final_text = font_medium.render("¡Los agentes evolutivos han completado su misión!", True, (100, 255, 150))
         final_rect = final_text.get_rect(center=(panel_width // 2, y_pos))
         final_surface.blit(final_text, final_rect)
-        
-        y_pos += 28
-        
-        # Instrucciones
+        y_pos += 26
         instructions_text = font_small.render("Presiona ESC o ENTER para salir", True, (220, 220, 220))
         instructions_rect = instructions_text.get_rect(center=(panel_width // 2, y_pos))
         final_surface.blit(instructions_text, instructions_rect)
