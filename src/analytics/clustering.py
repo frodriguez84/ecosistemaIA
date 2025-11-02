@@ -112,39 +112,78 @@ class BehaviorClusterer:
         return stats
     
     def get_cluster_interpretation(self, cluster_stats: Dict[str, Any]) -> Dict[int, str]:
-        """Interpreta cada cluster en 3 tipos claros: Exploradores, Recolectores, Exitosos."""
-        interpretations = {}
-        
-        # Primero identificar qué cluster es cada tipo
-        cluster_scores = {}  # cluster_id -> (tipo_score, tipo_name)
-        
-        for cluster_id in cluster_stats['cluster_counts'].keys():
-            behaviors = cluster_stats['cluster_behaviors'][cluster_id]
-            fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
-            exploracion = behaviors.get('exploracion', 0)
-            comida = behaviors.get('comida', 0)
-            
-            # Calcular score para cada tipo
-            # Exploradores: alta exploración, fitness bajo-medio, poca comida
-            explorador_score = exploracion * 0.4 + (100 - fitness) * 0.3 - comida * 0.3
-            
-            # Recolectores: mucha comida, fitness medio, exploración moderada
-            recolector_score = comida * 0.5 + fitness * 0.3 - abs(exploracion - 500) * 0.2
-            
-            # Exitosos: fitness alto (combinan bien todo)
-            exitoso_score = fitness * 0.6 + comida * 0.2 + exploracion * 0.2
-            
-            # Determinar tipo con mayor score
-            scores = [
-                (explorador_score, "Exploradores"),
-                (recolector_score, "Recolectores"),
-                (exitoso_score, "Exitosos")
-            ]
-            scores.sort(reverse=True, key=lambda x: x[0])
-            
-            # Asignar el tipo con mayor score
-            interpretations[cluster_id] = scores[0][1]
-        
+        """Interpreta clusters forzando 3 roles distintos por ranking:
+        - Exploradores: mayor exploración promedio
+        - Recolectores: mayor comida promedio (restantes)
+        - Exitosos: mayor fitness promedio (restantes)
+        Resto: asignación por métrica dominante.
+        """
+        interpretations: Dict[int, str] = {}
+        counts = cluster_stats.get('cluster_counts', {})
+        if not counts:
+            return interpretations
+
+        # Preparar métricas por cluster
+        metrics = []  # (cluster_id, exploracion, comida, fitness)
+        for cid, cnt in counts.items():
+            if cnt <= 0:
+                continue
+            behaviors = cluster_stats['cluster_behaviors'].get(cid, {})
+            fitness_stats = cluster_stats['cluster_fitness'].get(cid, {})
+            exploracion = float(behaviors.get('exploracion', 0.0))
+            comida = float(behaviors.get('comida', 0.0))
+            fitness = float(fitness_stats.get('promedio', 0.0))
+            metrics.append((cid, exploracion, comida, fitness))
+
+        if not metrics:
+            return interpretations
+
+        remaining = set(cid for cid, *_ in metrics)
+
+        # 1) Exitosos: mayor fitness
+        cid_exit = max(metrics, key=lambda m: m[3])[0]
+        interpretations[cid_exit] = "Exitosos"
+        if cid_exit in remaining:
+            remaining.remove(cid_exit)
+
+        # 2) Exploradores: mayor exploración entre restantes
+        if remaining:
+            cid_expl = max([m for m in metrics if m[0] in remaining], key=lambda m: m[1])[0]
+            interpretations[cid_expl] = "Exploradores"
+            remaining.remove(cid_expl)
+
+        # 3) Recolectores: mayor comida entre restantes
+        if remaining:
+            cid_reco = max([m for m in metrics if m[0] in remaining], key=lambda m: m[2])[0]
+            interpretations[cid_reco] = "Recolectores"
+            remaining.remove(cid_reco)
+
+        # 4) Resto: elegir rol por métrica dominante (normalizada por rango simple)
+        if remaining:
+            # Calcular rangos para normalización simple
+            exps = [m[1] for m in metrics]
+            foods = [m[2] for m in metrics]
+            fits = [m[3] for m in metrics]
+            def norm(val, arr):
+                mn, mx = min(arr), max(arr)
+                return 0.0 if mx == mn else (val - mn) / (mx - mn)
+            for cid in list(remaining):
+                _, e, c, f = next(m for m in metrics if m[0] == cid)
+                scores = {
+                    "Exploradores": norm(e, exps),
+                    "Recolectores": norm(c, foods),
+                    "Exitosos": norm(f, fits)
+                }
+                # Evitar duplicar etiquetas ya usadas si es posible
+                unused = [r for r in ["Exploradores", "Recolectores", "Exitosos"] if r not in interpretations.values()]
+                if unused:
+                    # Tomar mayor entre roles no usados; si todos usados, tomar global mayor
+                    best_role = max(unused, key=lambda r: scores[r])
+                else:
+                    best_role = max(scores.items(), key=lambda kv: kv[1])[0]
+                interpretations[cid] = best_role
+                remaining.remove(cid)
+
         return interpretations
     
     def print_cluster_report(self, agents: List[Any], clusters: np.ndarray, cluster_stats: Dict[str, Any]):

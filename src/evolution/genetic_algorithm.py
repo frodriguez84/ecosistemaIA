@@ -11,13 +11,14 @@ class GeneticAlgorithm:
     """Algoritmo genético para evolución de agentes."""
     
     def __init__(self, population_size=20, mutation_rate=0.1, crossover_rate=0.7, elitism=2, 
-                 selection_method="elitism", tournament_size=3):
+                 selection_method="elitism", tournament_size=3, meeting_pool_fraction=0.4):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.elitism = elitism
         self.selection_method = selection_method
         self.tournament_size = tournament_size
+        self.meeting_pool_fraction = meeting_pool_fraction
         self.world = None
         
         print(f"🧬 Algoritmo genético configurado:")
@@ -27,6 +28,8 @@ class GeneticAlgorithm:
         print(f"   - Selección: {selection_method.upper()}")
         if selection_method == "tournament":
             print(f"   - Tamaño torneo: {tournament_size}")
+        elif selection_method == "meeting_pool":
+            print(f"   - Pool: top {int(meeting_pool_fraction*100)}% por ranking")
         else:
             print(f"   - Élite: {elitism}")
     
@@ -107,7 +110,7 @@ class GeneticAlgorithm:
         
         return agents
     
-    def evolve(self, agents):
+    def evolve(self, agents, generation=1):
         """Evoluciona la población."""
         if not agents:
             return self._create_random_population()
@@ -180,6 +183,35 @@ class GeneticAlgorithm:
         elif self.selection_method == "tournament":
             # Solo selección por torneo (sin élite)
             parents = self._tournament_selection(agents, self.population_size)
+        elif self.selection_method == "meeting_pool":
+            # Meeting pool por ranking + elitismo configurable
+            for i in range(min(self.elitism, len(agents))):
+                if i < len(agents):
+                    elite_brain = agents[i].brain
+                    # Crear nuevo agente con cerebro del élite pero estado reseteado
+                    attempts = 0
+                    max_attempts = 100
+                    valid_position = False
+                    while not valid_position and attempts < max_attempts:
+                        x = random.randint(50, 900)
+                        y = random.randint(50, 750)
+                        valid_position = True
+                        for obstacle in self.world.obstacles:
+                            if obstacle.collides_with(x, y, 35):
+                                valid_position = False
+                                break
+                        if valid_position:
+                            for pond_obj in self.world.pond_obstacles:
+                                if pond_obj.collides_with(x, y, 35, 35):
+                                    valid_position = False
+                                    break
+                        attempts += 1
+                    if not valid_position:
+                        x = 100
+                        y = 100
+                    elite_agent = AdvancedAgent(x, y, elite_brain)
+                    new_agents.append(elite_agent)
+            parents = self._meeting_pool_selection(agents, self.population_size - len(new_agents))
         else:
             # Fallback: usar elitismo
             for i in range(min(self.elitism, len(agents))):
@@ -250,10 +282,15 @@ class GeneticAlgorithm:
                     SimulationConfig.HIDDEN_SIZE,
                     SimulationConfig.OUTPUT_SIZE
                 )
-                child_brain.W1 = parent1.brain.W1.copy()
-                child_brain.b1 = parent1.brain.b1.copy()
-                child_brain.W2 = parent1.brain.W2.copy()
-                child_brain.b2 = parent1.brain.b2.copy()
+                # Copiar todas las capas de forma segura
+                if hasattr(child_brain, 'copy_from'):
+                    child_brain.copy_from(parent1.brain)
+                else:
+                    # Fallback para estructuras antiguas
+                    child_brain.W1 = parent1.brain.W1.copy()
+                    child_brain.b1 = parent1.brain.b1.copy()
+                    child_brain.W2 = parent1.brain.W2.copy()
+                    child_brain.b2 = parent1.brain.b2.copy()
             
             # Mutación adaptativa (más agresiva si diversidad baja)
             mutation_rate = self.mutation_rate
@@ -313,4 +350,17 @@ class GeneticAlgorithm:
             winner = max(tournament, key=lambda a: a.fitness)
             parents.append(winner)
         
+        return parents
+
+    def _meeting_pool_selection(self, agents, num_parents):
+        """Selección meeting pool por ranking: se toma el top X% y se elige al azar dentro del pool."""
+        if num_parents <= 0:
+            return []
+        if not agents:
+            return []
+        k = max(2, int(len(agents) * max(0.05, min(0.95, self.meeting_pool_fraction))))
+        pool = agents[:k]
+        parents = []
+        for _ in range(num_parents):
+            parents.append(random.choice(pool))
         return parents

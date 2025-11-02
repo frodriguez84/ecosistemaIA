@@ -577,14 +577,13 @@ class World:
             wall_x = start_x + i * 20
             wall_y = start_y
             
-            # Verificar si esta posición coincide con la puerta (más preciso)
+            # Verificar si esta posición coincide con la puerta (usar tolerancia de 5px)
+            skip_this_wall = False
             if door_x is not None and door_y is not None:
-                if wall_x == door_x and wall_y == door_y:
-                    pass  # Saltar esta posición (donde va la puerta)
-                else:
-                    self.obstacles.append(Obstacle(wall_x, wall_y, 20, 20, "wall"))
-                    walls_generated += 1
-            else:
+                if abs(wall_x - door_x) < 5 and abs(wall_y - door_y) < 5:
+                    skip_this_wall = True  # Saltar solo este bloque (donde va la puerta)
+            
+            if not skip_this_wall:
                 self.obstacles.append(Obstacle(wall_x, wall_y, 20, 20, "wall"))
                 walls_generated += 1
             
@@ -592,14 +591,13 @@ class World:
             wall_x = start_x + i * 20
             wall_y = start_y + (size - 1) * 20
             
-            # Verificar si esta posición coincide con la puerta (más preciso)
+            # Verificar si esta posición coincide con la puerta (usar tolerancia de 5px)
+            skip_this_wall = False
             if door_x is not None and door_y is not None:
-                if wall_x == door_x and wall_y == door_y:
-                    pass  # Saltar esta posición (donde va la puerta)
-                else:
-                    self.obstacles.append(Obstacle(wall_x, wall_y, 20, 20, "wall"))
-                    walls_generated += 1
-            else:
+                if abs(wall_x - door_x) < 5 and abs(wall_y - door_y) < 5:
+                    skip_this_wall = True  # Saltar solo este bloque (donde va la puerta)
+            
+            if not skip_this_wall:
                 self.obstacles.append(Obstacle(wall_x, wall_y, 20, 20, "wall"))
                 walls_generated += 1
         
@@ -714,46 +712,50 @@ class World:
                 small_y <= y <= small_y + small_size * 20)
     
     def _clear_area_around_doors(self):
-        """Elimina obstáculos en el área alrededor de las puertas."""
+        """Elimina obstáculos (INCLUYENDO WALLS) en el área alrededor de las puertas."""
         from config import SimulationConfig
         tile_size = SimulationConfig.TILE_SIZE
         obstacles_to_remove = []
         
-        # Área alrededor de la puerta pequeña (una tile al frente)
+        # Área alrededor de la puerta pequeña (puerta está en pared sur, espacio hacia abajo)
         if self.door:
             door_area = {
-                'x': self.door.x - tile_size,
-                'y': self.door.y - tile_size * 2,  # Frente de la puerta
-                'width': tile_size * 3,
-                'height': tile_size * 2
+                'x': self.door.x - tile_size * 2,  # Más espacio horizontal
+                'y': self.door.y + tile_size,  # DESDE ABAJO de la puerta (no incluir la fila de la puerta)
+                'width': tile_size * 5,  # Área más amplia
+                'height': tile_size * 2  # Espacio hacia abajo (reducido porque no incluimos la fila de la puerta)
             }
             
             for obstacle in self.obstacles:
-                if obstacle.type != "wall":  # No eliminar muros
-                    obstacle_center_x = obstacle.x + obstacle.width // 2
-                    obstacle_center_y = obstacle.y + obstacle.height // 2
-                    
-                    if (door_area['x'] <= obstacle_center_x <= door_area['x'] + door_area['width'] and
-                        door_area['y'] <= obstacle_center_y <= door_area['y'] + door_area['height']):
-                        obstacles_to_remove.append(obstacle)
+                obstacle_center_x = obstacle.x + obstacle.width // 2
+                obstacle_center_y = obstacle.y + obstacle.height // 2
+                
+                # NO eliminar muros que están en la MISMA fila que la puerta (son parte de la pared sur)
+                if obstacle.type == "wall" and abs(obstacle_center_y - self.door.y) < 10:
+                    continue  # Mantener muros en la misma fila que la puerta
+                
+                # Eliminar otros obstáculos en el área
+                if (door_area['x'] <= obstacle_center_x <= door_area['x'] + door_area['width'] and
+                    door_area['y'] <= obstacle_center_y <= door_area['y'] + door_area['height']):
+                    obstacles_to_remove.append(obstacle)
         
-        # Área alrededor de la puerta grande
+        # Área alrededor de la puerta grande (puerta está en pared norte, espacio hacia arriba)
         if self.door_iron:
             door_iron_area = {
-                'x': self.door_iron.x - tile_size,
-                'y': self.door_iron.y - tile_size * 2,  # Frente de la puerta
-                'width': tile_size * 3,
-                'height': tile_size * 2
+                'x': self.door_iron.x - tile_size * 2,  # Más espacio horizontal
+                'y': self.door_iron.y - tile_size * 3,  # Frente de la puerta (hacia arriba)
+                'width': tile_size * 5,  # Área más amplia
+                'height': tile_size * 3  # Más espacio hacia arriba
             }
             
             for obstacle in self.obstacles:
-                if obstacle.type != "wall":  # No eliminar muros
-                    obstacle_center_x = obstacle.x + obstacle.width // 2
-                    obstacle_center_y = obstacle.y + obstacle.height // 2
-                    
-                    if (door_iron_area['x'] <= obstacle_center_x <= door_iron_area['x'] + door_iron_area['width'] and
-                        door_iron_area['y'] <= obstacle_center_y <= door_iron_area['y'] + door_iron_area['height']):
-                        obstacles_to_remove.append(obstacle)
+                # AHORA SÍ eliminamos walls también
+                obstacle_center_x = obstacle.x + obstacle.width // 2
+                obstacle_center_y = obstacle.y + obstacle.height // 2
+                
+                if (door_iron_area['x'] <= obstacle_center_x <= door_iron_area['x'] + door_iron_area['width'] and
+                    door_iron_area['y'] <= obstacle_center_y <= door_iron_area['y'] + door_iron_area['height']):
+                    obstacles_to_remove.append(obstacle)
         
         # Eliminar obstáculos duplicados
         obstacles_to_remove = list(set(obstacles_to_remove))
@@ -764,7 +766,7 @@ class World:
                 self.obstacles.remove(obstacle)
         
         if obstacles_to_remove:
-            pass  # print(f"🚪 Limpieza alrededor de puertas: {len(obstacles_to_remove)} obstáculos eliminados")
+            pass  # print(f"🚪 Limpieza alrededor de puertas: {len(obstacles_to_remove)} obstáculos eliminados (incluye walls)")
     
     def check_axe_pickup(self, agent_x, agent_y):
         """Verifica si un agente agarró el hacha."""
@@ -961,18 +963,20 @@ class World:
         from config import SimulationConfig
         
         # Verificar red_key (desde gen 11)
+        # Radio aumentado: agente (8) + margen generoso (12) = 20 px total
         if not self.red_key_collected and generation >= SimulationConfig.RED_KEY_SPAWN_GEN:
             if self.red_key and not self.red_key.collected:
-                if self.red_key.collides_with(agent_x, agent_y, 8):
+                if self.red_key.collides_with(agent_x, agent_y, 12):  # Aumentado de 8 a 12
                     if self.red_key.collect(None):
                         self.red_key_collected = True
                         return "red_key"
         
         # Verificar gold_key SOLO si la puerta de madera está abierta
+        # Radio aumentado: agente (8) + margen generoso (12) = 20 px total
         if not self.gold_key_collected and self.gold_key and not self.gold_key.collected:
             # Verificar que la puerta de madera esté abierta
             if self.door and self.door.is_open:
-                if self.gold_key.collides_with(agent_x, agent_y, 8):
+                if self.gold_key.collides_with(agent_x, agent_y, 12):  # Aumentado de 8 a 12
                     if self.gold_key.collect(None):
                         self.gold_key_collected = True
                         return "gold_key"
@@ -988,20 +992,22 @@ class World:
         gold_key_available = self.gold_key_collected  # ✅ CORRECTO
         
         # Golpear door
+        # Umbral aumentado: radio agente (8) + margen generoso (27) = 35 px total
         if self.door and not self.door.is_open:
             if red_key_available:  # ✅ CORRECTO - Agente tiene red_key
                 distance = ((agent_x - (self.door.x + self.door.width // 2))**2 + 
                            (agent_y - (self.door.y + self.door.height // 2))**2)**0.5
-                if distance < 25:
+                if distance < 25:  # Aumentado de 25 a 35 para mayor margen
                     if self.door.hit(current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
                         return "door"
         
         # Golpear door_iron
+        # Umbral aumentado: radio agente (8) + margen generoso (27) = 35 px total
         if self.door_iron and not self.door_iron.is_open:
             if gold_key_available:  # ✅ CORRECTO - Agente tiene gold_key
                 distance = ((agent_x - (self.door_iron.x + self.door_iron.width // 2))**2 + 
                            (agent_y - (self.door_iron.y + self.door_iron.height // 2))**2)**0.5
-                if distance < 25:
+                if distance < 25:  # Aumentado de 25 a 35 para mayor margen
                     if self.door_iron.hit(current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
                         return "door_iron"
         
@@ -1016,7 +1022,7 @@ class World:
         return False
     
     def _generate_red_key(self, generation):
-        """Genera la red_key en el mapa libremente (desde gen 11)."""
+        """Genera la red_key en el mapa libremente"""
         from config import SimulationConfig
         
         if generation >= SimulationConfig.RED_KEY_SPAWN_GEN and not self.red_key_collected:

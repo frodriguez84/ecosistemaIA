@@ -6,8 +6,13 @@ import numpy as np
 import pygame
 import random
 import math
-from config import SimulationConfig
+import sys
+import os
 from collections import deque
+
+# Agregar el directorio raíz al path para importar config
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from config import SimulationConfig
 
 
 class AdvancedAgent:
@@ -70,6 +75,7 @@ class AdvancedAgent:
         self.metric_turn_smooth = 1.0
         self.metric_novelty = 0.0
         self.fitness_env_penalty = 0.0  # penalizaciones acumuladas del entorno (agua, etc.)
+        self.puzzle_rewards = 0.0  # rewards acumulados del puzzle (llaves, puertas, cofre)
         
         # Objetivo de comida
         self.target_food = None
@@ -236,9 +242,14 @@ class AdvancedAgent:
                         decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.5)
                 else:
                     self.target_food = None
-        # NUEVA LÓGICA INTELIGENTE PARA PUZZLE
-        if self.fitness > 70:  # Agentes con fitness alto
-            # Buscar puertas para golpear
+        # LÓGICA INTELIGENTE PARA PUZZLE - SOLO DESPUÉS DE APRENDER TAREAS BÁSICAS
+        # Umbrales altos para asegurar que primero aprendan: comer, explorar, cortar árboles
+        # Solo agentes con fitness alto (que ya dominan tareas básicas) intentan el puzzle
+        puzzle_threshold_door = 35.0   # Umbral alto: solo agentes con fitness >25 intentan puertas (después de aprender tareas básicas)
+        puzzle_threshold_key = 40.0   # Umbral alto: solo agentes con fitness >35 buscan llaves/cofre (después de dominar tareas básicas)
+        
+        # Buscar puertas para golpear (umbral más bajo)
+        if self.fitness > puzzle_threshold_door:
             nearest_door = self._find_nearest_door(world)
             if nearest_door:
                 target_angle = float(np.arctan2(nearest_door[1] - float(self.y), nearest_door[0] - float(self.x)))
@@ -261,8 +272,8 @@ class AdvancedAgent:
                     decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.5)
                 self.target_food = None
         
-        if self.fitness > 80:  # Agentes con fitness muy alto
-            # Buscar llaves y cofre
+        # Buscar llaves y cofre (umbral más bajo)
+        if self.fitness > puzzle_threshold_key:
             nearest_key = self._find_nearest_key(world)
             if nearest_key:
                 target_angle = float(np.arctan2(nearest_key[1] - float(self.y), nearest_key[0] - float(self.x)))
@@ -274,7 +285,7 @@ class AdvancedAgent:
                 while angle_diff < -np.pi:
                     angle_diff += 2 * np.pi
                 
-                # Movimiento hacia llave
+                # Movimiento hacia llave/cofre (más agresivo)
                 if abs(angle_diff) < 0.3:
                     decisions['move_forward'] = max(decisions['move_forward'], 0.9)
                 elif angle_diff > 0:
@@ -474,7 +485,7 @@ class AdvancedAgent:
                 
                 dist = float(np.sqrt((x_float - food_x)**2 + (y_float - food_y)**2))
                 
-                if dist < 40:  # Rango MÁS grande para comer (AUMENTADO)
+                if dist < 20:  # Rango MÁS grande para comer (AUMENTADO)
                     food['eaten'] = True
                     self.energy = min(self.max_energy, self.energy + 30)
                     self.food_eaten += 1
@@ -517,12 +528,10 @@ class AdvancedAgent:
         """Intenta recoger una llave."""
         key_type = world.check_key_pickup(self.x, self.y, generation)
         if key_type == "red_key":
-            self.fitness += SimulationConfig.RED_KEY_REWARD
-            self._calculate_fitness()
+            self.puzzle_rewards += SimulationConfig.RED_KEY_REWARD
             return True
         elif key_type == "gold_key":
-            self.fitness += SimulationConfig.GOLD_KEY_REWARD
-            self._calculate_fitness()
+            self.puzzle_rewards += SimulationConfig.GOLD_KEY_REWARD
             return True
         return False
     
@@ -534,13 +543,11 @@ class AdvancedAgent:
         
         door_type = world.process_door_hit(self.x, self.y, current_tick)
         if door_type == "door":
-            self.fitness += SimulationConfig.DOOR_OPEN_REWARD
-            self._calculate_fitness()
+            self.puzzle_rewards += SimulationConfig.DOOR_OPEN_REWARD
             self.last_tree_hit_tick = current_tick
             return True
         elif door_type == "door_iron":
-            self.fitness += SimulationConfig.DOOR_IRON_OPEN_REWARD
-            self._calculate_fitness()
+            self.puzzle_rewards += SimulationConfig.DOOR_IRON_OPEN_REWARD
             self.last_tree_hit_tick = current_tick
             return True
         return False
@@ -548,8 +555,7 @@ class AdvancedAgent:
     def _try_open_chest(self, world):
         """Intenta abrir el cofre."""
         if world.check_chest_open(self.x, self.y):
-            self.fitness += SimulationConfig.CHEST_REWARD
-            self._calculate_fitness()
+            self.puzzle_rewards += SimulationConfig.CHEST_REWARD
             return True
         return False
     
@@ -655,38 +661,64 @@ class AdvancedAgent:
         return nearest_target
     
     def _calculate_fitness(self):
-        """Calcula el fitness del agente."""
-        # Fitness base por supervivencia (MÁS IMPORTANTE) - AUMENTADO
-        survival_fitness = min(self.age * 0.012, 15)  # Máximo 10 puntos por supervivencia
+        """Calcula el fitness del agente basado en rendimiento."""       
+        # MULTIPLICADORES FIJOS: premian el rendimiento real sin depender de la generación
+        # Valores balanceados que permiten crecimiento natural cuando los agentes mejoran
+        # Ajustados para mejorar curva de fitness promedio (presentación)
+        food_multiplier = 10.0  # Premia comer más (aumentado para mejor curva promedio)
+        exploration_multiplier = 10.0  # Premia explorar más (aumentado para mejor curva promedio)
+        survival_multiplier = 0.015  # Premia supervivencia (aumentado para mejor curva promedio)
+        anti_circle_multiplier = 5.0  # Premia movimiento eficiente
+        obstacle_multiplier = 0.20  # Premia evitar obstáculos
+        penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
         
-        # Fitness por comida (VALOR INTERMEDIO) - AUMENTADO
-        food_fitness = self.food_eaten * 6  # 6 puntos por manzana (era 4)
+        # Fitness por supervivencia (crece naturalmente con la edad)
+        survival_fitness = min(self.age * survival_multiplier, 23)  # Cap aumentado de 20 a 28
         
-        # Fitness por exploración (VALOR INTERMEDIO) - AUMENTADO
-        exploration_fitness = min(self.distance_traveled / 500, 8)  # Máximo 10 puntos (era 8)
+        # Fitness por comida (crece naturalmente con sqrt para evitar explosión)
+        food_fitness = food_multiplier * float(np.sqrt(max(0.0, float(self.food_eaten))))
         
-        # Fitness por evitar obstáculos (MANTENER BAJO) - AUMENTADO
+        # Fitness por exploración (crece naturalmente con log para evitar explosión)
+        exploration_fitness = exploration_multiplier * float(np.log1p(max(0.0, float(self.distance_traveled)) / 350.0))
+        exploration_fitness = min(exploration_fitness, 15.0)  # Límite aumentado de 15.0 a 18.0
+        
+        # Fitness por evitar obstáculos (solo si el agente tiene un fitness base decente)
         obstacle_fitness = 0
-        # Usar fitness base en lugar de self.fitness para evitar dependencia circular
         base_fitness = survival_fitness + food_fitness + exploration_fitness
-        if base_fitness > 15:  # Umbral ajustado para obstáculos
-            obstacle_fitness = self.obstacles_avoided * 0.50  # Recompensa aumentada (era 0.75)
+        if base_fitness > 10:
+            obstacle_fitness = self.obstacles_avoided * obstacle_multiplier
         
-        # Métricas anti-círculo - AUMENTADO
+        # Métricas anti-círculo (premian movimiento eficiente)
         w1 = getattr(SimulationConfig, 'ANTI_CIRCLE_W1_SR', 0.4)
         w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
         w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
         anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
-        anti_circle_bonus = 6.0 * anti_circle_score  # hasta 10 puntos extra (era 6)
+        anti_circle_bonus = anti_circle_multiplier * anti_circle_score
         
-        # Fitness total
+        # Fitness total (sin limitaciones artificiales por generación)
         total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + anti_circle_bonus
         
-        # Restar penalizaciones acumuladas del entorno (agua, etc.) - CON CLAMP
-        total_fitness -= min(self.fitness_env_penalty, 20)  # Clamp para evitar penalización excesiva
+        # Sumar rewards del puzzle (llaves, puertas, cofre) - estos premian el éxito real
+        total_fitness += self.puzzle_rewards
         
-        # Normalizar a 0-100
-        self.fitness = max(0, min(100, total_fitness))
+        # Restar penalizaciones acumuladas del entorno (fijo, no adaptativo)
+        total_fitness -= min(self.fitness_env_penalty, penalty_max)
+        
+        # Normalizar a 0-100 (sin tope artificial por generación)
+        unclamped = max(0, min(100, total_fitness))
+
+        # Tope progresivo solo por TIEMPO VIVIDO (no por generación)
+        # Agentes que viven más tiempo pueden alcanzar fitness más alto
+        time_ratio = min(1.0, float(self.age) / float(getattr(SimulationConfig, 'BASE_TICKS', 600)))
+        
+        # Tope basado solo en tiempo: permite crecimiento natural
+        # Agentes que viven el tiempo completo pueden llegar hasta 100
+        # Ajustado a 50-100 para permitir que más agentes alcancen fitness alto
+        base_cap = 50.0  # Base fija (reducida para permitir más agentes con fitness alto)
+        cap_range = 50.0  # Rango fijo (aumentado para permitir más crecimiento)
+        max_allowed = base_cap + cap_range * time_ratio  # 50-100 según tiempo vivido
+        
+        self.fitness = min(unclamped, max_allowed)
         
         return self.fitness
 
@@ -880,77 +912,113 @@ class AdvancedAgent:
 
 
 class SimpleNeuralNetwork:
-    """Red neuronal simple para el cerebro del agente."""
+    """Red neuronal simple (soporta 1 o múltiples capas ocultas)."""
     
     def __init__(self, input_size=8, hidden_size=8, output_size=4):
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        
-        # Pesos aleatorios
-        self.W1 = np.random.randn(input_size, hidden_size) * 0.5
-        self.b1 = np.random.randn(hidden_size) * 0.1
-        self.W2 = np.random.randn(hidden_size, output_size) * 0.5
-        self.b2 = np.random.randn(output_size) * 0.1
-        
+        # Permitir int (1 capa) o lista (N capas)
+        if isinstance(hidden_size, int):
+            hidden_layers = [hidden_size]
+        else:
+            hidden_layers = list(hidden_size) if hidden_size else []
+
+        self.input_size = int(input_size)
+        self.hidden_layers = hidden_layers
+        self.output_size = int(output_size)
+
+        # Definir tamaños de capas encadenadas
+        layer_dims = [self.input_size] + self.hidden_layers + [self.output_size]
+
+        # Crear listas de pesos y sesgos para cada capa (i -> i+1)
+        self.weights = []  # lista de matrices W
+        self.biases = []   # lista de vectores b
+        for in_dim, out_dim in zip(layer_dims[:-1], layer_dims[1:]):
+            W = np.random.randn(in_dim, out_dim) * 0.5
+            b = np.random.randn(out_dim) * 0.1
+            self.weights.append(W)
+            self.biases.append(b)
+
+        # Back-compat: exponer W1/b1 y W2/b2 (primera y última capa)
+        # Esto evita romper accesos residuales en otros módulos
+        self.W1 = self.weights[0]
+        self.b1 = self.biases[0]
+        self.W2 = self.weights[-1]
+        self.b2 = self.biases[-1]
+
         # Debug: mostrar configuración de la red (solo una vez)
         if not hasattr(SimpleNeuralNetwork, '_debug_printed'):
             SimpleNeuralNetwork._debug_printed = True
-            print(f"🧠 Red neuronal: {input_size}→{hidden_size}→{output_size}")
+            hidden_repr = "→".join(str(h) for h in self.hidden_layers) if self.hidden_layers else "0"
+            print(f"🧠 Red neuronal: {self.input_size}→{hidden_repr}→{self.output_size}")
     
     def forward(self, x):
-        """Propagación hacia adelante."""
-        # Capa oculta
-        z1 = np.dot(x, self.W1) + self.b1
-        a1 = np.tanh(z1)
+        """Propagación hacia adelante a través de todas las capas."""
+        a = x
+        # Todas las capas excepto la última con tanh
+        for idx in range(len(self.weights) - 1):
+            z = np.dot(a, self.weights[idx]) + self.biases[idx]
+            a = np.tanh(z)
+        # Última capa
+        z_out = np.dot(a, self.weights[-1]) + self.biases[-1]
+        a_out = np.tanh(z_out)
         
-        # Capa de salida
-        z2 = np.dot(a1, self.W2) + self.b2
-        a2 = np.tanh(z2)
-        
-        # Convertir a diccionario de acciones
         return {
-            'move_forward': float(a2[0]),
-            'turn_left': float(a2[1]),
-            'turn_right': float(a2[2]),
-            'eat': float(a2[3])
+            'move_forward': float(a_out[0]),
+            'turn_left': float(a_out[1]),
+            'turn_right': float(a_out[2]),
+            'eat': float(a_out[3])
         }
     
     def mutate(self, mutation_rate=0.1):
-        """Mutación de la red neuronal."""
-        # Mutar pesos de la primera capa
-        mask1 = np.random.random(self.W1.shape) < mutation_rate
-        self.W1[mask1] += np.random.randn(*self.W1[mask1].shape) * 0.1
-        
-        # Mutar sesgos de la primera capa
-        mask_b1 = np.random.random(self.b1.shape) < mutation_rate
-        self.b1[mask_b1] += np.random.randn(*self.b1[mask_b1].shape) * 0.1
-        
-        # Mutar pesos de la segunda capa
-        mask2 = np.random.random(self.W2.shape) < mutation_rate
-        self.W2[mask2] += np.random.randn(*self.W2[mask2].shape) * 0.1
-        
-        # Mutar sesgos de la segunda capa
-        mask_b2 = np.random.random(self.b2.shape) < mutation_rate
-        self.b2[mask_b2] += np.random.randn(*self.b2[mask_b2].shape) * 0.1
+        """Mutación gaussiana en todas las capas."""
+        for i in range(len(self.weights)):
+            W = self.weights[i]
+            b = self.biases[i]
+            mask_W = np.random.random(W.shape) < mutation_rate
+            W[mask_W] += np.random.randn(*W[mask_W].shape) * 0.1
+            mask_b = np.random.random(b.shape) < mutation_rate
+            b[mask_b] += np.random.randn(*b[mask_b].shape) * 0.1
+        # Back-compat referencias
+        self.W1 = self.weights[0]
+        self.b1 = self.biases[0]
+        self.W2 = self.weights[-1]
+        self.b2 = self.biases[-1]
     
     def crossover(self, other):
-        """Cruza con otra red neuronal."""
-        child = SimpleNeuralNetwork(self.input_size, self.hidden_size, self.output_size)
-        
-        # Cruza uniforme
-        for i in range(self.input_size):
-            for j in range(self.hidden_size):
-                if np.random.random() < 0.5:
-                    child.W1[i, j] = self.W1[i, j]
-                else:
-                    child.W1[i, j] = other.W1[i, j]
-        
-        for i in range(self.hidden_size):
-            for j in range(self.output_size):
-                if np.random.random() < 0.5:
-                    child.W2[i, j] = self.W2[i, j]
-                else:
-                    child.W2[i, j] = other.W2[i, j]
-        
+        """Cruza uniforme capa a capa con otra red del mismo esquema."""
+        child = SimpleNeuralNetwork(self.input_size, self.hidden_layers, self.output_size)
+        for i in range(len(self.weights)):
+            W_self, W_other = self.weights[i], other.weights[i]
+            b_self, b_other = self.biases[i], other.biases[i]
+            W_child = child.weights[i]
+            b_child = child.biases[i]
+            # Matrices
+            mask_W = np.random.random(W_self.shape) < 0.5
+            W_child[mask_W] = W_self[mask_W]
+            W_child[~mask_W] = W_other[~mask_W]
+            # Sesgos
+            mask_b = np.random.random(b_self.shape) < 0.5
+            b_child[mask_b] = b_self[mask_b]
+            b_child[~mask_b] = b_other[~mask_b]
+        # Back-compat referencias
+        child.W1 = child.weights[0]
+        child.b1 = child.biases[0]
+        child.W2 = child.weights[-1]
+        child.b2 = child.biases[-1]
         return child
+
+    def copy_from(self, other):
+        """Copia todos los pesos/sesgos desde otra red compatible."""
+        # Ajustar estructura si hiciera falta
+        if (self.input_size != other.input_size or 
+            self.output_size != other.output_size or 
+            self.hidden_layers != other.hidden_layers):
+            # Re-crear con la misma arquitectura del otro
+            self.__init__(other.input_size, other.hidden_layers, other.output_size)
+        for i in range(len(self.weights)):
+            self.weights[i] = other.weights[i].copy()
+            self.biases[i] = other.biases[i].copy()
+        # Back-compat referencias
+        self.W1 = self.weights[0]
+        self.b1 = self.biases[0]
+        self.W2 = self.weights[-1]
+        self.b2 = self.biases[-1]

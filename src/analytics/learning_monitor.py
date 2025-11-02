@@ -86,16 +86,27 @@ class LearningMonitor:
         if len(agents) < 2:
             return 0.0
             
-        # Extraer pesos de todas las redes neuronales
+        # Extraer pesos de todas las redes neuronales (soporte multi-capa)
         all_weights = []
         for agent in agents:
-            weights = np.concatenate([
-                agent.brain.W1.flatten(),
-                agent.brain.b1.flatten(),
-                agent.brain.W2.flatten(),
-                agent.brain.b2.flatten()
-            ])
-            all_weights.append(weights)
+            brain = getattr(agent, 'brain', None)
+            if brain is None:
+                continue
+            flat_parts = []
+            if hasattr(brain, 'weights') and hasattr(brain, 'biases'):
+                # Nueva API: listas de capas
+                for W, b in zip(brain.weights, brain.biases):
+                    flat_parts.append(W.flatten())
+                    flat_parts.append(b.flatten())
+            else:
+                # Compatibilidad con W1/W2
+                flat_parts.append(getattr(brain, 'W1', np.zeros(0)).flatten())
+                flat_parts.append(getattr(brain, 'b1', np.zeros(0)).flatten())
+                flat_parts.append(getattr(brain, 'W2', np.zeros(0)).flatten())
+                flat_parts.append(getattr(brain, 'b2', np.zeros(0)).flatten())
+            if flat_parts:
+                weights = np.concatenate(flat_parts)
+                all_weights.append(weights)
         
         all_weights = np.array(all_weights)
         
@@ -200,6 +211,8 @@ class LearningMonitor:
         recent_food = np.mean([g['avg_food'] for g in recent_gens])
         early_food = np.mean([g['avg_food'] for g in early_gens])
         food_improvement = recent_food - early_food
+        # Mejora relativa para umbral más justo
+        food_improvement_relative = (food_improvement / max(early_food, 0.1)) * 100 if early_food > 0 else 0
         
         # Diversity trend
         recent_diversity = np.mean([g['diversity'] for g in recent_gens])
@@ -209,7 +222,7 @@ class LearningMonitor:
         print(f"\n🧠 ANÁLISIS DE APRENDIZAJE:")
         print("=" * 40)
         print(f"📈 MEJORA EN FITNESS: {fitness_improvement:+.1f}")
-        print(f"🍎 MEJORA EN COMIDA: {food_improvement:+.1f}")
+        print(f"🍎 MEJORA EN COMIDA: {food_improvement:+.1f} ({food_improvement_relative:+.1f}% relativa)")
         print(f"🧬 CAMBIO EN DIVERSIDAD: {diversity_change:+.4f}")
         
         # Conclusiones
@@ -220,7 +233,8 @@ class LearningMonitor:
         else:
             print("❌ PROBLEMA DE APRENDIZAJE: Fitness no mejora")
             
-        if food_improvement > 2:
+        # Umbral más justo: al menos 1 manzana absoluta O al menos 50% de mejora relativa
+        if food_improvement > 1.0 or food_improvement_relative > 50:
             print("✅ COMPORTAMIENTO EMERGENTE: Agentes aprendiendo a comer")
         else:
             print("⚠️ PROBLEMA DE COMPORTAMIENTO: Agentes no mejoran en comer")

@@ -3,11 +3,11 @@ Ecosistema Evolutivo IA - Archivo principal simplificado.
 """
 
 import pygame
-import sys
 import os
-
-# Agregar src al path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+import time
+import sys
+import random
+import statistics as _stats
 
 from config import SimulationConfig
 from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork
@@ -18,11 +18,14 @@ from src.ui.renderer import SpriteManager, ParticleSystem
 from src.ui.stats import StatsPanel
 from src.ui.popup import SummaryPopup
 from src.analytics.learning_monitor import LearningMonitor
+from src.analytics.clustering import BehaviorClusterer
 
+# Agregar src al path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 def find_safe_position(world, agents, radius=16):
     """Encuentra una posición segura para un agente, evitando todos los obstáculos."""
-    import random
+    
     
     max_attempts = 100
     grass_area_width = 960  # Área de pasto válida
@@ -189,7 +192,7 @@ def main():
     
     # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos
     if config.FORTRESSES_ENABLED:
-        import random
+        
         for agent in agents:
             # Verificar si está dentro de fortalezas O sobre obstáculos
             needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
@@ -245,15 +248,14 @@ def main():
     
     print(f"✅ {len(agents)} agentes avanzados creados")
     print(f"✅ {len(world.food_items)} piezas de comida generadas")
-    print(f"✅ {len(world.obstacles)} obstáculos generados")
-    print("✅ Sistema de sprites inicializado")
     print("🎮 CONTROLES:")
     print("   ESC - Salir")
     print("   ESPACIO - Pausar/Reanudar")
     print("   +/= - Zoom IN (agrandar ventana)")
     print("   - - Zoom OUT (achicar ventana)")
-    print("   C - Modo comando")
-    print("✅ Sistema de partículas activado")
+    
+    # Tiempo de inicio de la simulación
+    simulation_start_time = time.time()
     
     # Bucle principal
     running = True
@@ -270,18 +272,11 @@ def main():
     tick = 0
     
     # Sistema de comandos
-    command_mode = False
-    current_command = ""
-    last_click_coords = None
+    
     
     # Optimizaciones de rendimiento
     print(f"⚡ Optimizaciones de rendimiento activadas:")
     print(f"   - FPS objetivo: {target_fps}")
-    print(f"   - Velocidad de agentes: 3.0 (aumentada)")
-    print(f"   - Estadísticas actualizadas cada 5 frames")
-    print(f"   - Partículas actualizadas cada 2 frames")
-    print(f"   - Redes neuronales optimizadas")
-    print(f"   - Menos agentes por generación")
     
     while running and generation <= max_generations:
         # Manejar eventos (solo si no está en modo headless)
@@ -289,17 +284,18 @@ def main():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Manejar clicks en el popup de resumen
+                    if event.button == 1:  # Click izquierdo
+                        mouse_pos = event.pos
+                        if summary_popup.handle_click(mouse_pos):
+                            pass  # El popup se cerró automáticamente
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                     elif event.key == pygame.K_SPACE:
                         paused = not paused
-                    elif event.key == pygame.K_c:
-                        # Activar modo comando
-                        command_mode = not command_mode
-                        current_command = ""
-                        if command_mode:
-                            print("🎯 MODO COMANDO ACTIVADO")
+                    
                     elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:
                         # Zoom in
                         screen_width = min(screen_width + 100, 1600)
@@ -324,67 +320,6 @@ def main():
                         scale_factor = min(scale_x, scale_y)
                         
                         print(f"🔍 Zoom OUT: {screen_width}x{screen_height} (factor: {scale_factor:.2f}x)")
-                    elif event.key == pygame.K_c:
-                        # Activar modo comando
-                        command_mode = not command_mode
-                        current_command = ""
-                        if command_mode:
-                            print("🎯 MODO COMANDO ACTIVADO")
-                            print("💡 Escribe: tree, wall, water, hut, potion, apple")
-                            print("💡 Luego haz click en el mapa para colocar el objeto")
-                        else:
-                            print("❌ Modo comando desactivado")
-                    elif command_mode:
-                        # Manejar comandos
-                        if event.key == pygame.K_RETURN:
-                            # Ejecutar comando
-                            if current_command and last_click_coords:
-                                x, y = last_click_coords
-                                summary_popup.add_object_at_coordinates(x, y, current_command, world)
-                                command_mode = False
-                                current_command = ""
-                            else:
-                                print("❌ Primero haz click en el mapa")
-                        elif event.key == pygame.K_BACKSPACE:
-                            # Borrar último carácter
-                            current_command = current_command[:-1]
-                        else:
-                            # Añadir carácter
-                            char = event.unicode.lower()
-                            if char.isalpha():
-                                current_command += char
-                                print(f"📝 Comando: {current_command}")
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    # Escalar coordenadas de click de ventana pequeña a superficie grande
-                    click_x = int(event.pos[0] / scale_factor)
-                    click_y = int(event.pos[1] / scale_factor)
-                    scaled_click_pos = (click_x, click_y)
-                    
-                    # Manejar clicks en el cuadro de resumen
-                    if summary_popup.handle_click(scaled_click_pos):
-                        pass  # El cuadro se cierra automáticamente
-                    else:
-                        # Mostrar coordenadas del click
-                        x, y = scaled_click_pos
-                        if x < config.get_game_area_width():  # Solo en el área del juego
-                            # Convertir a coordenadas de tile (16x16)
-                            tile_x = (x // 16) * 16
-                            tile_y = (y // 16) * 16
-                            tile_coord_x = x // 16
-                            tile_coord_y = y // 16
-                            
-                            # Guardar coordenadas para comandos
-                            last_click_coords = (tile_x, tile_y)
-                            
-                            print(f"📍 Click en píxeles: ({x}, {y})")
-                            print(f"🎯 Coordenadas de tile: ({tile_x}, {tile_y})")
-                            print(f"📐 Tile número: ({tile_coord_x}, {tile_coord_y})")
-                            
-                            if command_mode:
-                                print(f"✅ Coordenadas guardadas para comando: {current_command}")
-                                print("💡 Presiona ENTER para colocar el objeto")
-                            else:
-                                print("💡 Presiona 'C' para activar modo comando")
         else:
             # En modo headless, avanzar automáticamente
             paused = False
@@ -444,9 +379,15 @@ def main():
         
         # Verificar si todos murieron o se acabó el tiempo
         if len(alive_agents) == 0 or tick >= max_ticks_per_generation:
+            # Calcular tiempo acumulado desde el inicio de la simulación
+            elapsed_time = time.time() - simulation_start_time
+            elapsed_minutes = int(elapsed_time // 60)
+            elapsed_seconds = int(elapsed_time % 60)
+            
             print(f"\n🧬 Generación {generation} terminada")
             print(f"   - Agentes vivos: {len(alive_agents)}")
             print(f"   - Segundos: {tick/60:.1f}")
+            
             
             # Contar árboles cortados en esta generación
             trees_cut_this_generation = 0
@@ -500,6 +441,7 @@ def main():
                 print(f"      - Puerta hierro: {iron_door_status}")
                 print(f"      - Cofre: {chest_status}")
                 print(f"      - Árboles cortados: {trees_cut_this_generation}")
+                print(f"   - ⏱️ Tiempo real acumulado: {elapsed_minutes}m {elapsed_seconds}s")
             else:
                 avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
                 alive_agents_for_stats = []  # Lista vacía si no hay agentes
@@ -553,7 +495,7 @@ def main():
             summary_popup.show(generation_data, fitness_history)
             
             # Evolucionar
-            agents = ga.evolve(agents)
+            agents = ga.evolve(agents, generation)
             
             # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
             print("🔍 Verificando posiciones de agentes...")
@@ -561,7 +503,7 @@ def main():
             
             # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos (después de evolucionar)
             if config.FORTRESSES_ENABLED:
-                import random
+                
                 for agent in agents:
                     # Verificar si está dentro de fortalezas O sobre obstáculos
                     needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
@@ -794,18 +736,36 @@ def main():
 
 def show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system):
     """Muestra la pantalla de FIN cuando se abre el cofre."""
-    import pygame
-    from config import SimulationConfig
     
+       
     # Si estamos en modo headless, solo mostrar estadísticas por consola
     if SimulationConfig.HEADLESS_MODE:
+        # Recalcular fitness de todos los agentes antes de mostrar estadísticas
+        from config import SimulationConfig as Config
+        for agent in agents:
+            agent._calculate_fitness()
+        
+        alive_agents = [a for a in agents if a.alive]
+        max_fitness = max(agent.fitness for agent in agents) if agents else 0.0
+        
+        # Calcular promedio de las últimas 3 generaciones (más representativo)
+        if learning_monitor.generation_data and len(learning_monitor.generation_data) >= 3:
+            last_gens = learning_monitor.generation_data[-3:]
+            avg_fitness = sum(g.get('avg_fitness', 0) for g in last_gens) / len(last_gens)
+        elif learning_monitor.generation_data:
+            # Si hay menos de 3 generaciones, usar todas las disponibles
+            avg_fitness = sum(g.get('avg_fitness', 0) for g in learning_monitor.generation_data) / len(learning_monitor.generation_data)
+        else:
+            # Fallback: usar promedio de la generación actual
+            avg_fitness = sum(agent.fitness for agent in agents) / len(agents) if agents else 0.0
+        
         print(f"\n ¡MISIÓN COMPLETADA!")
         print(f"Generación: {generation}")
         print(f"Tiempo total: {tick // 60 // 60:.1f} minutos")
-        print(f"Agentes vivos: {len([a for a in agents if a.alive])}")
+        print(f"Agentes vivos: {len(alive_agents)}")
         print(f"¡El cofre ha sido abierto por un agente evolutivo!")
-        print(f"Fitness promedio: {sum(a.fitness for a in agents) / len(agents):.1f}")
-        print(f"Fitness máximo: {max(a.fitness for a in agents):.1f}")
+        print(f"Fitness promedio (últimas 3 gen): {avg_fitness:.1f}")
+        print(f"Fitness máximo: {max_fitness:.1f}")
         return
     
     # Crear reporte final de aprendizaje
@@ -859,7 +819,7 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         avg_exploration_meters = 0
 
     # Datos para Modo Compacto
-    import statistics as _stats
+    
     # Trayectoria de fitness: delta vs gen 1
     if learning_monitor.generation_data:
         initial_avg_fitness = learning_monitor.generation_data[0].get('avg_fitness', avg_fitness)
@@ -1049,8 +1009,8 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         final_surface.blit(subtitle_text, subtitle_rect)
 
         # Línea separadora
-        import pygame as _pg
-        _pg.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
+        
+        pygame.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
 
         # Estadísticas principales (Modo compacto)
         y_pos = 110
@@ -1104,16 +1064,30 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         learned_title = font_title.render("¿APRENDIERON?", True, (100, 255, 150))
         final_surface.blit(learned_title, (30, y_pos))
         y_pos += 18
-        improved_flag = "SI" if fitness_delta > 0.5 else "NO"
-        # Explorar más: comparar distancia promedio gen1 vs última
-        if learning_monitor.generation_data:
+        
+        # Mejora más robusta: al menos 5 puntos de diferencia O al menos 10% de mejora
+        if learning_monitor.generation_data and len(learning_monitor.generation_data) > 1:
+            initial_avg_fitness = learning_monitor.generation_data[0].get('avg_fitness', 0)
+            # Usar el promedio de las últimas 3 generaciones para evitar fluctuaciones
+            last_gens = learning_monitor.generation_data[-3:]
+            final_avg_fitness = sum(g.get('avg_fitness', 0) for g in last_gens) / len(last_gens)
+            fitness_delta = final_avg_fitness - initial_avg_fitness
+            # Mejora significativa: al menos 5 puntos Y al menos 10% de mejora relativa
+            improvement_threshold = max(5.0, initial_avg_fitness * 0.10)  # 5 puntos o 10% del inicial
+            improved_flag = "SI" if fitness_delta > improvement_threshold else "NO"
+            
+            # Explorar más: comparar distancia promedio gen1 vs últimas 3
             first_avg_dist = learning_monitor.generation_data[0].get('avg_distance', 0)
-            last_avg_dist = learning_monitor.generation_data[-1].get('avg_distance', avg_exploration)
-            explored_more_flag = "SI" if last_avg_dist > first_avg_dist else "NO"
+            last_avg_dist = sum(g.get('avg_distance', 0) for g in last_gens) / len(last_gens)
+            explored_more_flag = "SI" if last_avg_dist > first_avg_dist * 1.05 else "NO"  # Al menos 5% más exploración
         else:
+            improved_flag = "SI" if fitness_delta > 5.0 else "NO"  # Fallback: umbral de 5 puntos
             explored_more_flag = "N/A"
+            initial_avg_fitness = avg_fitness
+            final_avg_fitness = avg_fitness
+        
         learn_line_1 = font_small.render(f"Mejoraron con el tiempo: {improved_flag}", True, (200, 200, 200))
-        learn_line_2 = font_small.render(f"Antes vs ahora (fitness prom): {initial_avg_fitness:.1f} → {avg_fitness:.1f}", True, (200, 200, 200))
+        learn_line_2 = font_small.render(f"Antes vs ahora (fitness prom): {initial_avg_fitness:.1f} → {final_avg_fitness:.1f}", True, (200, 200, 200))
         learn_line_3 = font_small.render(f"Exploraron más: {explored_more_flag}", True, (200, 200, 200))
         final_surface.blit(learn_line_1, (40, y_pos)); y_pos += 18
         final_surface.blit(learn_line_2, (40, y_pos)); y_pos += 18
@@ -1164,7 +1138,7 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         # Calcular clustering de la última generación
         try:
             if agents and len(agents) >= 3:
-                from src.analytics.clustering import BehaviorClusterer
+                total_agents = len(agents)
                 clusterer = BehaviorClusterer(n_clusters=3)
                 clusters, cluster_stats = clusterer.cluster_agents(agents)
                 interpretations = clusterer.get_cluster_interpretation(cluster_stats)
@@ -1177,11 +1151,12 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
                     if count > 0:
                         strategy = interpretations.get(cluster_id, f"C{cluster_id}")
                         fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
-                        sorted_clusters.append((strategy, count, fitness))
+                        percentage = (count / total_agents) * 100  # Calcular porcentaje
+                        sorted_clusters.append((strategy, count, percentage, fitness))
                 sorted_clusters.sort(key=lambda x: (cluster_order.index(x[0]) if x[0] in cluster_order else 999, -x[1]))
                 
-                for strategy, count, fitness in sorted_clusters[:3]:
-                    cluster_text = f"{strategy}: {count} agentes (fitness {fitness:.1f})"
+                for strategy, count, percentage, fitness in sorted_clusters[:3]:
+                    cluster_text = f"{strategy}: {percentage:.1f}% ({count} agentes, fit {fitness:.1f})"
                     cluster_line = font_small.render(cluster_text, True, (200, 200, 200))
                     final_surface.blit(cluster_line, (40, y_pos))
                     y_pos += 18

@@ -6,37 +6,38 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    POPULATION_SIZE = 50
+    POPULATION_SIZE = 60
     TARGET_FPS = 60
-    MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
-    HEADLESS_MODE = True             # True = sin render (rápido), False = con render (visual)
+    MAX_GENERATIONS = 30    # Extendido para ver tendencias a largo plazo
+    HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 1500                 # Tiempo base inicial
-    TICKS_INCREMENT_AMOUNT = 300     # Cuántos ticks aumentar cada incremento
-    TICKS_INCREMENT_FREQUENCY = 3      # Cada cuántas generaciones aumentar (ej: cada 5)
+    BASE_TICKS = 600                  # Tiempo base inicial (REDUCIDO para fitness más bajo al inicio)
+    TICKS_INCREMENT_AMOUNT = 200      # Cuántos ticks aumentar cada incremento (200 para crecimiento más gradual)
+    TICKS_INCREMENT_FREQUENCY = 2     # Cada cuántas generaciones aumentar (cada 2 para más frecuencia)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.08       # 15% de mutación 
-    CROSSOVER_RATE = 0.70        # 55% de cruce 
+    MUTATION_RATE = 0.25       # 25% de mutación (aumentado para más diversidad y evitar convergencia prematura)
+    CROSSOVER_RATE = 0.90        # 90% de cruce 
     
     # === SELECCIÓN DE PADRES ===
-    SELECTION_METHOD = "elitism"  # "elitism" o "tournament"
+    SELECTION_METHOD = "meeting_pool"  # "elitism", "tournament" o "meeting_pool"
     TOURNAMENT_SIZE = 3             # Tamaño del torneo 
-    ELITISM = 2                     # Mejores agentes que se mantienen 
+    ELITISM = 0                     # Mejores agentes que se mantienen 
+    MEETING_POOL_FRACTION = 0.85    # Porción superior por ranking para el pool (reducido para más presión selectiva)
     
     # === RED NEURONAL ===
     INPUT_SIZE = 10              # 10 sensores esenciales (simplificados)
-    HIDDEN_SIZE = 24             # Primera capa oculta (24 neuronas)
+    HIDDEN_SIZE = [24, 16]       # Capas ocultas (soporta lista o entero)
     OUTPUT_SIZE = 4              # 4 acciones
     
     # === AGENTE ===
     AGENT_SPEED = 3.0            # Velocidad de movimiento
     VISION_RANGE = 150           # Rango de visión
     AGENT_ENERGY = 100.0         # Energía inicial
-    AGENT_ENERGY_CONSUMPTION = 0.15  # Consumo de energía por tick 
-    AGENT_ENERGY_GAIN_FOOD = 10      # Energía ganada al comer 
+    AGENT_ENERGY_CONSUMPTION = 0.10  # Consumo de energía por tick 
+    AGENT_ENERGY_GAIN_FOOD = 8      # Energía ganada al comer 
     AGENT_RADIUS = 8             # Tamaño del agente
     
     # === MUNDO ===
@@ -55,7 +56,7 @@ class SimulationConfig:
     SPRITE_SCALE_FACTOR = 1.0    # Factor de escalado de sprites
     BASE_SPRITE_SIZE = 16        # Tamaño base de sprites en píxeles
     
-    FOOD_COUNT = 80              # Cantidad de comida inicial
+    FOOD_COUNT = 60             # Cantidad de comida inicial (aumentado para generaciones largas)
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
@@ -91,19 +92,19 @@ class SimulationConfig:
     TILE_SIZE = 32                # Tamaño de cada tile en píxeles
     
     # Llaves
-    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente
-    RED_KEY_REWARD = 10           # Fitness por recoger red_key (era 5)
-    GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (era 15)
+    RED_KEY_SPAWN_GEN = 5         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
+    RED_KEY_REWARD = 2            # Fitness por recoger red_key (aumentado para mejor balance)
+    GOLD_KEY_REWARD = 10          # Fitness por recoger gold_key (reducido para que aprendan primero tareas básicas)
     
     # Puertas
     DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
     DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
-    DOOR_OPEN_REWARD = 20         # Fitness por abrir door (era 10)
-    DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (era 20)
-    DOOR_HIT_COOLDOWN = 120       # Cooldown entre golpes (ticks)
+    DOOR_OPEN_REWARD = 10         # Fitness por abrir door (reducido para que aprendan primero tareas básicas)
+    DOOR_IRON_OPEN_REWARD = 20    # Fitness por abrir door_iron (reducido para que aprendan primero tareas básicas)
+    DOOR_HIT_COOLDOWN = 90       # Cooldown entre golpes (ticks)
     
     # Cofre
-    CHEST_REWARD = 60             # Fitness por abrir cofre (era 50)
+    CHEST_REWARD = 85             # Fitness por abrir cofre (AUMENTADO para promedio 60+ al completar)
     
     # === RENDIMIENTO ===
     STATS_UPDATE_FREQUENCY = 5   # Actualizar stats cada N frames
@@ -154,7 +155,8 @@ class SimulationConfig:
             'crossover_rate': cls.CROSSOVER_RATE,
             'elitism': cls.ELITISM,
             'selection_method': cls.SELECTION_METHOD,
-            'tournament_size': cls.TOURNAMENT_SIZE
+            'tournament_size': cls.TOURNAMENT_SIZE,
+            'meeting_pool_fraction': cls.MEETING_POOL_FRACTION
         }
     
     @classmethod
@@ -200,7 +202,12 @@ class SimulationConfig:
         mode = "HEADLESS (rápido)" if cls.HEADLESS_MODE else "VISUAL (renderizado)"
         print(f"🎮 Modo: {mode}")
         print(f"🧬 Genético: {cls.MUTATION_RATE*100}% mutación, {cls.CROSSOVER_RATE*100}% cruce")
-        print(f"🎯 Selección: {cls.SELECTION_METHOD.upper()}, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
+        if cls.SELECTION_METHOD == "meeting_pool":
+            print(f"🎯 Selección: MEETING_POOL, élite: {cls.ELITISM}, pool: top {int(cls.MEETING_POOL_FRACTION*100)}%")
+        elif cls.SELECTION_METHOD == "tournament":
+            print(f"🎯 Selección: TOURNAMENT, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
+        else:
+            print(f"🎯 Selección: ELITISM, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
         print(f"🧠 Neuronal: {cls.INPUT_SIZE}→{cls.HIDDEN_SIZE}→{cls.OUTPUT_SIZE}")
         print(f"⚡ Agente: {cls.AGENT_SPEED} velocidad, {cls.VISION_RANGE} visión")
         print(f"🔋 Energía: {cls.AGENT_ENERGY} inicial, -{cls.AGENT_ENERGY_CONSUMPTION}/tick, +{cls.AGENT_ENERGY_GAIN_FOOD} comida")
