@@ -42,7 +42,7 @@ class Obstacle:
         """Obtiene el efecto del obstáculo."""
         if self.type == "water":
             from config import SimulationConfig
-            return {"energy_loss": 0.25, "speed_reduction": 0.8, "fitness_loss": SimulationConfig.WATER_FITNESS_PENALTY}
+            return {"energy_loss": 0.05, "speed_reduction": 0.8, "fitness_loss": SimulationConfig.WATER_FITNESS_PENALTY}
         elif self.type == "safe":
             return {"energy_gain": 2, "speed_boost": 1.2}
         return {"energy_loss": 0, "speed_reduction": 1.0}

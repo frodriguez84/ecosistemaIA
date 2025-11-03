@@ -1,36 +1,40 @@
+# Ecosistema Evolutivo IA
+
 **Contexto General**
 
-Estás trabajando en el desarrollo de una aplicación completa de simulación llamada  **“Ecosistema Evolutivo IA”** , un entorno 2D donde criaturas autónomas aprenden a sobrevivir, adaptarse y evolucionar utilizando múltiples técnicas de  **Inteligencia Artificial** :
+Estás trabajando en el desarrollo de una aplicación completa de simulación llamada **"Ecosistema Evolutivo IA"**, un entorno 2D donde criaturas autónomas aprenden a sobrevivir, adaptarse y evolucionar utilizando múltiples técnicas de **Inteligencia Artificial**:
 
-* Algoritmos genéticos
-* Redes neuronales artificiales
-* Clustering no supervisado
-* Generación procedural del entorno
+* **Algoritmos genéticos** - Evolución de poblaciones mediante selección, cruce y mutación
+* **Redes neuronales artificiales** - Cerebro de los agentes que toma decisiones autónomas
+* **Clustering no supervisado** - Análisis de comportamientos emergentes (K-Means, PCA)
+* **Generación procedural del entorno** - Mundo dinámico con fortalezas, puzzle, recursos y obstáculos
 
-El proyecto está desarrollado en  **Python 3.11+** , y debe mantener una  **arquitectura modular, extensible y limpia** , siguiendo principios de diseño como:
+El proyecto está desarrollado en **Python 3.11+** y mantiene una **arquitectura modular, extensible y limpia**, siguiendo principios de diseño como:
 
 * *Separation of Concerns*
 * *Single Responsibility Principle*
-* *Dependency Injection* ligera (configuración YAML)
-* Soporte para logging estructurado, reproducibilidad por seeds y ejecución por fases.
+* *Aprendizaje puro* - Sin guía codificada, los agentes aprenden 100% mediante su red neuronal
+* Soporte para logging estructurado, reproducibilidad y ejecución por fases
 
+---
 
 ## 🎯 Objetivo del Proyecto
 
 Crear un **ecosistema digital autoevolutivo** donde criaturas simuladas:
 
-1. Perciban su entorno (posición de comida, obstáculos, energía).
-2. Tomen decisiones mediante una red neuronal (movimiento, alimentación, evasión).
-3. Sean evaluadas por su desempeño ( *fitness* ).
-4. Se reproduzcan mediante un **algoritmo genético** (selección, cruce, mutación).
-5. Den lugar a nuevas generaciones más adaptadas.
-6. Sean analizadas mediante técnicas **no supervisadas** para detectar patrones emergentes.
+1. **Perciben su entorno** - Sensores de distancia, energía, comida, obstáculos, objetos del puzzle
+2. **Toman decisiones mediante red neuronal** - 5 acciones: avanzar, girar izquierda/derecha, comer, golpear
+3. **Son evaluadas por su desempeño** - Fitness basado en supervivencia, comida, exploración, eficiencia y puzzle
+4. **Se reproducen mediante algoritmo genético** - Selección (meeting pool + elitismo), cruce, mutación
+5. **Dan lugar a nuevas generaciones** - Poblaciones más adaptadas con comportamientos emergentes
+6. **Son analizadas mediante clustering** - Identificación de estrategias emergentes (Exploradores, Recolectores, Exitosos)
 
-El resultado debe ser visual, con una interfaz mínima que muestre:
+El resultado es visual, con una interfaz completa que muestra:
 
-* El mapa (entorno 2D).
-* Criaturas moviéndose y actuando.
-* Métricas en tiempo real (generación, fitness promedio, supervivientes, diversidad).
+* El mapa procedural (pastos, árboles, fortalezas, agua, estanques)
+* Criaturas moviéndose y actuando de forma autónoma
+* Sistema de puzzle (llaves, puertas, cofre)
+* Métricas en tiempo real (generación, fitness promedio, supervivientes, diversidad)
 
 ---
 
@@ -40,225 +44,354 @@ El resultado debe ser visual, con una interfaz mínima que muestre:
 
 **Librerías Principales:**
 
-* `pygame` o `arcade` → Renderizado 2D y eventos.
-* `torch` o `tensorflow.keras` → Redes neuronales.
-* `deap` → Algoritmos genéticos.
-* `scikit-learn` → Clustering, PCA, normalización.
-* `noise` o `perlin-noise` → Generación procedural del entorno.
-* `matplotlib` / `seaborn` → Visualización de métricas.
-* `pandas`, `numpy` → Manipulación de datos.
-* `yaml`, `argparse` → Configuración y CLI.
-* `logging`, `rich` → Logging estructurado y visual.
+* `pygame` → Renderizado 2D, sprites y eventos
+* `numpy` → Operaciones matemáticas y arrays
+* `scikit-learn` → Clustering (K-Means), PCA, normalización
+* `matplotlib` / `seaborn` → Visualización de métricas (opcional)
+* `pandas` → Análisis de datos (opcional)
 
 **Entorno y herramientas:**
 
-* Control de versiones con Git.
-* Requerimientos en `requirements.txt` o `pyproject.toml`.
-* Soporte para ejecución local o notebook (modo headless opcional).
+* Control de versiones con Git
+* Requerimientos en `requirements.txt`
+* Soporte para ejecución local con render o modo headless (sin visualización)
 
 ---
 
 ## 🧩 Estructura del Proyecto
 
-*(ya creada en Cursor, pero Cursor debe comprenderla)*
-
-La raíz contiene:
-
-<pre class="overflow-visible!" data-start="2993" data-end="3590"><div class="contain-inline-size rounded-2xl relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute end-0 bottom-0 flex h-9 items-center pe-2"><div class="bg-token-bg-elevated-secondary text-token-text-secondary flex items-center gap-4 rounded-sm px-2 font-sans text-xs"></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="whitespace-pre!"><span><span>src/ecosistema/
-├── app.py                  </span><span># punto de entrada principal</span><span>
-├── core/                   </span><span># loop principal, eventos, tiempo</span><span>
-├── </span><span>env</span><span>/                    </span><span># entorno 2D y generación procedural</span><span>
-├── agents/                 </span><span># criaturas: sensores, actuadores y cerebros</span><span>
-├── ai/                     </span><span># algoritmos genéticos y cálculo de fitness</span><span>
-├── analytics/              </span><span># métricas, clustering y análisis</span><span>
-├── ui/                     </span><span># render y HUD</span><span>
-├── persistence/            </span><span># checkpoints, IO, seeds</span><span>
-├── utils/                  </span><span># helpers varios</span><span>
-└── config/                 </span><span># loader YAML</span><span>
-</span></span></code></div></div></pre>
+```
+EcosistemaEvolutivo/
+├── main.py                  # Punto de entrada principal
+├── config.py               # Configuración centralizada (SimulationConfig)
+├── requirements.txt        # Dependencias del proyecto
+│
+├── src/
+│   ├── agents/             # Sistema de agentes
+│   │   ├── advanced_agent.py    # Clase principal AdvancedAgent
+│   │   └── brain/
+│   │       └── mlp.py           # Red neuronal MLP (SimpleNeuralNetwork)
+│   │
+│   ├── world/              # Mundo y entorno
+│   │   ├── world.py       # Clase World (generación procedural, fortalezas, puzzle)
+│   │   └── obstacles.py   # Obstáculos (árboles, muros, agua, huts, etc.)
+│   │
+│   ├── evolution/          # Algoritmo genético
+│   │   └── genetic_algorithm.py  # Selección, cruce, mutación, evolución
+│   │
+│   ├── analytics/          # Análisis y métricas
+│   │   ├── metrics.py           # Cálculo de métricas generacionales
+│   │   ├── clustering.py        # Clustering de comportamientos (K-Means, PCA)
+│   │   ├── learning_monitor.py  # Monitoreo de aprendizaje y mejoras
+│   │   └── logger.py            # Logging estructurado
+│   │
+│   └── ui/                 # Interfaz de usuario
+│       ├── renderer.py     # Renderizado con pygame (sprites, partículas)
+│       ├── stats.py        # Panel de estadísticas
+│       └── popup.py        # Popup de resumen generacional
+│
+├── assets/
+│   └── sprites/            # Sprites del juego (agentes, objetos, entorno)
+│
+├── logs/                   # Logs de métricas y runtime
+├── checkpoints/            # Checkpoints de generaciones (opcional)
+└── results/                # Resultados y reportes (opcional)
+```
 
 ---
 
-## 🧱 Funcionalidades Esperadas (por módulos)
+## 🧱 Funcionalidades Implementadas (por módulos)
 
-### 1. `core/`
+### 1. `src/agents/`
 
-* `loop.py`: ciclo principal de simulación (ticks, eventos, reinicio de época).
-* `events.py`: define eventos internos (inicio, fin de época, colisión, muerte).
-* `timekeeper.py`: controla duración de ticks y tiempos totales.
+* **`advanced_agent.py`**: Clase `AdvancedAgent` con:
 
-### 2. `env/`
+  * **Sensores**: 12 percepciones (distancia a comida, obstáculos, objetos del puzzle, energía, dirección)
+  * **Red neuronal**: MLP con 2 capas ocultas [24, 18] y 5 salidas (avanzar, girar L/R, comer, golpear)
+  * **Sistema de fitness**: Supervivencia + comida + exploración + evitar obstáculos + anti-círculo + puzzle
+  * **Acciones**: Movimiento, alimentación, corte de árboles, interacción con puzzle
+  * **Aprendizaje puro**: **100% autónomo** - Sin guía codificada, todo basado en decisiones de la red neuronal
+* **`brain/mlp.py`**:
 
-* `world.py`: define el mapa, grilla y límites.
-* `resources.py`: administra comida, obstáculos, regeneración.
-* `physics.py`: calcula costos de movimiento, energía, colisiones.
-* `procedural.py`: genera mundos usando ruido Perlin o semillas reproducibles.
+  * Red neuronal MLP (`SimpleNeuralNetwork`)
+  * Función de activación: `tanh`
+  * Operaciones: forward pass, mutación gaussiana, cruce uniforme, clonación
 
-### 3. `agents/`
+### 2. `src/world/`
 
-* `agent.py`: clase principal `Agent` con estado (energía, edad, pos).
-* `sensors.py`: percepción del entorno (radio de visión, energía, obstáculos).
-* `actuators.py`: acciones posibles (mover, girar, comer).
-* `brain/`:
-  * `mlp.py`: red neuronal (PyTorch o Keras) con pesos inicializables.
-  * `policy.py`: lógica para convertir percepciones → acciones.
+* **`world.py`**: Clase `World` que genera y gestiona:
 
-### 4. `ai/`
+  * **Generación procedural**: Pastos, árboles, muros, agua, estanques, perímetro
+  * **Sistema de fortalezas**: Fortaleza pequeña (4x5 tiles) y grande (6x6 tiles) con muros y puertas
+  * **Sistema de puzzle**: Llaves rojas/doradas, puertas (wood/iron), cofre
+  * **Recursos**: Comida (manzanas), árboles que pueden cortarse, huts destructibles
+  * **Estanque móvil**: Estanque que se regenera dinámicamente
+* **`obstacles.py`**:
 
-* `fitness.py`: define función de evaluación (vida + comida + distancia).
-* `ga/`:
-  * `selection.py`, `crossover.py`, `mutation.py`: operadores genéticos.
-  * `evolve.py`: maneja el ciclo GA (selección, cruce, mutación, elitismo).
+  * Tipos de obstáculos: `tree`, `wall`, `water`, `hut`, `safe`
+  * Efectos: pérdida de energía, reducción de velocidad, penalización de fitness (agua)
+  * Sistema de corte: Árboles y huts pueden cortarse con hacha (requiere acción `hit`)
 
-### 5. `analytics/`
+### 3. `src/evolution/`
 
-* `metrics.py`: registra métricas por tick y época.
-* `logger.py`: guarda logs estructurados (JSON/CSV).
-* `features.py`: transforma logs en features numéricas.
-* `clustering.py`: aplica KMeans/DBSCAN para clasificar comportamientos.
-* `dimensionality.py`: reduce dimensión (PCA o UMAP).
+* **`genetic_algorithm.py`**: Algoritmo genético completo:
+  * **Selección**: Meeting pool (fracción superior por ranking) + elitismo opcional
+  * **Cruce**: Uniforme entre genomas (pesos de red neuronal)
+  * **Mutación**: Gaussiana con tasa configurable (20%)
+  * **Evolución**: Genera nueva población manteniendo mejores individuos
 
-### 6. `ui/`
+### 4. `src/analytics/`
 
-* `renderer.py`: dibuja mapa y agentes.
-* `hud.py`: panel de métricas (texto o barra).
-* `controls.py`: lectura de input (pausa, velocidad, seed).
+* **`metrics.py`**: Cálculo de métricas generacionales:
 
-### 7. `persistence/`
+  * Fitness promedio, máximo, mínimo
+  * Diversidad genética
+  * Supervivientes, edad promedio
+  * Comida total consumida, distancia recorrida
+* **`clustering.py`**: Análisis no supervisado:
 
-* `checkpoints.py`: guarda/carga pesos, generaciones y configuraciones.
-* `io_utils.py`: funciones genéricas de lectura/escritura.
-* `seeds.py`: control de reproducibilidad.
+  * **Features**: Fitness, comida, exploración, supervivencia
+  * **Normalización**: StandardScaler
+  * **Reducción de dimensión**: PCA (2 componentes)
+  * **Clustering**: K-Means (k=3) - Identifica "Exploradores", "Recolectores", "Exitosos"
+  * Ejecución cada 3 generaciones
+* **`learning_monitor.py`**: Monitoreo de aprendizaje:
 
-### 8. `utils/`
+  * Detecta mejoras en comida (absoluta y relativa)
+  * Detecta mejoras en fitness
+  * Detecta cambios en diversidad genética
+  * Reportes en consola con emojis
+* **`logger.py`**: Logging estructurado a archivos
 
-* Funciones auxiliares: geometría 2D, RNG, profiling y timers.
+### 5. `src/ui/`
+
+* **`renderer.py`**:
+
+  * Renderizado con pygame
+  * Sistema de sprites (personajes, objetos, entorno)
+  * Sistema de partículas para efectos visuales
+  * Renderizado de agentes, mundo, HUD
+* **`stats.py`**: Panel lateral de estadísticas en tiempo real
+* **`popup.py`**: Popup de resumen al final de cada generación
+
+### 6. `config.py`
+
+* **`SimulationConfig`**: Clase con todos los parámetros centralizados:
+  * Población, generaciones máximas
+  * Parámetros del algoritmo genético
+  * Arquitectura de red neuronal
+  * Sistema de puzzle (recompensas, umbrales)
+  * Sistema de agua (penalizaciones, energía)
+  * Sistema de corte (árboles, huts)
+  * Sistema adaptativo de tiempo (ticks por generación)
 
 ---
 
 ## 🧬 Flujo General del Sistema
 
-1. Se cargan configuraciones (tamaño del mapa, población, parámetros del GA).
-2. Se genera un entorno procedural con comida y obstáculos.
-3. Se inicializan agentes con redes neuronales aleatorias.
-4. Se ejecuta el  **loop de simulación** :
-   * Cada tick: los agentes perciben → deciden → actúan.
-   * Se actualiza energía, posición y estado.
-   * Se registran métricas.
-5. Al finalizar una época:
-   * Se calcula fitness de cada agente.
-   * El módulo GA genera la nueva población (cruce + mutación).
-   * Se guarda un checkpoint.
-6. Cada cierto número de generaciones:
-   * Se corre el análisis de clustering.
-   * Se generan reportes o gráficos.
+### Inicialización
+
+1. **Carga configuración** desde `config.py` (SimulationConfig)
+2. **Genera mundo procedural**:
+   * Pastos, árboles, muros, agua, estanques
+   * Fortalezas con puertas
+   * Llaves, cofre (spawn según generación)
+   * Perímetro del mapa
+3. **Inicializa población** con redes neuronales aleatorias
+
+### Loop de Simulación (por generación)
+
+1. **Cada tick (600-2000 ticks/generación, adaptativo)**:
+
+   * **Percepción**: Cada agente percibe su entorno (10 sensores)
+   * **Decisión**: Red neuronal procesa percepciones → 5 acciones
+   * **Acción**: Agente ejecuta acciones (mover, girar, comer, golpear)
+   * **Efectos del entorno**: Agua reduce energía/fitness, estanques restauran energía
+   * **Interacciones**: Cortar árboles/huts, recoger llaves, abrir puertas, abrir cofre
+   * **Muerte**: Si energía ≤ 0, agente muere
+2. **Al finalizar la generación**:
+
+   * **Cálculo de fitness**: Supervivencia + comida + exploración + obstáculos + anti-círculo + puzzle
+   * **Ranking**: Ordenar agentes por fitness
+   * **Clustering** (cada 3 generaciones): Análisis de comportamientos emergentes
+   * **Algoritmo genético**:
+     * Selección (meeting pool)
+     * Cruce uniforme
+     * Mutación gaussiana
+     * Nueva población
+   * **Resumen**: Popup con estadísticas de la generación
+   * **Reinicio**: Nuevo mundo, nueva población evolucionada
+3. **Condición de fin**:
+
+   * Alcanzar `MAX_GENERATIONS` O
+   * Abrir el cofre (objetivo principal)
 
 ---
 
-## 📊 Datos, Logs y Resultados
+## 🧠 Inteligencia Artificial (Detalles)
 
-* Cada corrida debe producir:
-  * `logs/metrics/epoch_X.csv` con fitness, energía y distancia promedio.
-  * `checkpoints/gen_X.pkl` con pesos de redes neuronales.
-  * `results/figures/` con gráficos de evolución.
-  * `results/reports/` con análisis generacional y clustering.
+### Red Neuronal (Cerebro del Agente)
 
----
-
-## 🧠 Inteligencia Artificial (detalles)
+* **Tipo**: MLP (Multi-Layer Perceptron)
+* **Arquitectura**:
+  * Input: 10 sensores (distancia comida, obstáculos, puzzle, energía, dirección)
+  * Hidden: 2 capas [24, 18] neuronas
+  * Output: 5 acciones (move_forward, turn_left, turn_right, eat, hit)
+* **Activación**: `tanh` (todas las capas)
+* **Pesos**: Mutables por algoritmo genético
+* **Aprendizaje**: **100% puro** - Sin guía codificada, decisiones completamente autónomas
 
 ### Algoritmo Genético
 
-* Población inicial: 50–200 individuos.
-* Fitness: ponderación de supervivencia + comida + eficiencia.
-* Selección: torneo o ruleta.
-* Crossover: uniforme o por secciones de pesos.
-* Mutación: gaussiana, 2–10% tasa.
-* Elitismo: 1–2 mejores individuos se preservan.
+* **Población**: 60 agentes (configurable)
+* **Fitness**: Combinación de:
+  * Supervivencia (edad) - Cap: 23
+  * Comida (sqrt) - Multiplicador: 12.0
+  * Exploración (log) - Multiplicador: 12.0, Cap: 15.0
+  * Evitar obstáculos - Multiplicador: 0.20
+  * Anti-círculo (movimiento eficiente) - Multiplicador: 10.0
+  * Puzzle (llaves, puertas, cofre) - Recompensas acumuladas
+  * Penalizaciones (agua) - Sin límite, proporcional al tiempo
+* **Selección**: Meeting pool (90% superior) + elitismo opcional
+* **Cruce**: Uniforme (90% tasa)
+* **Mutación**: Gaussiana (20% tasa)
+* **Elitismo**: 0 (se puede configurar)
 
-### Red Neuronal (cerebro del agente)
+### Clustering (Análisis No Supervisado)
 
-* Tipo: MLP con 1–2 capas ocultas.
-* Entradas: percepciones + estado (energía, dirección, entorno).
-* Salidas: 3–4 acciones posibles (rotar, avanzar, comer).
-* Activaciones: ReLU o tanh.
-* Pesos mutables por el GA.
-
-### Clustering (Análisis no supervisado)
-
-* Features: distancia recorrida, energía gastada, colisiones, vida útil.
-* Algoritmo: K-Means (k=3–5) o DBSCAN.
-* Propósito: identificar “estilos” de comportamiento emergentes.
-
----
-
-## 🧭 Parámetros configurables (YAML)
-
-Ejemplo de `configs/default.yaml`:
-
-<pre class="overflow-visible!" data-start="7526" data-end="7964"><div class="contain-inline-size rounded-2xl relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute end-0 bottom-0 flex h-9 items-center pe-2"><div class="bg-token-bg-elevated-secondary text-token-text-secondary flex items-center gap-4 rounded-sm px-2 font-sans text-xs"></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="whitespace-pre! language-yaml"><span><span>simulation:</span><span>
-  </span><span>map_size:</span><span> [</span><span>80</span><span>, </span><span>80</span><span>]
-  </span><span>ticks_per_epoch:</span><span></span><span>2000</span><span>
-  </span><span>population:</span><span></span><span>100</span><span>
-  </span><span>food_density:</span><span></span><span>0.1</span><span>
-  </span><span>obstacle_density:</span><span></span><span>0.05</span><span>
-  </span><span>random_seed:</span><span></span><span>42</span><span>
-
-</span><span>agent:</span><span>
-  </span><span>vision_range:</span><span></span><span>5</span><span>
-  </span><span>energy_max:</span><span></span><span>100</span><span>
-  </span><span>energy_move_cost:</span><span></span><span>1.2</span><span>
-  </span><span>energy_eat_gain:</span><span></span><span>20</span><span>
-
-</span><span>ga:</span><span>
-  </span><span>population_size:</span><span></span><span>100</span><span>
-  </span><span>mutation_rate:</span><span></span><span>0.08</span><span>
-  </span><span>crossover_rate:</span><span></span><span>0.7</span><span>
-  </span><span>elitism:</span><span></span><span>2</span><span>
-  </span><span>max_generations:</span><span></span><span>200</span><span>
-
-</span><span>neural_net:</span><span>
-  </span><span>input_size:</span><span></span><span>10</span><span>
-  </span><span>hidden_layers:</span><span> [</span><span>16</span><span>, </span><span>8</span><span>]
-  </span><span>output_size:</span><span></span><span>4</span><span>
-  </span><span>activation:</span><span></span><span>relu</span><span>
-</span></span></code></div></div></pre>
+* **Features extraídas**:
+  * Fitness total
+  * Comida consumida
+  * Distancia recorrida
+  * Edad (supervivencia)
+* **Preprocesamiento**:
+  * Normalización: `StandardScaler`
+  * Reducción de dimensión: `PCA` (2 componentes, 95% varianza)
+* **Algoritmo**: K-Means con k=3
+* **Clusters identificados**:
+  * **Exploradores**: Alta exploración, fitness medio
+  * **Recolectores**: Alta comida, exploración media
+  * **Exitosos**: Alto fitness en todas las métricas
+* **Frecuencia**: Cada 3 generaciones
 
 ---
 
-## 🎮 Interfaz y visualización
+## 🎮 Sistema de Puzzle
 
-* `pygame` muestra mapa top-down.
-* Los agentes son círculos con color según especie/generación.
-* HUD lateral con:
-  * Generación actual
-  * Fitness promedio
-  * Diversidad genética
-  * Controles: pausa, velocidad, reinicio
-* Soporte para modo *headless* (sin render) para correr experimentos más rápido.
+El ecosistema incluye un sistema complejo de puzzle que los agentes deben aprender a resolver:
+
+### Elementos del Puzzle
+
+1. **Fortalezas**: Dos tipos (pequeña 4x5, grande 6x6) con muros y puertas
+2. **Llaves**:
+   * **Red Key**: Aparece desde gen 5 (configurable), recompensa: 2 fitness
+   * **Gold Key**: Dentro de fortaleza grande, recompensa: 10 fitness
+3. **Puertas**:
+   * **Wood Door**: Requiere 3 golpes, recompensa: 10 fitness
+   * **Iron Door**: Requiere 3 golpes, recompensa: 20 fitness
+4. **Cofre**: Objetivo final, recompensa: 85 fitness (alto para garantizar fitness 60+ al completar)
+
+### Flujo del Puzzle
+
+1. **Gen 1-4**: Agentes aprenden tareas básicas (comer, sobrevivir, explorar)
+2. **Gen 5+**: Aparecen llaves rojas en el mundo
+3. **Aprendizaje emergente**: Los agentes aprenden a:
+   * Recoger llave roja
+   * Golpear puerta de madera (acción `hit` > 0.5)
+   * Entrar a fortaleza pequeña
+   * Recoger llave dorada
+   * Golpear puerta de hierro
+   * Entrar a fortaleza grande
+   * Abrir cofre
+4. **Fin del juego**: Al abrir el cofre, la simulación termina
+
+### Mecánica de Aprendizaje
+
+* **Sin guía codificada**: Los agentes descubren el puzzle mediante prueba y error
+* **Recompensas**: Fitness positivo por cada acción exitosa del puzzle
+* **Penalizaciones**: Agua penaliza fitness si pasan mucho tiempo en ella
+* **Red neuronal**: Debe aprender a usar la acción `hit` cuando está cerca de puertas/árboles
 
 ---
 
-## 🧩 Testing y Validación
+## 🌊 Sistema de Agua
 
-* Unit tests con `pytest`.
-* Tests mínimos:
-  * Carga de configuración.
-  * Generación procedural del mapa.
-  * Movimiento y colisiones de agentes.
-  * Correcto cálculo de fitness.
-  * GA produce nueva población válida.
-  * Checkpoints y reproducibilidad.
+* **Efectos cuando un agente está en agua**:
+  * **Energía**: Pierde 0.05 adicional por tick (además del consumo normal 0.05)
+  * **Velocidad**: Reducida a 50% (SPEED_REDUCTION = 0.5)
+  * **Fitness**: Penalización de 5 puntos por tick (sin límite máximo)
+* **Propósito**: Incentivar a los agentes a evitar el agua
+* **Aprendizaje**: Los agentes evolucionan para minimizar tiempo en agua
 
 ---
 
-## 📦 Entregables Finales Esperados
+## 🌳 Sistema de Corte
 
-1. Código fuente completo modularizado (src/).
-2. Documentación técnica (docs/arquitectura.md + diagramas Mermaid).
-3. Logs y resultados de 3–5 corridas experimentales.
-4. Notebook con análisis de clustering.
-5. README con instrucciones para ejecutar, reproducir y visualizar.
+### Árboles
+
+* **Activación**: Cuando quedan ≤30 manzanas en el mundo
+* **Mecánica**: Agente con hacha puede cortar árbol (acción `hit` > 0.5)
+* **Golpes requeridos**: 2
+* **Recompensas**:
+  * Fitness: +7
+  * Comida: +20 manzanas generadas
+
+### Huts (Casitas)
+
+* **Activación**: Cuando quedan ≤20 manzanas en el mundo
+* **Mecánica**: Agente con hacha puede destruir hut (acción `hit` > 0.5)
+* **Golpes requeridos**: 4
+* **Recompensas**:
+  * Fitness: +15
+  * Comida: +30 manzanas generadas
+
+---
+
+## ⚙️ Configuración
+
+El sistema usa `config.py` con la clase `SimulationConfig`:
+
+```python
+class SimulationConfig:
+    # === SIMULACIÓN ===
+    POPULATION_SIZE = 60
+    MAX_GENERATIONS = 50
+    HEADLESS_MODE = True  # False para visualización
+  
+    # === ALGORITMO GENÉTICO ===
+    MUTATION_RATE = 0.20
+    CROSSOVER_RATE = 0.90
+    MEETING_POOL_FRACTION = 0.90
+  
+    # === RED NEURONAL ===
+    INPUT_SIZE = 10
+    HIDDEN_SIZE = [24, 18]
+    OUTPUT_SIZE = 5  # move_forward, turn_left, turn_right, eat, hit
+  
+    # === SISTEMA DE PUZZLE ===
+    RED_KEY_SPAWN_GEN = 5
+    RED_KEY_REWARD = 2
+    GOLD_KEY_REWARD = 10
+    DOOR_OPEN_REWARD = 10
+    DOOR_IRON_OPEN_REWARD = 20
+    CHEST_REWARD = 85
+  
+    # === SISTEMA DE AGUA ===
+    WATER_FITNESS_PENALTY = 5
+    WATER_ENERGY_LOSS = 0.05
+  
+    # ... más parámetros
+```
+
+### Parámetros Clave
+
+* **`POPULATION_SIZE`**: Tamaño de la población (60)
+* **`MAX_GENERATIONS`**: Generaciones máximas (50)
+* **`HEADLESS_MODE`**: `True` = sin render (rápido), `False` = con visualización
+* **`MUTATION_RATE`**: Tasa de mutación (0.20 = 20%)
+* **`BASE_TICKS`**: Ticks iniciales por generación (600)
+* **`TICKS_INCREMENT_AMOUNT`**: Incremento de ticks (200)
+* **`TICKS_INCREMENT_FREQUENCY`**: Cada cuántas generaciones incrementar (2)
 
 ---
 
@@ -268,193 +401,190 @@ Ejemplo de `configs/default.yaml`:
 
 - Python 3.11+
 - pip
-- make (opcional, para usar comandos del Makefile)
 
-### Instalación Rápida
-
-```bash
-# 1. Instalar dependencias
-python install.py
-
-# 2. Probar que todo funciona
-python test_simple.py
-
-# 3. Ejecutar aplicación
-python run_final.py
-```
-
-### Instalación con Entorno Virtual (Recomendado)
+### Instalación
 
 ```bash
-# Crear entorno virtual
-python -m venv venv
+# 1. Clonar repositorio
+git clone <repo-url>
+cd EcosistemaEvolutivo
 
-# Activar entorno virtual
-# En Windows:
-venv\Scripts\activate
-# En Linux/Mac:
-source venv/bin/activate
+# 2. Instalar dependencias
+pip install -r requirements.txt
 
-# Instalar dependencias
-python install_dependencies.py
-
-# Verificar instalación
-python check_installation.py
-
-# Ejecutar simulación
-python scripts/run_simulation.py
+# 3. Ejecutar simulación
+python main.py
 ```
 
-### Instalación Manual
+### Modo de Ejecución
+
+El sistema puede ejecutarse en dos modos:
+
+* **Modo visual** (`HEADLESS_MODE = False`):
+
+  * Renderizado completo con pygame
+  * Panel de estadísticas en tiempo real
+  * Popups de resumen generacional
+  * Más lento pero visualmente informativo
+* **Modo headless** (`HEADLESS_MODE = True`):
+
+  * Sin renderizado visual
+  * Solo output por consola
+  * Mucho más rápido para experimentos
+  * Ideal para múltiples corridas
+
+### Ejecutar Simulación
 
 ```bash
-# Instalar dependencias una por una
-pip install PyYAML numpy pandas matplotlib seaborn scikit-learn torch pygame deap noise rich tqdm psutil
+# Modo visual
+python main.py  # (configurar HEADLESS_MODE = False)
 
-# Verificar instalación
-python check_installation.py
-
-# Ejecutar simulación
-python scripts/run_simulation.py
+# Modo headless (rápido)
+python main.py  # (configurar HEADLESS_MODE = True)
 ```
 
-### Comandos Principales
+---
 
-```bash
-# Ejecutar aplicación
-python run_app.py
+## 📊 Resultados y Análisis
 
-# Instalar dependencias
-python install.py
+### Métricas Generadas
 
-# Ejecutar simulación
-python scripts/run_simulation.py
+Cada corrida genera:
 
-# Tests
-make test                  # Tests básicos
-make test-coverage         # Tests con cobertura
+* **Métricas por consola**:
 
-# Desarrollo
-make dev-setup             # Configurar entorno completo
-make dev-test              # Todas las verificaciones
-make lint                  # Linter
-make format                # Formatear código
+  * Fitness promedio/máximo/mínimo por generación
+  * Supervivientes, comida total, distancia recorrida
+  * Análisis de clustering (cada 3 generaciones)
+  * Monitoreo de aprendizaje (mejoras detectadas)
+* **Logs estructurados** (opcional):
 
-# Limpieza
-make clean                 # Limpiar todo
-make clean-logs            # Solo logs
-make clean-results         # Solo resultados
-```
+  * `logs/metrics/` - Métricas por generación
+  * `logs/runtime/` - Logs de runtime
+* **Checkpoints** (opcional):
 
-### Configuración
+  * `checkpoints/` - Estados de generaciones
 
-El sistema usa archivos YAML para configuración. El archivo principal es `configs/default.yaml`:
+### Análisis de Comportamiento
 
-```yaml
-simulation:
-  map_size: [80, 80]
-  population: 100
-  ticks_per_epoch: 2000
+El sistema incluye análisis automático:
 
-agent:
-  energy_max: 100
-  vision_range: 5
+1. **Clustering**: Identifica 3 tipos de estrategias emergentes
+2. **Monitoreo de aprendizaje**: Detecta mejoras en comida y fitness
+3. **Diversidad genética**: Monitorea convergencia prematura
 
-ga:
-  population_size: 100
-  mutation_rate: 0.08
-  crossover_rate: 0.7
-```
+### Resultados Esperados
 
-### Experimentos
+* **Evolución natural**: Fitness promedio aumenta gradualmente
+* **Comportamientos emergentes**: Agentes aprenden a comer, explorar, resolver puzzle
+* **Diversidad**: Múltiples estrategias coexisten
+* **Resolución del puzzle**: Agentes eventualmente abren el cofre (fitness 60+)
+* **Adaptación**: Evitan agua, cortan árboles cuando hay poca comida
 
-```bash
-# Experimentos predefinidos
-make exp-baseline          # Configuración baseline
-make exp-high-mutation     # Alta tasa de mutación
-make exp-small-world       # Mundo pequeño
-make exp-medium-world      # Mundo mediano
-make exp-hard-world        # Mundo difícil
-```
-
-### Análisis de Resultados
-
-```bash
-# Análisis interactivo
-make analyze               # Análisis general
-make cluster-analysis      # Análisis de clustering
-make ablation-study        # Estudio de ablación
-
-# Exportar datos
-make export-metrics        # Exportar métricas
-make make-gif              # Crear GIF de simulación
-```
+---
 
 ## 🧩 Arquitectura Implementada
 
-El sistema está completamente implementado con los siguientes módulos:
-
 ### ✅ Módulos Completados
 
-- **`src/core/`** - Loop principal, eventos y control de tiempo
-- **`src/agents/`** - Sistema de agentes con cerebro neural, sensores y actuadores
-- **`src/env/`** - Entorno 2D con física y generación procedural
-- **`src/ai/`** - Algoritmos genéticos y evaluación de fitness
-- **`src/analytics/`** - Métricas, clustering y logging
-- **`src/ui/`** - Interfaz visual con pygame, HUD y controles
-- **`src/ecosistema/`** - Aplicación principal integrada
-- **`src/utils/`** - Utilidades geométricas, RNG y profiling
+- **`src/agents/`** - Sistema de agentes con red neuronal y aprendizaje puro
+- **`src/world/`** - Mundo procedural con puzzle y recursos
+- **`src/evolution/`** - Algoritmo genético completo (selección, cruce, mutación)
+- **`src/analytics/`** - Métricas, clustering y monitoreo de aprendizaje
+- **`src/ui/`** - Interfaz visual con pygame, estadísticas y popups
 
 ### 🔧 Características Implementadas
 
-- **Agentes Autónomos**: Redes neuronales MLP con sensores y actuadores
-- **Algoritmo Genético**: Selección, cruce, mutación y elitismo
-- **Entorno 2D**: Física, colisiones y generación procedural
-- **Análisis**: Clustering, métricas y logging estructurado
-- **Interfaz Visual**: Renderizado con pygame, HUD y controles
-- **Configuración**: Sistema YAML flexible y reproducible
-- **Testing**: Suite de tests con pytest
-- **Documentación**: Docstrings y documentación técnica
+- **Aprendizaje puro**: 100% autónomo, sin guía codificada
+- **Red neuronal MLP**: 2 capas ocultas, 5 salidas (incluye acción `hit`)
+- **Sistema de puzzle**: Fortalezas, llaves, puertas, cofre
+- **Sistema de corte**: Árboles y huts destructibles
+- **Sistema de agua**: Penalizaciones proporcionales
+- **Algoritmo genético**: Meeting pool, cruce uniforme, mutación gaussiana
+- **Clustering**: K-Means con PCA para identificar estrategias
+- **Tiempo adaptativo**: Ticks por generación aumentan progresivamente
+- **Fitness natural**: Sin dependencia de generación, basado en rendimiento real
 
 ### 📊 Flujo del Sistema
 
-1. **Inicialización**: Carga configuración, crea mundo y población inicial
-2. **Simulación**: Loop principal con ticks, percepción, decisión y acción
-3. **Evolución**: Algoritmo genético para mejorar población
-4. **Análisis**: Clustering y métricas en tiempo real
-5. **Visualización**: Renderizado con pygame y HUD informativo
+1. **Inicialización**: Carga `config.py`, genera mundo procedural, crea población inicial
+2. **Simulación**: Loop con ticks, percepción → decisión → acción
+3. **Fitness**: Cálculo basado en rendimiento real (supervivencia, comida, exploración, puzzle)
+4. **Evolución**: Algoritmo genético mejora población
+5. **Análisis**: Clustering y monitoreo de aprendizaje (cada 3 generaciones)
+6. **Visualización**: Renderizado con pygame y HUD informativo (si no está en headless)
 
-### 🎯 Resultados Esperados
+---
 
-- **Evolución**: Agentes que aprenden a sobrevivir y reproducirse
-- **Emergencia**: Comportamientos complejos emergentes
-- **Diversidad**: Múltiples estrategias de supervivencia
-- **Adaptación**: Mejora continua del fitness
-- **Análisis**: Insights sobre evolución y comportamiento
-
-## 🧭 Lineamientos de Desarrollo
+## 🧭 Principios de Diseño
 
 El código sigue estos principios:
 
 - **Arquitectura Modular**: Separación clara de responsabilidades
-- **Tipado Fuerte**: Uso de type hints en todo el código
-- **Documentación**: Docstrings claros y concisos
-- **Testing**: Tests unitarios para cada módulo
+- **Aprendizaje Puro**: Sin guía codificada, agentes aprenden 100% autónomamente
+- **Configuración Centralizada**: Todo en `config.py` (SimulationConfig)
 - **Reproducibilidad**: Semillas y configuración determinística
-- **Performance**: Optimización para simulaciones largas
-- **Extensibilidad**: Fácil agregar nuevos componentes
+- **Performance**: Optimizado para simulaciones largas
+- **Extensibilidad**: Fácil agregar nuevos elementos (obstáculos, recompensas, etc.)
 
-## 🧩 Misión Completada
+---
+
+## 🧩 Estado del Proyecto
 
 > **El proyecto `Ecosistema Evolutivo IA` está completamente implementado y funcional.**
->
-> ✅ Todos los módulos están implementados
-> ✅ Arquitectura modular y extensible
-> ✅ Sistema de configuración flexible
-> ✅ Interfaz visual completa
-> ✅ Análisis y métricas
-> ✅ Testing y documentación
-> ✅ Scripts de ejecución y Makefile
->
+
+✅ **Todos los módulos están implementados**✅ **Arquitectura modular y extensible**✅ **Sistema de configuración centralizado**✅ **Interfaz visual completa**✅ **Análisis y métricas**✅ **Aprendizaje puro sin guía codificada**✅ **Sistema de puzzle complejo**✅ **Clustering de comportamientos emergentes**
+
 > **El sistema está listo para ejecutar simulaciones y experimentos.**
->
+
+---
+
+## 📝 Notas Técnicas
+
+### Aprendizaje Puro
+
+* Los agentes **NO reciben guía codificada** hacia comida, árboles o puzzle
+* Todas las decisiones son tomadas por la red neuronal basándose en percepciones
+* El fitness recompensa comportamientos exitosos, pero no "dirige" el comportamiento
+* Única excepción: Limitación física de giro excesivo para evitar círculos infinitos
+
+### Sistema de Fitness
+
+* **Sin dependencia de generación**: El fitness no aumenta artificialmente con las generaciones
+* **Basado en rendimiento real**: Supervivencia, comida, exploración, eficiencia, puzzle
+* **Penalizaciones proporcionales**: Agua penaliza según tiempo transcurrido (sin límite)
+* **Recompensas del puzzle**: Acumuladas durante la generación, sumadas al fitness final
+
+### Sistema Adaptativo de Tiempo
+
+* **BASE_TICKS**: 600 ticks iniciales
+* **Incremento**: +200 ticks cada 2 generaciones
+* **Propósito**: Permitir más tiempo para tareas complejas en generaciones avanzadas
+* **Efecto**: Fitness puede aumentar naturalmente con más tiempo disponible
+
+---
+
+## 🎯 Objetivo del Puzzle
+
+El objetivo principal del ecosistema es que los agentes aprendan a resolver el puzzle:
+
+1. **Aprendizaje básico** (Gen 1-4): Comer, sobrevivir, explorar
+2. **Descubrimiento del puzzle** (Gen 5+): Aparecen llaves, agentes empiezan a interactuar
+3. **Resolución completa**: Agentes aprenden secuencia completa (llave → puerta → cofre)
+4. **Fitness final**: Cuando abren el cofre, fitness promedio debe ser ≥60
+
+La simulación termina cuando el cofre es abierto, independientemente de la generación.
+
+---
+
+## 📚 Referencias y Conceptos
+
+- **Algoritmos Genéticos**: Selección, cruce, mutación, elitismo
+- **Redes Neuronales**: MLP, forward pass, backpropagation (implícito vía GA)
+- **Clustering**: K-Means, PCA, normalización
+- **Aprendizaje por Refuerzo Evolutivo**: Fitness como señal de recompensa
+- **Emergencia**: Comportamientos complejos emergentes de reglas simples
+
+---
+
+**Desarrollado para el curso de Inteligencia Artificial - UCEMA**

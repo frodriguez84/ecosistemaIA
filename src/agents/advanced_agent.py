@@ -166,8 +166,8 @@ class AdvancedAgent:
             food_ratio = perceptions[9] if len(perceptions) > 9 else 1.0  # Sensor 10: ratio de comida
             has_axe = 1.0 if (hasattr(world, 'axe_picked_up') and world.axe_picked_up) else 0.0
             
-            # Si hay poca comida (<40%) y tiene hacha, buscar árboles para cortar
-            if food_ratio < 0.4 and has_axe > 0.5:
+            # Si hay poca comida (<60%) y tiene hacha, buscar árboles para cortar
+            if food_ratio < 0.6 and has_axe > 0.5:
                 nearest_tree = self._find_nearest_cuttable_tree(world)
                 if nearest_tree:
                     target_angle = float(np.arctan2(nearest_tree[1] - float(self.y), nearest_tree[0] - float(self.x)))
@@ -243,13 +243,18 @@ class AdvancedAgent:
                 else:
                     self.target_food = None
         # LÓGICA INTELIGENTE PARA PUZZLE - SOLO DESPUÉS DE APRENDER TAREAS BÁSICAS
-        # Umbrales altos para asegurar que primero aprendan: comer, explorar, cortar árboles
-        # Solo agentes con fitness alto (que ya dominan tareas básicas) intentan el puzzle
-        puzzle_threshold_door = 35.0   # Umbral alto: solo agentes con fitness >25 intentan puertas (después de aprender tareas básicas)
-        puzzle_threshold_key = 40.0   # Umbral alto: solo agentes con fitness >35 buscan llaves/cofre (después de dominar tareas básicas)
+        # Umbrales ajustados para activarse cuando corresponde (fitness ~45-50)
+        # Solo agentes con fitness medio-alto (que ya dominan tareas básicas) intentan el puzzle
+        # HACEMOS LA GUÍA PROBABILÍSTICA Y MENOS AGRESIVA para evitar convergencia masiva
+        puzzle_threshold_door = 65.0   # Umbral: agentes con fitness >50 intentan puertas
+        puzzle_threshold_key = 65.0   # Umbral: agentes con fitness >50 buscan llaves/cofre
         
-        # Buscar puertas para golpear (umbral más bajo)
-        if self.fitness > puzzle_threshold_door:
+        # Solo aplicar guía del puzzle con probabilidad (no todos los agentes siguen la guía)
+        # Esto evita que todos converjan al mismo punto
+        puzzle_guidance_probability = 0.4  # Solo 40% de los agentes siguen la guía hardcodeada
+        
+        # Buscar puertas para golpear (guía probabilística y menos agresiva)
+        if self.fitness > puzzle_threshold_door and random.random() < puzzle_guidance_probability:
             nearest_door = self._find_nearest_door(world)
             if nearest_door:
                 target_angle = float(np.arctan2(nearest_door[1] - float(self.y), nearest_door[0] - float(self.x)))
@@ -261,19 +266,19 @@ class AdvancedAgent:
                 while angle_diff < -np.pi:
                     angle_diff += 2 * np.pi
                 
-                # Movimiento hacia puerta
+                # Movimiento hacia puerta (menos agresivo: solo influencia sutil)
                 if abs(angle_diff) < 0.3:
-                    decisions['move_forward'] = max(decisions['move_forward'], 0.8)
+                    decisions['move_forward'] = max(decisions['move_forward'], 0.6)  # Reducido de 0.8 a 0.6
                 elif angle_diff > 0:
-                    decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.5)
-                    decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.5)
+                    decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.2)  # Reducido de 0.5 a 0.2
+                    decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.2)
                 else:
-                    decisions['turn_left'] = min(1.0, decisions['turn_left'] + 0.5)
-                    decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.5)
+                    decisions['turn_left'] = min(1.0, decisions['turn_left'] + 0.2)  # Reducido de 0.5 a 0.2
+                    decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.2)
                 self.target_food = None
         
-        # Buscar llaves y cofre (umbral más bajo)
-        if self.fitness > puzzle_threshold_key:
+        # Buscar llaves y cofre (guía probabilística y menos agresiva)
+        if self.fitness > puzzle_threshold_key and random.random() < puzzle_guidance_probability:
             nearest_key = self._find_nearest_key(world)
             if nearest_key:
                 target_angle = float(np.arctan2(nearest_key[1] - float(self.y), nearest_key[0] - float(self.x)))
@@ -285,15 +290,15 @@ class AdvancedAgent:
                 while angle_diff < -np.pi:
                     angle_diff += 2 * np.pi
                 
-                # Movimiento hacia llave/cofre (más agresivo)
+                # Movimiento hacia llave/cofre (menos agresivo: solo influencia sutil)
                 if abs(angle_diff) < 0.3:
-                    decisions['move_forward'] = max(decisions['move_forward'], 0.9)
+                    decisions['move_forward'] = max(decisions['move_forward'], 0.7)  # Reducido de 0.9 a 0.7
                 elif angle_diff > 0:
-                    decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.6)
-                    decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.6)
+                    decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.3)  # Reducido de 0.6 a 0.3
+                    decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.3)
                 else:
-                    decisions['turn_left'] = min(1.0, decisions['turn_left'] + 0.6)
-                    decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.6)
+                    decisions['turn_left'] = min(1.0, decisions['turn_left'] + 0.3)  # Reducido de 0.6 a 0.3
+                    decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.3)
                 self.target_food = None
         
         else:
@@ -332,6 +337,10 @@ class AdvancedAgent:
         """Ejecuta acciones basadas en decisiones."""
         if not self.alive:
             return
+        
+        # RESETEAR velocidad al valor base al inicio de cada tick
+        # (los efectos de zonas se aplican después y son temporales)
+        self.speed = SimulationConfig.AGENT_SPEED
         
         # Envejecer
         self.age += 1
@@ -405,11 +414,11 @@ class AdvancedAgent:
                 # Actualizar ventanas para métricas anti-círculo
                 self._update_movement_metrics(move_distance)
                 
-                # Actualizar fitness cada 50 movimientos para feedback visual
-                if self.total_moves % 50 == 0:
+                # Actualizar fitness cada 100 movimientos (reducido de 50 para mejor rendimiento)
+                if self.total_moves % 100 == 0:
                     self._calculate_fitness()
         
-        # Verificar efectos de zonas especiales
+        # Verificar efectos de zonas especiales (SOLO UNA VEZ por tick, no dos)
         self._check_zone_effects(world)
         
         # Intentar comer
@@ -419,12 +428,11 @@ class AdvancedAgent:
             self.eating = self._try_eat(world)
             if self.eating:
                 self.food_found_count += 1
+                # Actualizar fitness solo cuando come (feedback visual inmediato)
+                self._calculate_fitness()
         
         # Intentar curarse con pociones
         self._try_heal(world)
-        
-        # Verificar efectos de zonas especiales
-        self._check_zone_effects(world)
         
         # Morir si no hay energía
         if self.energy <= 0:
@@ -638,13 +646,17 @@ class AdvancedAgent:
         if hasattr(world, 'red_key') and world.red_key and not world.red_key.collected:
             targets.append((world.red_key.x, world.red_key.y))
         
-        # Verificar gold_key
+        # Verificar gold_key SOLO si la puerta de madera está abierta (igual que el pickup)
         if hasattr(world, 'gold_key') and world.gold_key and not world.gold_key.collected:
-            targets.append((world.gold_key.x, world.gold_key.y))
+            # Solo incluir gold_key si la puerta de madera está abierta
+            if hasattr(world, 'door') and world.door and world.door.is_open:
+                targets.append((world.gold_key.x, world.gold_key.y))
         
-        # Verificar cofre
+        # Verificar cofre SOLO si la puerta de hierro está abierta (igual que el pickup)
         if hasattr(world, 'chest') and world.chest and not world.chest.is_open:
-            targets.append((world.chest.x, world.chest.y))
+            # Solo incluir cofre si la puerta de hierro está abierta
+            if hasattr(world, 'door_iron') and world.door_iron and world.door_iron.is_open:
+                targets.append((world.chest.x, world.chest.y))
         
         if not targets:
             return None

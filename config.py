@@ -8,24 +8,24 @@ class SimulationConfig:
     # === SIMULACIÓN ===
     POPULATION_SIZE = 60
     TARGET_FPS = 60
-    MAX_GENERATIONS = 30    # Extendido para ver tendencias a largo plazo
+    MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
-    BASE_TICKS = 600                  # Tiempo base inicial (REDUCIDO para fitness más bajo al inicio)
+    BASE_TICKS = 960                  # Tiempo base inicial (aumentado para dar más tiempo por gen)
     TICKS_INCREMENT_AMOUNT = 200      # Cuántos ticks aumentar cada incremento (200 para crecimiento más gradual)
     TICKS_INCREMENT_FREQUENCY = 2     # Cada cuántas generaciones aumentar (cada 2 para más frecuencia)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.25       # 25% de mutación (aumentado para más diversidad y evitar convergencia prematura)
+    MUTATION_RATE = 0.35       # Mutación más alta para mayor diversidad
     CROSSOVER_RATE = 0.90        # 90% de cruce 
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "meeting_pool"  # "elitism", "tournament" o "meeting_pool"
     TOURNAMENT_SIZE = 3             # Tamaño del torneo 
-    ELITISM = 0                     # Mejores agentes que se mantienen 
-    MEETING_POOL_FRACTION = 0.85    # Porción superior por ranking para el pool (reducido para más presión selectiva)
+    ELITISM = 1                     # Mejores agentes que se mantienen 
+    MEETING_POOL_FRACTION = 0.70    # Porción superior por ranking para el pool (reducido para más presión selectiva)
     
     # === RED NEURONAL ===
     INPUT_SIZE = 10              # 10 sensores esenciales (simplificados)
@@ -62,7 +62,7 @@ class SimulationConfig:
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
     TREE_CUTTING_THRESHOLD = 30  # Umbral para activar corte (≤30 manzanas)
     TREE_HITS_TO_CUT = 2         # Golpes necesarios para cortar árbol
-    TREE_CUT_REWARD = 7         # Fitness ganado por cortar árbol (era 7)
+    TREE_CUT_REWARD = 15        # Fitness ganado por cortar árbol (aumentado para incentivar corte)
     TREE_CUT_FOOD_REWARD = 20      # Manzanas generadas al cortar árbol
     
     # === SISTEMA DE CORTE DE HUTS ===
@@ -94,17 +94,17 @@ class SimulationConfig:
     # Llaves
     RED_KEY_SPAWN_GEN = 5         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
     RED_KEY_REWARD = 2            # Fitness por recoger red_key (aumentado para mejor balance)
-    GOLD_KEY_REWARD = 10          # Fitness por recoger gold_key (reducido para que aprendan primero tareas básicas)
+    GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (aumentado para que más agentes suban de fitness)
     
     # Puertas
     DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
     DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
-    DOOR_OPEN_REWARD = 10         # Fitness por abrir door (reducido para que aprendan primero tareas básicas)
-    DOOR_IRON_OPEN_REWARD = 20    # Fitness por abrir door_iron (reducido para que aprendan primero tareas básicas)
+    DOOR_OPEN_REWARD = 12         # Fitness por abrir door (aumentado para mejor curva)
+    DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (aumentado para que más agentes suban de fitness)
     DOOR_HIT_COOLDOWN = 90       # Cooldown entre golpes (ticks)
     
     # Cofre
-    CHEST_REWARD = 85             # Fitness por abrir cofre (AUMENTADO para promedio 60+ al completar)
+    CHEST_REWARD = 50            # Fitness por abrir cofre (aumentado para que promedio suba a 70+)
     
     # === RENDIMIENTO ===
     STATS_UPDATE_FREQUENCY = 5   # Actualizar stats cada N frames
