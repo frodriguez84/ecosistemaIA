@@ -348,6 +348,37 @@ class AdvancedAgent:
         # Consumir energía (REDUCIDO para mejor supervivencia)
         self.energy -= 0.05
         
+        # ===== NORMALIZACIÓN DE GIROS (Evitar turn_left y turn_right simultáneos) =====
+        # Si ambos están activos, elegir solo el más fuerte (evita círculos)
+        if decisions['turn_left'] > 0.3 and decisions['turn_right'] > 0.3:
+            # Ambos activos: elegir el más fuerte y anular el otro
+            if decisions['turn_left'] > decisions['turn_right']:
+                decisions['turn_right'] = 0.0
+            else:
+                decisions['turn_left'] = 0.0
+        
+        # ===== PENALIZACIÓN REACTIVA POR GIRO CONSTANTE =====
+        # Detectar giro constante en los últimos 20 ticks usando recent_angles
+        if len(self.recent_angles) >= 20:
+            # Calcular variación total de ángulo en los últimos 20 ticks
+            angles_list = list(self.recent_angles)
+            angle_changes = []
+            for i in range(1, len(angles_list)):
+                delta = angles_list[i] - angles_list[i-1]
+                # Normalizar a [-pi, pi]
+                while delta > math.pi:
+                    delta -= 2 * math.pi
+                while delta < -math.pi:
+                    delta += 2 * math.pi
+                angle_changes.append(abs(delta))
+            
+            # Si hay giro constante (suma de cambios > umbral), penalizar
+            total_angle_change = sum(angle_changes)
+            if total_angle_change > 3.0:  # ~3 radianes = ~172 grados en 20 ticks = giro constante
+                # Forzar movimiento recto temporalmente (reducir giro a 0)
+                decisions['turn_left'] *= 0.2
+                decisions['turn_right'] *= 0.2
+        
         # Girar (sistema mejorado para evitar círculos)
         turn_amount = (decisions['turn_right'] - decisions['turn_left']) * 0.12  # Giro moderado
         
@@ -680,7 +711,7 @@ class AdvancedAgent:
         food_multiplier = 10.0  # Premia comer más (aumentado para mejor curva promedio)
         exploration_multiplier = 10.0  # Premia explorar más (aumentado para mejor curva promedio)
         survival_multiplier = 0.015  # Premia supervivencia (aumentado para mejor curva promedio)
-        anti_circle_multiplier = 5.0  # Premia movimiento eficiente
+        anti_circle_multiplier = 18.0  # Premia movimiento eficiente (aumentado para combatir círculos)
         obstacle_multiplier = 0.20  # Premia evitar obstáculos
         penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
         
@@ -901,13 +932,6 @@ class AdvancedAgent:
         
         # Dibujar círculo de fitness (más grande que el agente)
         pygame.draw.circle(screen, color, (int(self.x), int(self.y)), self.radius + 3, 2)
-        
-        # Dibujar número de fitness (opcional, solo si es alto)
-        if self.fitness > 50:
-            font = pygame.font.Font(None, 12)
-            fitness_text = font.render(f"{int(self.fitness)}", True, (255, 255, 255))
-            text_rect = fitness_text.get_rect(center=(int(self.x), int(self.y) - 25))
-            screen.blit(fitness_text, text_rect)
     
     def _draw_death_effect(self, screen, tick):
         """Dibuja efecto de muerte simplificado."""
@@ -924,7 +948,7 @@ class AdvancedAgent:
 
 
 class SimpleNeuralNetwork:
-    """Red neuronal simple (soporta 1 o múltiples capas ocultas)."""
+    """Red neuronal."""
     
     def __init__(self, input_size=8, hidden_size=8, output_size=4):
         # Permitir int (1 capa) o lista (N capas)
@@ -943,9 +967,18 @@ class SimpleNeuralNetwork:
         # Crear listas de pesos y sesgos para cada capa (i -> i+1)
         self.weights = []  # lista de matrices W
         self.biases = []   # lista de vectores b
-        for in_dim, out_dim in zip(layer_dims[:-1], layer_dims[1:]):
+        for layer_idx, (in_dim, out_dim) in enumerate(zip(layer_dims[:-1], layer_dims[1:])):
             W = np.random.randn(in_dim, out_dim) * 0.5
             b = np.random.randn(out_dim) * 0.1
+            
+            # Ajustar sesgos de la capa de salida para favorecer movimiento recto
+            # Índices: 0=move_forward, 1=turn_left, 2=turn_right, 3=eat
+            if layer_idx == len(layer_dims) - 2:  # Es la última capa (antes de la salida)
+                # Sesgos negativos para turn_left (1) y turn_right (2) -> movimiento recto inicial
+                if out_dim >= 3:  # Asegurar que hay al menos 3 salidas
+                    b[1] = -0.3  # turn_left: sesgo negativo fuerte
+                    b[2] = -0.3  # turn_right: sesgo negativo fuerte
+            
             self.weights.append(W)
             self.biases.append(b)
 

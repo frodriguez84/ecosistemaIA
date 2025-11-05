@@ -14,7 +14,7 @@ class SimulationConfig:
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
     BASE_TICKS = 960                  # Tiempo base inicial (aumentado para dar más tiempo por gen)
-    TICKS_INCREMENT_AMOUNT = 200      # Cuántos ticks aumentar cada incremento (200 para crecimiento más gradual)
+    TICKS_INCREMENT_AMOUNT = 180      # Cuántos ticks aumentar cada incremento (180 para crecimiento más gradual)
     TICKS_INCREMENT_FREQUENCY = 2     # Cada cuántas generaciones aumentar (cada 2 para más frecuencia)
     
     # === ALGORITMO GENÉTICO ===
@@ -92,13 +92,13 @@ class SimulationConfig:
     TILE_SIZE = 32                # Tamaño de cada tile en píxeles
     
     # Llaves
-    RED_KEY_SPAWN_GEN = 5         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
+    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
     RED_KEY_REWARD = 2            # Fitness por recoger red_key (aumentado para mejor balance)
     GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (aumentado para que más agentes suban de fitness)
     
     # Puertas
-    DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
-    DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
+    DOOR_HITS_TO_OPEN = 2         # Golpes necesarios para abrir door
+    DOOR_IRON_HITS_TO_OPEN = 2    # Golpes necesarios para abrir door_iron
     DOOR_OPEN_REWARD = 12         # Fitness por abrir door (aumentado para mejor curva)
     DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (aumentado para que más agentes suban de fitness)
     DOOR_HIT_COOLDOWN = 90       # Cooldown entre golpes (ticks)
