@@ -337,7 +337,84 @@ class GeneticAlgorithm:
             child = AdvancedAgent(x, y, child_brain)
             new_agents.append(child)
         
-        return new_agents[:self.population_size]
+        new_agents = new_agents[:self.population_size]
+        
+        # ===== INMIGRACIÓN PERIÓDICA =====
+        # Introducir agentes completamente aleatorios para mantener diversidad genética
+        from config import SimulationConfig
+        if (SimulationConfig.IMMIGRATION_ENABLED and 
+            generation > 0 and 
+            generation % SimulationConfig.IMMIGRATION_FREQUENCY == 0):
+            
+            immigration_count = min(SimulationConfig.IMMIGRATION_COUNT, len(new_agents))
+            
+            # Ordenar agentes por fitness (peores al final)
+            new_agents.sort(key=lambda a: a.fitness, reverse=True)
+            
+            # Reemplazar los peores agentes con inmigrantes aleatorios
+            immigrant_agents = self._create_immigrant_agents(immigration_count)
+            
+            # Reemplazar los últimos (peores) agentes
+            for i in range(immigration_count):
+                if i < len(immigrant_agents):
+                    new_agents[-(i+1)] = immigrant_agents[i]
+            
+            print(f"🌍 Inmigración aplicada: {immigration_count} nuevos agentes aleatorios introducidos (gen {generation})")
+        
+        return new_agents
+    
+    def _create_immigrant_agents(self, count):
+        """Crea agentes inmigrantes completamente aleatorios para mantener diversidad."""
+        immigrants = []
+        attempts = 0
+        max_attempts = count * 50
+        
+        while len(immigrants) < count and attempts < max_attempts:
+            # Posición aleatoria en área segura
+            x = random.randint(50, 900)
+            y = random.randint(50, 750)
+            
+            # Verificar que no esté en obstáculos
+            valid_position = True
+            if self.world:
+                # Verificar colisión con obstáculos
+                for obstacle in self.world.obstacles:
+                    if obstacle.collides_with(x, y, 35):
+                        valid_position = False
+                        break
+                
+                # Verificar colisión con el estanque
+                if valid_position:
+                    for pond_obj in self.world.pond_obstacles:
+                        if pond_obj.collides_with(x, y, 35, 35):
+                            valid_position = False
+                            break
+                
+                attempts += 1
+                
+                if valid_position:
+                    # Crear agente con cerebro completamente aleatorio
+                    from config import SimulationConfig
+                    random_brain = SimpleNeuralNetwork(
+                        SimulationConfig.INPUT_SIZE,
+                        SimulationConfig.HIDDEN_SIZE,
+                        SimulationConfig.OUTPUT_SIZE
+                    )
+                    immigrant = AdvancedAgent(x, y, random_brain)
+                    immigrants.append(immigrant)
+            else:
+                # Si no hay mundo, crear en posición segura por defecto
+                from config import SimulationConfig
+                random_brain = SimpleNeuralNetwork(
+                    SimulationConfig.INPUT_SIZE,
+                    SimulationConfig.HIDDEN_SIZE,
+                    SimulationConfig.OUTPUT_SIZE
+                )
+                immigrant = AdvancedAgent(x, y, random_brain)
+                immigrants.append(immigrant)
+                break
+        
+        return immigrants
     
     def _tournament_selection(self, agents, num_parents):
         """Selección por torneo."""

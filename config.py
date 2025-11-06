@@ -6,7 +6,7 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    POPULATION_SIZE = 60
+    POPULATION_SIZE = 80
     TARGET_FPS = 60
     MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
@@ -26,6 +26,11 @@ class SimulationConfig:
     TOURNAMENT_SIZE = 3             # Tamaño del torneo 
     ELITISM = 1                     # Mejores agentes que se mantienen 
     MEETING_POOL_FRACTION = 0.70    # Porción superior por ranking para el pool (reducido para más presión selectiva)
+    
+    # === INMIGRACIÓN ===
+    IMMIGRATION_ENABLED = True      # Habilitar inmigración periódica para mantener diversidad
+    IMMIGRATION_FREQUENCY = 7       # Cada cuántas generaciones aplicar inmigración
+    IMMIGRATION_COUNT = 2           # Cuántos agentes nuevos aleatorios introducir
     
     # === RED NEURONAL ===
     INPUT_SIZE = 10              # 10 sensores esenciales (simplificados)
@@ -56,7 +61,7 @@ class SimulationConfig:
     SPRITE_SCALE_FACTOR = 1.0    # Factor de escalado de sprites
     BASE_SPRITE_SIZE = 16        # Tamaño base de sprites en píxeles
     
-    FOOD_COUNT = 60             # Cantidad de comida inicial (aumentado para generaciones largas)
+    FOOD_COUNT = 80             # Cantidad de comida inicial (aumentado para generaciones largas)
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
@@ -92,7 +97,7 @@ class SimulationConfig:
     TILE_SIZE = 32                # Tamaño de cada tile en píxeles
     
     # Llaves
-    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
+    RED_KEY_SPAWN_GEN = 5         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
     RED_KEY_REWARD = 2            # Fitness por recoger red_key (aumentado para mejor balance)
     GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (aumentado para que más agentes suban de fitness)
     
@@ -208,6 +213,9 @@ class SimulationConfig:
             print(f"🎯 Selección: TOURNAMENT, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
         else:
             print(f"🎯 Selección: ELITISM, élite: {cls.ELITISM}, torneo: {cls.TOURNAMENT_SIZE}")
+        if cls.IMMIGRATION_ENABLED:
+            #print(f"🌍 Inmigración: {cls.IMMIGRATION_COUNT} agentes cada {cls.IMMIGRATION_FREQUENCY} generaciones")
+            pass
         print(f"🧠 Neuronal: {cls.INPUT_SIZE}→{cls.HIDDEN_SIZE}→{cls.OUTPUT_SIZE}")
         print(f"⚡ Agente: {cls.AGENT_SPEED} velocidad, {cls.VISION_RANGE} visión")
         print(f"🔋 Energía: {cls.AGENT_ENERGY} inicial, -{cls.AGENT_ENERGY_CONSUMPTION}/tick, +{cls.AGENT_ENERGY_GAIN_FOOD} comida")
