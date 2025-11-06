@@ -118,12 +118,16 @@ class AdvancedAgent:
         else:
             perceptions.append(0.0)
         
-        # 4. Distancia a obstáculos
-        min_obstacle_dist = float('inf')
+        # 4. Distancia a obstáculos (optimizado: usar distancia² para comparación)
+        min_obstacle_dist_sq = float('inf')
         for obstacle in world.obstacles:
             if obstacle.type in ["wall", "tree", "hut"]:
-                dist = float(np.sqrt((float(self.x) - float(obstacle.x))**2 + (float(self.y) - float(obstacle.y))**2))
-                min_obstacle_dist = min(min_obstacle_dist, dist)
+                dx = float(self.x) - float(obstacle.x)
+                dy = float(self.y) - float(obstacle.y)
+                dist_sq = dx*dx + dy*dy  # Comparar sin sqrt
+                min_obstacle_dist_sq = min(min_obstacle_dist_sq, dist_sq)
+        # Calcular sqrt solo una vez al final si es necesario
+        min_obstacle_dist = float(np.sqrt(min_obstacle_dist_sq)) if min_obstacle_dist_sq != float('inf') else float('inf')
         perceptions.append(min(min_obstacle_dist / self.vision_range, 1.0) if min_obstacle_dist != float('inf') else 1.0)
         
         # 5. Posición X normalizada
@@ -614,14 +618,17 @@ class AdvancedAgent:
     
     def _find_nearest_food(self, world):
         """Encuentra la comida más cercana."""
-        min_distance = float('inf')
+        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
         nearest_food = None
         
         for food in world.food_items:
             if not food['eaten']:
-                distance = float(np.sqrt((float(self.x) - food['x'])**2 + (float(self.y) - food['y'])**2))
-                if distance < min_distance:
-                    min_distance = distance
+                # Comparar usando distancia² (más rápido, sin sqrt)
+                dx = float(self.x) - food['x']
+                dy = float(self.y) - food['y']
+                distance_sq = dx*dx + dy*dy
+                if distance_sq < min_distance_sq:
+                    min_distance_sq = distance_sq
                     nearest_food = (food['x'], food['y'])
         
         return nearest_food
@@ -631,14 +638,17 @@ class AdvancedAgent:
         if not hasattr(world, 'trees') or not hasattr(world, 'axe_picked_up') or not world.axe_picked_up:
             return None
         
-        min_distance = float('inf')
+        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
         nearest_tree = None
         
         for tree in world.trees:
             if tree.can_be_cut and not tree.is_cut:
-                distance = float(np.sqrt((float(self.x) - tree.x)**2 + (float(self.y) - tree.y)**2))
-                if distance < min_distance:
-                    min_distance = distance
+                # Comparar usando distancia² (más rápido, sin sqrt)
+                dx = float(self.x) - tree.x
+                dy = float(self.y) - tree.y
+                distance_sq = dx*dx + dy*dy
+                if distance_sq < min_distance_sq:
+                    min_distance_sq = distance_sq
                     nearest_tree = (tree.x, tree.y)
         
         return nearest_tree
@@ -658,13 +668,16 @@ class AdvancedAgent:
         if not doors:
             return None
         
-        min_distance = float('inf')
+        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
         nearest_door = None
         
         for door_x, door_y in doors:
-            distance = float(np.sqrt((float(self.x) - door_x)**2 + (float(self.y) - door_y)**2))
-            if distance < min_distance:
-                min_distance = distance
+            # Comparar usando distancia² (más rápido, sin sqrt)
+            dx = float(self.x) - door_x
+            dy = float(self.y) - door_y
+            distance_sq = dx*dx + dy*dy
+            if distance_sq < min_distance_sq:
+                min_distance_sq = distance_sq
                 nearest_door = (door_x, door_y)
         
         return nearest_door
@@ -692,13 +705,16 @@ class AdvancedAgent:
         if not targets:
             return None
         
-        min_distance = float('inf')
+        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
         nearest_target = None
         
         for target_x, target_y in targets:
-            distance = float(np.sqrt((float(self.x) - target_x)**2 + (float(self.y) - target_y)**2))
-            if distance < min_distance:
-                min_distance = distance
+            # Comparar usando distancia² (más rápido, sin sqrt)
+            dx = float(self.x) - target_x
+            dy = float(self.y) - target_y
+            distance_sq = dx*dx + dy*dy
+            if distance_sq < min_distance_sq:
+                min_distance_sq = distance_sq
                 nearest_target = (target_x, target_y)
         
         return nearest_target
@@ -716,7 +732,7 @@ class AdvancedAgent:
         penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
         
         # Fitness por supervivencia (crece naturalmente con la edad)
-        survival_fitness = min(self.age * survival_multiplier, 23)  # Cap aumentado de 20 a 28
+        survival_fitness = min(self.age * survival_multiplier, 15)  # Cap aumentado de 20 a 28
         
         # Fitness por comida (crece naturalmente con sqrt para evitar explosión)
         food_fitness = food_multiplier * float(np.sqrt(max(0.0, float(self.food_eaten))))
@@ -850,12 +866,10 @@ class AdvancedAgent:
             self._draw_death_effect(screen, tick)
             return
         
-        # Obtener sprite del agente (animado y direccional)
-        sprite = sprite_manager.get_agent_sprite(self.angle, tick, self.moving)
+        # Obtener sprite del agente escalado (con cache para mejor rendimiento)
+        scaled_sprite = sprite_manager.get_scaled_agent_sprite(self.angle, tick, self.moving, (16, 16))
         
-        if sprite:
-            # Escalar sprite a tamaño apropiado para agentes
-            scaled_sprite = pygame.transform.scale(sprite, (16, 16))
+        if scaled_sprite:
             sprite_rect = scaled_sprite.get_rect(center=(int(self.x), int(self.y)))
             screen.blit(scaled_sprite, sprite_rect)
         else:

@@ -167,6 +167,9 @@ def main():
         print("🚀 MODO HEADLESS ACTIVADO - Sin render")
     clock = pygame.time.Clock()
     
+    # Crear fuentes una vez (cache para mejor rendimiento)
+    pause_font = pygame.font.Font(None, 24) if not config.HEADLESS_MODE else None
+    
     # Crear sistemas de sprites y partículas
     sprite_manager = SpriteManager()
     particle_system = ParticleSystem()
@@ -710,9 +713,8 @@ def main():
             # Dibujar cuadro de resumen (si está visible)
             summary_popup.draw(render_surface)
                         
-            if paused:
-                font = pygame.font.Font(None, 24)
-                pause_text = font.render("PAUSADO - Presiona ESPACIO", True, (255, 0, 0))
+            if paused and pause_font:
+                pause_text = pause_font.render("PAUSADO - Presiona ESPACIO", True, (255, 0, 0))
                 render_surface.blit(pause_text, (10, 40))
             
             # Escalar y mostrar la superficie renderizada

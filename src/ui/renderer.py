@@ -14,6 +14,7 @@ class SpriteManager:
     def __init__(self):
         self.sprites = {}
         self.sprite_paths = {}  # Almacenar rutas para recarga
+        self.scaled_sprites_cache = {}  # Cache de sprites escalados (clave: sprite_key_size)
         self._load_sprites()
 
     def _make_white_transparent(self, surface, tolerance=40):
@@ -158,6 +159,30 @@ class SpriteManager:
             sprite = self.sprites.get('agent')
         
         return sprite
+    
+    def get_scaled_agent_sprite(self, angle=0, tick=0, moving=False, size=(16, 16)):
+        """Obtiene sprite del agente escalado con cache para mejor rendimiento."""
+        # Obtener sprite base (sin escalar)
+        base_sprite = self.get_agent_sprite(angle, tick, moving)
+        if not base_sprite:
+            return None
+        
+        # Crear clave de cache: sprite_key + tamaño
+        direction = 'right' if -np.pi/4 <= angle <= np.pi/4 else \
+                  'down' if np.pi/4 < angle <= 3*np.pi/4 else \
+                  'left' if 3*np.pi/4 < angle <= 5*np.pi/4 else 'up'
+        frame = 1 if (tick // 8) % 2 == 0 else 2 if moving else 1
+        sprite_key = f'agent_{direction}_{frame}'
+        cache_key = f"{sprite_key}_{size[0]}x{size[1]}"
+        
+        # Verificar cache
+        if cache_key in self.scaled_sprites_cache:
+            return self.scaled_sprites_cache[cache_key]
+        
+        # Escalar y guardar en cache
+        scaled_sprite = pygame.transform.scale(base_sprite, size)
+        self.scaled_sprites_cache[cache_key] = scaled_sprite
+        return scaled_sprite
     
     def get_environment_sprite(self, sprite_type, variant=1):
         """Obtiene sprite del entorno."""
