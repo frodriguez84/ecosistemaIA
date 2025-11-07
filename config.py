@@ -43,7 +43,7 @@ class SimulationConfig:
     AGENT_ENERGY = 100.0         # Energía inicial
     AGENT_ENERGY_CONSUMPTION = 0.10  # Consumo de energía por tick 
     AGENT_ENERGY_GAIN_FOOD = 8      # Energía ganada al comer 
-    AGENT_RADIUS = 8             # Tamaño del agente
+    AGENT_RADIUS = 6             # Tamaño del agente
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)
@@ -102,8 +102,8 @@ class SimulationConfig:
     GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (aumentado para que más agentes suban de fitness)
     
     # Puertas
-    DOOR_HITS_TO_OPEN = 2         # Golpes necesarios para abrir door
-    DOOR_IRON_HITS_TO_OPEN = 2    # Golpes necesarios para abrir door_iron
+    DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
+    DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
     DOOR_OPEN_REWARD = 12         # Fitness por abrir door (aumentado para mejor curva)
     DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (aumentado para que más agentes suban de fitness)
     DOOR_HIT_COOLDOWN = 90       # Cooldown entre golpes (ticks)

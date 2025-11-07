@@ -1014,6 +1014,102 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         
         pygame.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
 
+        # --- Gráfico histórico de fitness (promedio y máximo) ---
+        chart_width, chart_height = 340, 220
+        chart_x = panel_width - chart_width - 30
+        chart_y = 110
+
+        chart_surface = pygame.Surface((chart_width, chart_height), pygame.SRCALPHA)
+        chart_surface.fill((20, 20, 20, 180))
+
+        axis_color = (80, 200, 120)
+        grid_color = (70, 70, 70)
+        avg_color = (120, 255, 180)
+        max_color = (255, 215, 0)
+
+        padding_left = 50
+        padding_right = 20
+        padding_top = 20
+        padding_bottom = 40
+        inner_width = chart_width - padding_left - padding_right
+        inner_height = chart_height - padding_top - padding_bottom
+        inner_left = padding_left
+        inner_top = padding_top
+
+        # Marco y ejes
+        pygame.draw.rect(chart_surface, (90, 90, 90), (0, 0, chart_width, chart_height), 1)
+        pygame.draw.line(chart_surface, axis_color,
+                         (inner_left, inner_top + inner_height),
+                         (inner_left + inner_width, inner_top + inner_height), 2)
+        pygame.draw.line(chart_surface, axis_color,
+                         (inner_left, inner_top),
+                         (inner_left, inner_top + inner_height), 2)
+
+        # Etiquetas del eje Y (0-100)
+        for level in range(0, 101, 25):
+            if inner_height <= 0:
+                break
+            level_ratio = level / 100.0
+            y = inner_top + inner_height - int(level_ratio * inner_height)
+            pygame.draw.line(chart_surface, grid_color,
+                             (inner_left, y),
+                             (inner_left + inner_width, y), 1)
+            label = font_small.render(f"{level}", True, (180, 180, 180))
+            chart_surface.blit(label, (10, y - 8))
+
+        avg_history = [d.get('avg_fitness', 0.0) for d in learning_monitor.generation_data] if learning_monitor.generation_data else []
+        max_history = [d.get('max_fitness', d.get('avg_fitness', 0.0)) for d in learning_monitor.generation_data] if learning_monitor.generation_data else []
+        gen_count = len(avg_history)
+
+        def _map_point(idx, value):
+            if inner_width <= 0:
+                return inner_left, inner_top + inner_height
+            if gen_count <= 1:
+                x = inner_left + inner_width // 2
+            else:
+                x = inner_left + int(idx * inner_width / (gen_count - 1))
+            value_clamped = max(0.0, min(100.0, float(value)))
+            if inner_height <= 0:
+                y = inner_top
+            else:
+                y = inner_top + inner_height - int((value_clamped / 100.0) * inner_height)
+            return x, y
+
+        # Dibujar líneas de historia
+        if gen_count:
+            avg_points = [_map_point(i, val) for i, val in enumerate(avg_history)]
+            max_points = [_map_point(i, val) for i, val in enumerate(max_history)]
+
+            if len(avg_points) >= 2:
+                pygame.draw.lines(chart_surface, avg_color, False, avg_points, 2)
+            elif avg_points:
+                pygame.draw.circle(chart_surface, avg_color, avg_points[0], 3)
+
+            if len(max_points) >= 2:
+                pygame.draw.lines(chart_surface, max_color, False, max_points, 2)
+            elif max_points:
+                pygame.draw.circle(chart_surface, max_color, max_points[0], 3)
+
+            # Puntos finales resaltados
+            pygame.draw.circle(chart_surface, avg_color, avg_points[-1], 4)
+            pygame.draw.circle(chart_surface, max_color, max_points[-1], 4, 1)
+
+            # Etiquetas de generaciones (inicio y fin)
+            if gen_count >= 1:
+                start_label = font_small.render("Gen 1", True, (180, 180, 180))
+                chart_surface.blit(start_label, (inner_left - start_label.get_width() // 2, inner_top + inner_height + 10))
+                end_label = font_small.render(f"Gen {gen_count}", True, (180, 180, 180))
+                chart_surface.blit(end_label, (inner_left + inner_width - end_label.get_width() // 2, inner_top + inner_height + 10))
+
+        # Leyenda
+        legend_y = 5
+        legend_avg = font_small.render("Promedio", True, avg_color)
+        legend_max = font_small.render("Máximo", True, max_color)
+        chart_surface.blit(legend_avg, (inner_left + 10, legend_y))
+        chart_surface.blit(legend_max, (inner_left + 120, legend_y))
+
+        final_surface.blit(chart_surface, (chart_x, chart_y))
+
         # Estadísticas principales (Modo compacto)
         y_pos = 110
 

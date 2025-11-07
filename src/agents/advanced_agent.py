@@ -726,13 +726,14 @@ class AdvancedAgent:
         # Ajustados para mejorar curva de fitness promedio (presentación)
         food_multiplier = 10.0  # Premia comer más (aumentado para mejor curva promedio)
         exploration_multiplier = 10.0  # Premia explorar más (aumentado para mejor curva promedio)
-        survival_multiplier = 0.015  # Premia supervivencia (aumentado para mejor curva promedio)
+        survival_multiplier = 0.008  # Premia supervivencia (reducido para fitness inicial más bajo)
         anti_circle_multiplier = 18.0  # Premia movimiento eficiente (aumentado para combatir círculos)
         obstacle_multiplier = 0.20  # Premia evitar obstáculos
         penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
         
         # Fitness por supervivencia (crece naturalmente con la edad)
-        survival_fitness = min(self.age * survival_multiplier, 15)  # Cap aumentado de 20 a 28
+        # Cap reducido de 15 a 8 para que el fitness inicial sea más bajo
+        survival_fitness = min(self.age * survival_multiplier, 8)
         
         # Fitness por comida (crece naturalmente con sqrt para evitar explosión)
         food_fitness = food_multiplier * float(np.sqrt(max(0.0, float(self.food_eaten))))
@@ -748,11 +749,14 @@ class AdvancedAgent:
             obstacle_fitness = self.obstacles_avoided * obstacle_multiplier
         
         # Métricas anti-círculo (premian movimiento eficiente)
-        w1 = getattr(SimulationConfig, 'ANTI_CIRCLE_W1_SR', 0.4)
-        w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
-        w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
-        anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
-        anti_circle_bonus = anti_circle_multiplier * anti_circle_score
+        # Solo dar bonus si el agente realmente se mueve (más estricto para fitness inicial)
+        anti_circle_bonus = 0
+        if self.distance_traveled > 100:  # Mínimo movimiento requerido
+            w1 = getattr(SimulationConfig, 'ANTI_CIRCLE_W1_SR', 0.4)
+            w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
+            w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
+            anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
+            anti_circle_bonus = anti_circle_multiplier * anti_circle_score
         
         # Fitness total (sin limitaciones artificiales por generación)
         total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + anti_circle_bonus
