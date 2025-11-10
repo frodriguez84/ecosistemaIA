@@ -6,31 +6,31 @@ class SimulationConfig:
     """Configuración centralizada de todos los parámetros."""
     
     # === SIMULACIÓN ===
-    POPULATION_SIZE = 80
+    POPULATION_SIZE = 60
     TARGET_FPS = 60
-    MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
+    MAX_GENERATIONS = 5    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo
     BASE_TICKS = 960                  # Tiempo base inicial (aumentado para dar más tiempo por gen)
     TICKS_INCREMENT_AMOUNT = 180      # Cuántos ticks aumentar cada incremento (180 para crecimiento más gradual)
-    TICKS_INCREMENT_FREQUENCY = 2     # Cada cuántas generaciones aumentar (cada 2 para más frecuencia)
+    TICKS_INCREMENT_FREQUENCY = 4     # Cada cuántas generaciones aumentar (cada 2 para más frecuencia)
     
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.35       # Mutación más alta para mayor diversidad
-    CROSSOVER_RATE = 0.90        # 90% de cruce 
+    MUTATION_RATE = 0.30       # Mutación más alta para mayor diversidad
+    CROSSOVER_RATE = 0.95        # 90% de cruce 
     
     # === SELECCIÓN DE PADRES ===
     SELECTION_METHOD = "meeting_pool"  # "elitism", "tournament" o "meeting_pool"
     TOURNAMENT_SIZE = 3             # Tamaño del torneo 
     ELITISM = 1                     # Mejores agentes que se mantienen 
-    MEETING_POOL_FRACTION = 0.70    # Porción superior por ranking para el pool (reducido para más presión selectiva)
+    MEETING_POOL_FRACTION = 0.60    # Porción superior por ranking para el pool (reducido para más presión selectiva)
     
     # === INMIGRACIÓN ===
     IMMIGRATION_ENABLED = True      # Habilitar inmigración periódica para mantener diversidad
-    IMMIGRATION_FREQUENCY = 7       # Cada cuántas generaciones aplicar inmigración
-    IMMIGRATION_COUNT = 2           # Cuántos agentes nuevos aleatorios introducir
+    IMMIGRATION_FREQUENCY = 6       # Cada cuántas generaciones aplicar inmigración
+    IMMIGRATION_COUNT = 3           # Cuántos agentes nuevos aleatorios introducir
     
     # === RED NEURONAL ===
     INPUT_SIZE = 10              # 10 sensores esenciales (simplificados)
@@ -61,7 +61,7 @@ class SimulationConfig:
     SPRITE_SCALE_FACTOR = 1.0    # Factor de escalado de sprites
     BASE_SPRITE_SIZE = 16        # Tamaño base de sprites en píxeles
     
-    FOOD_COUNT = 80             # Cantidad de comida inicial (aumentado para generaciones largas)
+    FOOD_COUNT = 70             # Cantidad de comida inicial (aumentado para generaciones largas)
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte
@@ -97,12 +97,12 @@ class SimulationConfig:
     TILE_SIZE = 32                # Tamaño de cada tile en píxeles
     
     # Llaves
-    RED_KEY_SPAWN_GEN = 5         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
-    RED_KEY_REWARD = 2            # Fitness por recoger red_key (aumentado para mejor balance)
+    RED_KEY_SPAWN_GEN = 1         # Generación en que aparece red_key libremente (retrasado para que aprendan primero tareas básicas)
+    RED_KEY_REWARD = 10            # Fitness por recoger red_key (aumentado para mejor balance)
     GOLD_KEY_REWARD = 25          # Fitness por recoger gold_key (aumentado para que más agentes suban de fitness)
     
     # Puertas
-    DOOR_HITS_TO_OPEN = 3         # Golpes necesarios para abrir door
+    DOOR_HITS_TO_OPEN = 2         # Golpes necesarios para abrir door
     DOOR_IRON_HITS_TO_OPEN = 3    # Golpes necesarios para abrir door_iron
     DOOR_OPEN_REWARD = 12         # Fitness por abrir door (aumentado para mejor curva)
     DOOR_IRON_OPEN_REWARD = 35    # Fitness por abrir door_iron (aumentado para que más agentes suban de fitness)

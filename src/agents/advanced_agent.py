@@ -726,14 +726,14 @@ class AdvancedAgent:
         # Ajustados para mejorar curva de fitness promedio (presentación)
         food_multiplier = 10.0  # Premia comer más (aumentado para mejor curva promedio)
         exploration_multiplier = 10.0  # Premia explorar más (aumentado para mejor curva promedio)
-        survival_multiplier = 0.008  # Premia supervivencia (reducido para fitness inicial más bajo)
+        survival_multiplier = 0.010  # Premia supervivencia (reducido para fitness inicial más bajo)
         anti_circle_multiplier = 18.0  # Premia movimiento eficiente (aumentado para combatir círculos)
         obstacle_multiplier = 0.20  # Premia evitar obstáculos
         penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
         
         # Fitness por supervivencia (crece naturalmente con la edad)
         # Cap reducido de 15 a 8 para que el fitness inicial sea más bajo
-        survival_fitness = min(self.age * survival_multiplier, 8)
+        survival_fitness = min(self.age * survival_multiplier, 10)
         
         # Fitness por comida (crece naturalmente con sqrt para evitar explosión)
         food_fitness = food_multiplier * float(np.sqrt(max(0.0, float(self.food_eaten))))

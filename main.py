@@ -497,6 +497,11 @@ def main():
             # Mostrar cuadro de resumen
             summary_popup.show(generation_data, fitness_history)
             
+            if generation >= max_generations:
+                print("🏁 Límite de generaciones alcanzado sin abrir el cofre. Mostrando resumen final...")
+                show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, mission_completed=False)
+                return
+
             # Evolucionar
             agents = ga.evolve(agents, generation)
             
@@ -736,8 +741,8 @@ def main():
     # learning_monitor.save_data(f"learning_data_gen_{generation-1}.json")
 
 
-def show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system):
-    """Muestra la pantalla de FIN cuando se abre el cofre."""
+def show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, mission_completed=True):
+    """Muestra la pantalla de FIN con el resumen de resultados."""
     
        
     # Si estamos en modo headless, solo mostrar estadísticas por consola
@@ -761,11 +766,18 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
             # Fallback: usar promedio de la generación actual
             avg_fitness = sum(agent.fitness for agent in agents) / len(agents) if agents else 0.0
         
-        print(f"\n ¡MISIÓN COMPLETADA!")
+        if mission_completed:
+            status_title = "¡MISIÓN COMPLETADA!"
+            status_subtitle = "El cofre ha sido abierto por un agente evolutivo."
+        else:
+            status_title = "Simulación finalizada"
+            status_subtitle = "Se alcanzó el límite de generaciones sin abrir el cofre."
+
+        print(f"\n {status_title}")
         print(f"Generación: {generation}")
         print(f"Tiempo total: {tick // 60 // 60:.1f} minutos")
         print(f"Agentes vivos: {len(alive_agents)}")
-        print(f"¡El cofre ha sido abierto por un agente evolutivo!")
+        print(status_subtitle)
         print(f"Fitness promedio (últimas 3 gen): {avg_fitness:.1f}")
         print(f"Fitness máximo: {max_fitness:.1f}")
         return
@@ -987,7 +999,7 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         # Dibujar agentes
         for agent in agents:
             if agent.alive:
-                 agent.draw(render_surface, tick, sprite_manager, particle_system)                                                                              
+                agent.draw(render_surface, tick, sprite_manager, particle_system)
         
         # Actualizar y dibujar sistema de partículas
         particle_system.update()
@@ -1000,18 +1012,26 @@ def show_final_screen(render_surface, generation, tick, agents, world, learning_
         final_surface = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
         final_surface.fill((0, 0, 0, 200))
 
+        if mission_completed:
+            title_label = "¡MISIÓN COMPLETADA!"
+            subtitle_label = "El cofre ha sido abierto por un agente evolutivo"
+            title_color = GOLD
+        else:
+            title_label = "Simulación finalizada"
+            subtitle_label = "Se alcanzó el límite de generaciones sin abrir el cofre"
+            title_color = BLUE
+
         # Título principal
-        title_text = font_large.render("¡MISIÓN COMPLETADA!", True, GOLD)
+        title_text = font_large.render(title_label, True, title_color)
         title_rect = title_text.get_rect(center=(panel_width // 2, 40))
         final_surface.blit(title_text, title_rect)
 
         # Subtítulo
-        subtitle_text = font_medium.render("El cofre ha sido abierto por un agente evolutivo", True, WHITE)
+        subtitle_text = font_medium.render(subtitle_label, True, WHITE)
         subtitle_rect = subtitle_text.get_rect(center=(panel_width // 2, 70))
         final_surface.blit(subtitle_text, subtitle_rect)
 
         # Línea separadora
-        
         pygame.draw.line(final_surface, (100, 255, 150), (20, 90), (panel_width - 20, 90), 2)
 
         # --- Gráfico histórico de fitness (promedio y máximo) ---
