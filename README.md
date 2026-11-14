@@ -47,8 +47,7 @@ El resultado es visual, con una interfaz completa que muestra:
 * `pygame` → Renderizado 2D, sprites y eventos
 * `numpy` → Operaciones matemáticas y arrays
 * `scikit-learn` → Clustering (K-Means), PCA, normalización
-* `matplotlib` / `seaborn` → Visualización de métricas (opcional)
-* `pandas` → Análisis de datos (opcional)
+* `pytest` → Tests
 
 **Entorno y herramientas:**
 
@@ -68,9 +67,7 @@ EcosistemaEvolutivo/
 │
 ├── src/
 │   ├── agents/             # Sistema de agentes
-│   │   ├── advanced_agent.py    # Clase principal AdvancedAgent
-│   │   └── brain/
-│   │       └── mlp.py           # Red neuronal MLP (SimpleNeuralNetwork)
+│   │   └── advanced_agent.py    # AdvancedAgent y su red neuronal (SimpleNeuralNetwork)
 │   │
 │   ├── world/              # Mundo y entorno
 │   │   ├── world.py       # Clase World (generación procedural, fortalezas, puzzle)
@@ -80,10 +77,8 @@ EcosistemaEvolutivo/
 │   │   └── genetic_algorithm.py  # Selección, cruce, mutación, evolución
 │   │
 │   ├── analytics/          # Análisis y métricas
-│   │   ├── metrics.py           # Cálculo de métricas generacionales
 │   │   ├── clustering.py        # Clustering de comportamientos (K-Means, PCA)
-│   │   ├── learning_monitor.py  # Monitoreo de aprendizaje y mejoras
-│   │   └── logger.py            # Logging estructurado
+│   │   └── learning_monitor.py  # Monitoreo de aprendizaje y mejoras
 │   │
 │   └── ui/                 # Interfaz de usuario
 │       ├── renderer.py     # Renderizado con pygame (sprites, partículas)
@@ -111,9 +106,9 @@ EcosistemaEvolutivo/
   * **Sistema de fitness**: Supervivencia + comida + exploración + evitar obstáculos + anti-círculo + puzzle
   * **Acciones**: Movimiento, alimentación, corte de árboles, interacción con puzzle
   * **Aprendizaje puro**: **100% autónomo** - Sin guía codificada, todo basado en decisiones de la red neuronal
-* **`brain/mlp.py`**:
+* **`SimpleNeuralNetwork`** (en `advanced_agent.py`):
 
-  * Red neuronal MLP (`SimpleNeuralNetwork`)
+  * Red neuronal MLP propia, con numpy (sin PyTorch)
   * Función de activación: `tanh`
   * Operaciones: forward pass, mutación gaussiana, cruce uniforme, clonación
 
@@ -128,7 +123,7 @@ EcosistemaEvolutivo/
   * **Estanque móvil**: Estanque que se regenera dinámicamente
 * **`obstacles.py`**:
 
-  * Tipos de obstáculos: `tree`, `wall`, `water`, `hut`, `safe`
+  * Tipos de obstáculos: `tree`, `wall`, `water`, `hut`
   * Efectos: pérdida de energía, reducción de velocidad, penalización de fitness (agua)
   * Sistema de corte: Árboles y huts pueden cortarse con hacha (requiere acción `hit`)
 
@@ -142,12 +137,6 @@ EcosistemaEvolutivo/
 
 ### 4. `src/analytics/`
 
-* **`metrics.py`**: Cálculo de métricas generacionales:
-
-  * Fitness promedio, máximo, mínimo
-  * Diversidad genética
-  * Supervivientes, edad promedio
-  * Comida total consumida, distancia recorrida
 * **`clustering.py`**: Análisis no supervisado:
 
   * **Features**: Fitness, comida, exploración, supervivencia
@@ -161,7 +150,6 @@ EcosistemaEvolutivo/
   * Detecta mejoras en fitness
   * Detecta cambios en diversidad genética
   * Reportes en consola con emojis
-* **`logger.py`**: Logging estructurado a archivos
 
 ### 5. `src/ui/`
 

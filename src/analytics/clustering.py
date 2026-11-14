@@ -7,7 +7,6 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from typing import List, Tuple, Dict, Any
-import config as SimulationConfig
 
 
 class BehaviorClusterer:
@@ -185,43 +184,3 @@ class BehaviorClusterer:
                 remaining.remove(cid)
 
         return interpretations
-    
-    def print_cluster_report(self, agents: List[Any], clusters: np.ndarray, cluster_stats: Dict[str, Any]):
-        """Imprime reporte de clustering en consola."""
-        interpretations = self.get_cluster_interpretation(cluster_stats)
-        
-        print("\n🧬 ANÁLISIS DE CLUSTERING:")
-        print("=" * 50)
-        
-        for cluster_id in sorted(cluster_stats['cluster_counts'].keys()):
-            count = cluster_stats['cluster_counts'][cluster_id]
-            fitness = cluster_stats['cluster_fitness'][cluster_id]
-            behaviors = cluster_stats['cluster_behaviors'][cluster_id]
-            strategy = interpretations.get(cluster_id, f"Cluster {cluster_id}")
-            
-            print(f"\n📊 {strategy}:")
-            print(f"   - Agentes: {count}")
-            print(f"   - Fitness promedio: {fitness['promedio']:.1f}")
-            print(f"   - Fitness máximo: {fitness['maximo']:.1f}")
-            print(f"   - Comida promedio: {behaviors['comida']:.1f}")
-            print(f"   - Exploración: {behaviors['exploracion']:.0f}px")
-            print(f"   - Árboles cortados: {behaviors['arboles_cortados']:.1f}")
-            print(f"   - Llaves recogidas: {behaviors['llaves_recogidas']:.1f}")
-            print(f"   - Puertas abiertas: {behaviors['puertas_abiertas']:.1f}")
-            print(f"   - Cofre abierto: {behaviors['cofre_abierto']:.1f}")
-        
-        # Análisis de diversidad
-        total_agents = len(agents)
-        cluster_diversity = len([c for c in cluster_stats['cluster_counts'].values() if c > 0])
-        diversity_ratio = cluster_diversity / self.n_clusters
-        
-        print(f"\n📈 ANÁLISIS DE DIVERSIDAD:")
-        print(f"   - Clusters activos: {cluster_diversity}/{self.n_clusters}")
-        print(f"   - Ratio de diversidad: {diversity_ratio:.2f}")
-        
-        if diversity_ratio < 0.5:
-            print("   ⚠️ CONVERGENCIA PREMATURA: Pocos clusters activos")
-        elif diversity_ratio > 0.8:
-            print("   ✅ DIVERSIDAD ALTA: Múltiples estrategias emergentes")
-        else:
-            print("   ⚖️ DIVERSIDAD MODERADA: Balance entre exploración y explotación")

@@ -32,11 +32,12 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 ## Stack tecnológico
 
 - **Python 3.11** con entorno virtual en `.venv/` (Windows: `.venv/Scripts/python.exe`).
-  Dependencias en `requirements.txt`, que incluye `torch` y `deap` aunque hoy no se usan.
+  Dependencias en `requirements.txt`: solo las que el código importa (`pygame`, `numpy`,
+  `scikit-learn` y `pytest`), con versión mínima y sin fijar.
 - **pygame 2.6:** ventana, sprites y eventos.
 - **numpy:** la red neuronal es propia (`SimpleNeuralNetwork`, en `src/agents/advanced_agent.py`);
   no usa PyTorch.
-- **scikit-learn:** clustering de comportamientos (K-Means + PCA). **matplotlib:** gráficos.
+- **scikit-learn:** clustering de comportamientos (K-Means + PCA). **pytest:** los tests.
 - **Sin base de datos, sin web, sin deploy.** Corre local con `python main.py`, con ventana o sin
   ella (`--sin-ventana`, o `HEADLESS_MODE` en `config.py`).
 
@@ -55,8 +56,7 @@ EcosistemaEvolutivo/
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── src/
 │   ├── agents/
-│   │   ├── advanced_agent.py      ← AdvancedAgent (sensores, decisión, acciones, fitness) + SimpleNeuralNetwork
-│   │   └── brain/                 ← código muerto (PyTorch); ni siquiera importa
+│   │   └── advanced_agent.py      ← AdvancedAgent (sensores, decisión, acciones, fitness) + SimpleNeuralNetwork
 │   ├── evolution/
 │   │   └── genetic_algorithm.py   ← selección (meeting pool / torneo / élite), cruce, mutación, inmigración
 │   ├── world/
@@ -64,8 +64,7 @@ EcosistemaEvolutivo/
 │   │   └── obstacles.py           ← obstáculos y sus efectos (agua, árboles, casitas)
 │   ├── analytics/
 │   │   ├── learning_monitor.py    ← métricas por generación, diversidad, reportes por consola
-│   │   ├── clustering.py          ← K-Means + PCA sobre comportamientos
-│   │   └── metrics.py             ← código muerto (no se importa)
+│   │   └── clustering.py          ← K-Means + PCA sobre comportamientos
 │   └── ui/                        ← renderer (sprites, partículas), panel de stats, popup de resumen
 ├── docs/                ← metodología: specs, backlog, QA (índice en docs/README.md)
 └── .claude/             ← skills del proyecto y hook pre-commit
@@ -79,7 +78,7 @@ EcosistemaEvolutivo/
      de secrets — solo el nombre y el propósito. -->
 
 ```env
-# Hoy no usa ninguna. .env.example existe pero está vacío.
+# No usa ninguna. No hay .env.example: estaba vacío y se borró en la limpieza.
 ```
 
 ---
@@ -129,10 +128,6 @@ _(vacío — se llena con el primer feature)_
     generaciones.
 - **`config.py` no manda en todo:** el consumo de energía, la energía por comida, el rango de
   visión, el radio del agente y la recompensa por árbol están fijos en el código.
-- **Código muerto:** `src/agents/brain/` y `src/analytics/metrics.py`. No importarlos ni
-  arreglarlos: se borran en la limpieza.
-- **Hay `.pyc` commiteados** en `src/**/__pycache__/`, aunque `.gitignore` los excluye. Si aparecen
-  modificados en `git status`, no stagearlos.
 - **Después de editar código, revisar `git diff` por líneas que eran solo espacios.** El Edit vacía
   las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
   Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales

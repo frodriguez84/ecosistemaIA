@@ -3,7 +3,6 @@ Mundo del ecosistema con obstáculos, comida y objetos.
 """
 
 import random
-import pygame
 from .obstacles import Obstacle, Key, Door, Chest, PerimeterObstacle, PondObstacle
 
 

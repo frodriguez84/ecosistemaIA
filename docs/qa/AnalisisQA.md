@@ -91,6 +91,31 @@ estado en el BACKLOG.
 > `pandas`, `matplotlib`, `seaborn`, `PyYAML`, `rich`, `tqdm` y `pytest-cov`, que nada importa; a
 > DIAG-26, los imports y variables sin usar del resto de `src/`. Con el comando de Pylint del spec,
 > son 54 en total: 37 en `main.py`, 13 en `src/` y 4 en el código muerto.
+> *Corrección (2026-11-14, al arrancar el bloque A):* con el mismo comando y el mismo código dan 53:
+> 37 en `main.py`, 12 en `src/` y 4 en el código muerto.
+>
+> ✅ DIAG-18 (2026-11-14, spec *Limpieza*, bloque A): se borraron `src/agents/brain/`,
+> `src/analytics/metrics.py`, la rama de zonas `"safe"` (`obstacles.py` y los dos `elif` que la
+> atendían en `advanced_agent.py`), `LearningMonitor.save_data` (con su llamada comentada en
+> `main.py`) y `BehaviorClusterer.print_cluster_report`. CSV y log iguales a la línea base
+> (LIMPIEZA-09).
+>
+> ✅ DIAG-19 (2026-11-14, spec *Limpieza*, bloque A): `requirements.txt` queda con `pygame`,
+> `numpy`, `scikit-learn` y `pytest`; salen los diez que nada importa. Una instalación limpia en un
+> entorno nuevo (Python 3.11.9) da `pytest` verde (11 tests) y el chequeo rápido con CSV y log
+> idénticos a la línea base, aunque instaló versiones más nuevas que el `.venv`: numpy 2.4.6 (2.3.4),
+> scikit-learn 1.9.1 (1.7.2), scipy 1.17.1 (1.16.2); pygame 2.6.1 y pytest 9.2.0 iguales
+> (LIMPIEZA-07). Fijar versiones no hace falta por ahora.
+>
+> ✅ DIAG-20 (2026-11-14, spec *Limpieza*, bloque A): `git rm --cached` de los `.pyc` trackeados
+> (eran 15, no 16); los de `brain/` se fueron con la carpeta. `.gitignore` ya los excluía
+> (LIMPIEZA-08).
+>
+> ✅ DIAG-22 (2026-11-14, spec *Limpieza*, bloque A): `.env.example` borrado.
+>
+> ✅ DIAG-23 (2026-11-14, spec *Limpieza*, bloque A): `world.py` ya no importa `pygame`. Con él se
+> fueron los otros imports y variables sin usar de `src/` (W0611, W0612 y W0404): el comando de
+> Pylint del spec da 0 en `src/`. Quedan los 37 de `main.py`, para los bloques B y C.
 
 ### Experimento: con evolución contra sin evolución
 

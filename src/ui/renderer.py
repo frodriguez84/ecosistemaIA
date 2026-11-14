@@ -120,7 +120,7 @@ class SpriteManager:
             else:
                 print(f"⚠️ Sprite no encontrado: {path}")
                 return None
-        except Exception as e:
+        except Exception:
             #print(f"❌ Error cargando sprite {path}: {e}")
             return None
     

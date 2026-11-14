@@ -3,10 +3,6 @@ Sistema de monitoreo detallado para verificar aprendizaje.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from collections import defaultdict
-import json
-import os
 from .clustering import BehaviorClusterer
 
 
@@ -243,40 +239,6 @@ class LearningMonitor:
             print("⚠️ CONVERGENCIA PREMATURA: Diversidad genética disminuyendo")
         else:
             print("✅ DIVERSIDAD MANTENIDA: Población mantiene variabilidad")
-    
-    def save_data(self, filename="learning_data.json"):
-        """Guarda datos para análisis posterior."""
-        data = {
-            'generation_data': self.generation_data,
-            'fitness_history': self.fitness_history,
-            'food_history': self.food_history,
-            'survival_history': self.survival_history,
-            'diversity_history': self.diversity_history,
-            'behavior_patterns': self.behavior_patterns
-        }
-        
-        # Convertir datos de NumPy a Python nativo para JSON
-        def convert_numpy(obj):
-            if isinstance(obj, np.integer):
-                return int(obj)
-            elif isinstance(obj, np.floating):
-                return float(obj)
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            return obj
-        
-        # Convertir todos los datos
-        data_converted = {}
-        for key, value in data.items():
-            if isinstance(value, list):
-                data_converted[key] = [convert_numpy(item) for item in value]
-            else:
-                data_converted[key] = convert_numpy(value)
-        
-        with open(filename, 'w') as f:
-            json.dump(data_converted, f, indent=2)
-        
-        print(f"💾 Datos guardados en {filename}")
     
     def create_learning_report(self):
         """Crea reporte completo de aprendizaje."""

@@ -1,6 +1,6 @@
 # Spec: Limpieza sin cambiar comportamiento
 
-**Estado:** 🔵 Planned — en diseño
+**Estado:** 🟢 Activo — en ejecución desde el 2026-11-14 (bloque A); aprobado por Fer el 2026-11-14
 **Prioridad:** Alta — el modo autónomo (ítem 3) va a tocar `main.py` y `genetic_algorithm.py`. Es la
 última oportunidad de limpiarlos con una prueba objetiva de que no cambió nada: después del ítem 3,
 la simulación cambia a propósito y la comparación byte a byte ya no sirve.
@@ -127,7 +127,7 @@ idéntico.
 
 ## Criterios de done (DoD)
 
-- [ ] Línea base generada al arrancar el bloque A, con el hash de su commit en la bitácora. Si existía
+- [x] Línea base generada al arrancar el bloque A, con el hash de su commit en la bitácora. Si existía
   `results/experimento_20261114-160055/`, sus 10 CSV son idénticos a los de la línea base.
 - [ ] Cada bloque cerró con el chequeo completo: 6 CSV idénticos al comienzo de los de la línea base, y
   logs idénticos salvo lo que lista la decisión 18.
@@ -136,13 +136,13 @@ idéntico.
   análisis detallado y la del tiempo en el resumen final.
 - [ ] Con ventana, `--generaciones 2 --semilla 1` da un CSV igual a las dos primeras generaciones de la
   línea base.
-- [ ] No existen `src/agents/brain/`, `src/analytics/metrics.py`, `save_data` ni `print_cluster_report`,
+- [x] No existen `src/agents/brain/`, `src/analytics/metrics.py`, `save_data` ni `print_cluster_report`,
   y `grep -rn "safe\"" src` no encuentra nada.
-- [ ] `requirements.txt` lista solo `pygame`, `numpy`, `scikit-learn` y `pytest`. Una instalación limpia
+- [x] `requirements.txt` lista solo `pygame`, `numpy`, `scikit-learn` y `pytest`. Una instalación limpia
   da `pytest` verde y corre el chequeo rápido; la comparación de su CSV está anotada.
-- [ ] `git ls-files "*.pyc"` no devuelve nada, y una corrida ya no deja `.pyc` modificados en
+- [x] `git ls-files "*.pyc"` no devuelve nada, y una corrida ya no deja `.pyc` modificados en
   `git status`.
-- [ ] `.env.example` no existe.
+- [x] `.env.example` no existe.
 - [ ] El comando de Pylint de Implementación da 0 hallazgos (hoy 54).
 - [ ] En `genetic_algorithm.py` hay un solo bucle de 100 intentos, y `random.randint(50, 900)` aparece 3
   veces (hoy 6). En `main.py`, el reposicionamiento y el cálculo de ticks aparecen una vez cada uno. El
@@ -405,10 +405,73 @@ Tres sesiones, en secuencia. Cada bloque termina con el chequeo completo y un co
 
 Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
 
-_Todavía no arrancó._ El prompt de la primera sesión, cuando Fer apruebe el spec:
-
-```
-Ejecución de Limpieza sin cambiar comportamiento.
-Es la primera sesión (bloque A): mové docs/specs/planned/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md
-a active/ y seguí su protocolo de sesión. Lo primero es la línea base, en segundo plano.
-```
+### Sesión 1 — 2026-11-14 — Bloque A
+- **Hecho:**
+  - Spec movido a `active/`, con el manifiesto, el BACKLOG y la memoria de proyecto
+    (`spec-en-ejecucion`) al día.
+  - **Línea base** desde `1ad83b9` (sin `.py` modificados): `experimento.py --semillas 1 2 3 4 5
+    --generaciones 20`, en `results/linea_base_limpieza/` (10 CSV, 10 logs y `resumen.md`).
+    **Control:** los 10 CSV, los 10 logs y el `resumen.md` (desde la línea 4) son idénticos a
+    `results/experimento_20261114-160055/`. El comparador se copió del spec (verificado contra el
+    bloque con `diff`) y se le volvió a hacer su control: un byte cambiado en la generación 7 de un
+    CSV y una línea cambiada en un log; detectó los dos.
+  - `.pyc`: `git rm --cached` de los 15 trackeados.
+  - Código muerto (decisión 22): `src/agents/brain/`, `src/analytics/metrics.py`, la rama `"safe"`
+    (`obstacles.py`; en `advanced_agent.py` queda `obstacle.type == "water"`, sin los dos `elif`),
+    `save_data` (y `json`, que solo usaba él, y la llamada comentada en `main.py`) y
+    `print_cluster_report`.
+  - Imports y variables sin usar de `src/`: los 12 hallazgos, todos sin efecto (imports, dos
+    constantes de `popup.py`, un `as e`). Pylint da 0 en `src/`.
+  - `requirements.txt` con `pygame`, `numpy`, `scikit-learn` y `pytest`. **Instalación limpia**
+    (Python 3.11.9, en el scratchpad): sin ninguno de los diez paquetes; `pytest` 11 de 11; chequeo
+    rápido con ese Python, CSV y log idénticos. Instaló versiones más nuevas que el `.venv` (numpy
+    2.4.6, scikit-learn 1.9.1, scipy 1.17.1) y el CSV no cambió.
+  - `.env.example` borrado.
+  - Docs: README (dependencias, estructura y módulos sin `brain/` ni `metrics.py`, obstáculos sin
+    `safe`), `CLAUDE.md` (§ Stack, § Estructura, § Variables de entorno; las notas de código muerto
+    y `.pyc` se fueron) y DIAG-18, DIAG-19, DIAG-20, DIAG-22 y DIAG-23 ✅ en `AnalisisQA.md`.
+  - Commit: `limpieza: línea base y limpieza sin riesgo (bloque A)`.
+- **Estados:**
+  - DoD ✅: línea base, código muerto, `requirements.txt` con la instalación limpia, `.pyc` y
+    `.env.example`. Parciales: chequeo completo por bloque (A ✅), Pylint (`src/` en 0; quedan los
+    37 de `main.py`), `pytest` verde (hasta acá), docs (falta lo de B y C).
+  - QA verificado: LIMPIEZA-01, LIMPIEZA-02 (6 CSV y 6 logs idénticos), LIMPIEZA-07, LIMPIEZA-08
+    (después de las corridas, en `git status` los `.pyc` solo aparecen como borrados del índice) y
+    LIMPIEZA-09. LIMPIEZA-10 parcial.
+  - Decisión 8: no salió nada del spec.
+  - **Tiempos medidos** (decisión 4): chequeo rápido 77 s; completo 2 min 49 s; 5 × 20 (línea base)
+    8 min 27 s.
+- **Desvíos del spec, y por qué:**
+  - Pylint daba **53, no 54**, con el mismo comando y el mismo código que cuando se escribió el spec:
+    37 en `main.py`, **12** en `src/` y 4 en el código muerto. Corrección anotada en `AnalisisQA.md`;
+    el DoD (0 al cierre) no cambia.
+  - README: también salió `src/analytics/logger.py`, que figuraba en la estructura y en los módulos y
+    no existe (su `.pyc` era uno de los 15). Y `pytest` se sumó a la lista de librerías, como en
+    `requirements.txt`. En `CLAUDE.md` § Stack salió "matplotlib: gráficos": ya nada lo importa.
+  - En `popup.py`, el comentario "Escala fija del 0 al 100" se fue con las dos constantes que
+    describía.
+  - No quedó stub en `planned/`: Medir tampoco lo dejó al pasar a `active/`.
+- **A medias o bloqueado:** nada bloqueado. Faltan los bloques B y C.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión — bloque B:**
+  1. `git status -sb` y confirmar que `results/linea_base_limpieza/` tiene 10 CSV y 10 logs. Si
+     falta, se regenera desde `1ad83b9` (con `git worktree`) y se vuelve a hacer el control de la
+     decisión 2. Copiar el comparador de § El comparador al scratchpad con `Write`.
+  2. **Antes de tocar el reposicionamiento, el control de LIMPIEZA-13, con Fer en la ventana:**
+     `main.py --generaciones 3 --semilla 1 --csv results/zoom_antes/corrida_s1_evolucion.csv`,
+     apretando `+` durante la generación 1, y comparar contra la línea base. Se espera otro CSV desde
+     la generación 2; si da igual (nadie se reposicionó), se anota y vale la lectura. Este control se
+     pierde si se hace después del cambio.
+  3. `genetic_algorithm.py` (decisión 11 y la pista de código), chequeo rápido y lectura de los
+     sorteos (decisión 7).
+  4. `main.py`: el reposicionamiento con el alto del mundo (decisiones 12 y 13), los ticks, el
+     reporte de fin de generación y los datos del popup, con un chequeo rápido después de cada uno.
+     Después, LIMPIEZA-13 otra vez con Fer en la ventana (`results/zoom_despues/`): ahora el CSV
+     tiene que ser igual a la línea base.
+  5. Los 6 hallazgos de Pylint de `main.py` que no son de la pantalla final: líneas 17 (dos), 19
+     (dos), 37 (`attempt`) y 257 (`population_size`; mirar que la parte derecha no sortee). Los 31
+     de `show_final_screen` (líneas 873 a 1407) son del bloque C.
+  6. Chequeo completo, bitácora y commit con confirmación.
+  - **Trampas:** en el bloque B no cambia ni un `print`. LEC-002 en `main.py` y
+    `genetic_algorithm.py` (CRLF, con muchas líneas en blanco con espacios). Los `.pyc` ya no están
+    en el índice: no van a aparecer en `git status`.

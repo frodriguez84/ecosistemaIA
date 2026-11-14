@@ -152,7 +152,6 @@ class AdvancedAgent:
         perceptions.append(door_status)
         
         # 10. Ratio de comida disponible
-        from config import SimulationConfig
         available_food = len([f for f in world.food_items if not f['eaten']])
         food_ratio = available_food / SimulationConfig.FOOD_COUNT if SimulationConfig.FOOD_COUNT > 0 else 0.0
         perceptions.append(min(food_ratio, 1.0))
@@ -497,14 +496,12 @@ class AdvancedAgent:
     def _check_zone_effects(self, world):
         """Verifica efectos de zonas especiales."""
         for obstacle in world.obstacles:
-            if obstacle.type in ["water", "safe"] and obstacle.collides_with(self.x, self.y, self.radius):
+            if obstacle.type == "water" and obstacle.collides_with(self.x, self.y, self.radius):
                 effect = obstacle.get_effect()
                 
                 # Aplicar efectos de energía
                 if "energy_loss" in effect:
                     self.energy -= effect["energy_loss"]
-                elif "energy_gain" in effect:
-                    self.energy = min(self.max_energy, self.energy + effect["energy_gain"])
                 
                 # Acumular penalización de fitness (no sobrescribir cálculo)
                 if "fitness_loss" in effect:
@@ -513,8 +510,6 @@ class AdvancedAgent:
                 # Aplicar efectos de velocidad
                 if "speed_reduction" in effect:
                     self.speed = max(1.0, self.speed * effect["speed_reduction"])
-                elif "speed_boost" in effect:
-                    self.speed = min(4.0, self.speed * effect["speed_boost"])
     
     def _try_eat(self, world):
         """Intenta comer comida cercana."""
@@ -559,7 +554,6 @@ class AdvancedAgent:
         # Intentar golpear huts
         if world.process_hut_hit(self.x, self.y, current_tick):
             # Recompensa por destruir hut
-            from config import SimulationConfig
             self.fitness += SimulationConfig.HUT_CUT_REWARD  # Usar config
             # Actualizar cooldown del agente
             self.last_tree_hit_tick = current_tick

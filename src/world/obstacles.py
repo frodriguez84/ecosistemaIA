@@ -3,7 +3,6 @@ Obstáculos del mundo: paredes, árboles, agua, casitas, pociones.
 """
 
 import pygame
-import random
 
 
 class Obstacle:
@@ -43,8 +42,6 @@ class Obstacle:
         if self.type == "water":
             from config import SimulationConfig
             return {"energy_loss": 0.05, "speed_reduction": 0.8, "fitness_loss": SimulationConfig.WATER_FITNESS_PENALTY}
-        elif self.type == "safe":
-            return {"energy_gain": 2, "speed_boost": 1.2}
         return {"energy_loss": 0, "speed_reduction": 1.0}
     
     def draw(self, screen, sprite_manager, tick):

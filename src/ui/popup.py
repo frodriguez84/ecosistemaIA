@@ -214,10 +214,6 @@ class SummaryPopup:
         pygame.draw.rect(surface, (40, 40, 60), (graph_x, graph_y, graph_width, graph_height))
         pygame.draw.rect(surface, (100, 100, 100), (graph_x, graph_y, graph_width, graph_height), 1)
         
-        # Escala fija del 0 al 100 para fitness
-        min_fitness = 0
-        max_fitness = 100
-        
         # Dibujar líneas de cuadrícula
         for i in range(0, 101, 20):  # Líneas cada 20 puntos
             y = graph_y + graph_height - int((i / 100) * graph_height)

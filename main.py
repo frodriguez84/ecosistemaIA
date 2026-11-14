@@ -861,9 +861,6 @@ def _simular(semilla, evolucion, escribir_fila):
     # Crear reporte final de aprendizaje
     print(f"\nSimulación completada - {generation-1} generaciones evolucionadas")
     learning_monitor.create_learning_report()
-    
-    # Guardar datos para análisis posterior (DESHABILITADO)
-    # learning_monitor.save_data(f"learning_data_gen_{generation-1}.json")
 
 
 def show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, mission_completed=True):
