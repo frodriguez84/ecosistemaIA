@@ -8,7 +8,7 @@ class SimulationConfig:
     # === SIMULACIÓN ===
     POPULATION_SIZE = 60
     TARGET_FPS = 60
-    MAX_GENERATIONS = 5    # Extendido para ver tendencias a largo plazo
+    MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
