@@ -38,7 +38,7 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
   no usa PyTorch.
 - **scikit-learn:** clustering de comportamientos (K-Means + PCA). **matplotlib:** gráficos.
 - **Sin base de datos, sin web, sin deploy.** Corre local con `python main.py`, con ventana o sin
-  ella (`HEADLESS_MODE` en `config.py`).
+  ella (`--sin-ventana`, o `HEADLESS_MODE` en `config.py`).
 
 ---
 
@@ -46,9 +46,12 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 
 ```
 EcosistemaEvolutivo/
-├── main.py              ← punto de entrada: loop de simulación, render y pantalla final, todo junto
+├── main.py              ← punto de entrada: flags, semilla, CSV; loop de simulación, render y pantalla final
 ├── config.py            ← SimulationConfig: parámetros centralizados (varios se ignoran, ver Notas)
+├── experimento.py       ← con evolución contra sin evolución, en varias semillas → resumen.md
 ├── requirements.txt
+├── tests/               ← pytest: humo de main.py y cuentas del resumen de experimento.py
+├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── src/
 │   ├── agents/
@@ -100,8 +103,9 @@ _(vacío — se llena con el primer feature)_
   código. Hoy no se cumple del todo (ver Notas).
 - **Sin formateador ni linter configurados.** No correr black, ruff ni similares con
   `--fix`/`--write` (regla global): reformatearían archivos enteros.
-- **Tests con pytest.** Todavía no hay suite. Una corrida que se quiera comparar con otra lleva
-  semilla fija.
+- **Tests con pytest,** en `tests/`: `python -m pytest -q` (el gate pre-commit los corre). Una
+  corrida que se quiera comparar con otra lleva semilla fija (`--semilla`): la misma semilla da el
+  mismo CSV byte a byte.
 - **Una mejora del aprendizaje se demuestra contra la línea base sin evolución,** con la misma
   semilla y con varias semillas. Si la línea base mejora igual, no es aprendizaje (LEC-001 en
   [docs/operations/LECCIONES_APRENDIDAS.md](docs/operations/LECCIONES_APRENDIDAS.md)).
@@ -131,17 +135,21 @@ _(vacío — se llena con el primer feature)_
   modificados en `git status`, no stagearlos.
 - **Después de editar código, revisar `git diff` por líneas que eran solo espacios.** El Edit vacía
   las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
-  Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002).
-- **Para correr sin ventana hoy hay que editar `config.py`** (`HEADLESS_MODE`, `MAX_GENERATIONS`).
-  Esos cambios de prueba no se commitean.
+  Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales
+  de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003).
+- **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
+  --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base). El experimento con
+  evolución contra sin evolución en varias semillas es `python experimento.py`.
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select
   Interpreter* → `.venv` (DIAG-24).
 - **No hay producción.** En la bitácora de un spec, "Para verificar en producción" es N/A: lo que
   se verifica es una corrida.
-- **Una corrida sin ventana tarda ~10 s por generación** con 60 agentes. Redirigida a archivo, la
-  salida sale con buffer y aparece toda al final.
+- **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12
+  núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4. Redirigida a
+  archivo, la salida sale con buffer y aparece toda al final: para leer un log mientras corre,
+  `python -u` (así lanza las corridas `experimento.py`).
 
 ---
 

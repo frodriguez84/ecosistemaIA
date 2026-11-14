@@ -420,13 +420,13 @@ python main.py
 
 El sistema puede ejecutarse en dos modos:
 
-* **Modo visual** (`HEADLESS_MODE = False`):
+* **Modo visual** (por defecto, `HEADLESS_MODE = False`):
 
   * Renderizado completo con pygame
   * Panel de estadísticas en tiempo real
   * Popups de resumen generacional
   * Más lento pero visualmente informativo
-* **Modo headless** (`HEADLESS_MODE = True`):
+* **Modo headless** (`--sin-ventana`, o `HEADLESS_MODE = True`):
 
   * Sin renderizado visual
   * Solo output por consola
@@ -436,12 +436,53 @@ El sistema puede ejecutarse en dos modos:
 ### Ejecutar Simulación
 
 ```bash
-# Modo visual
-python main.py  # (configurar HEADLESS_MODE = False)
+# Modo visual, con los valores de config.py
+python main.py
 
-# Modo headless (rápido)
-python main.py  # (configurar HEADLESS_MODE = True)
+# Sin ventana (rápido), 20 generaciones, semilla fija
+python main.py --sin-ventana --generaciones 20 --semilla 7
+
+# Línea base: cada generación arranca con cerebros al azar, sin heredar nada
+python main.py --sin-ventana --generaciones 20 --semilla 7 --sin-evolucion
 ```
+
+Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
+
+| Flag | Qué hace |
+|------|----------|
+| `--sin-ventana` | Corre sin abrir ventana. Pisa `HEADLESS_MODE`. |
+| `--generaciones N` | Cantidad de generaciones. Pisa `MAX_GENERATIONS`. |
+| `--semilla S` | Semilla del azar. Sin ella se sortea una y se imprime al arrancar. |
+| `--sin-evolucion` | Línea base: cada generación arranca con cerebros al azar y no hereda nada. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<evolucion\|sin_evolucion>.csv`. |
+
+Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: fitness, manzanas,
+vivos, distancia, diversidad y estado del puzzle. **La misma semilla da el mismo CSV byte a byte.**
+
+### Experimento: con evolución contra sin evolución
+
+```bash
+# Semillas 1 a 5, 20 generaciones, tantas corridas a la vez como núcleos menos uno
+python experimento.py
+
+# Más chico
+python experimento.py --semillas 1 2 --generaciones 10 --paralelo 2
+```
+
+Corre cada semilla con evolución y sin evolución (línea base) y deja en
+`results/experimento_<AAAAMMDD-HHMMSS>/` el CSV y el log de cada corrida, más un `resumen.md`:
+fitness y manzanas por agente en las primeras y las últimas 5 generaciones, la etapa del puzzle, y
+en cuántas semillas la evolución subió más que la línea base. El completo tarda unos 9 minutos
+en una máquina de 12 núcleos.
+
+### Tests
+
+```bash
+python -m pytest -q
+```
+
+Un test de humo corre `main.py` con sus flags reales (y verifica que la misma semilla dé el mismo
+CSV), y otro verifica las cuentas del resumen del experimento.
 
 ---
 
@@ -523,7 +564,7 @@ El código sigue estos principios:
 - **Arquitectura Modular**: Separación clara de responsabilidades
 - **Aprendizaje Puro**: Sin guía codificada, agentes aprenden 100% autónomamente
 - **Configuración Centralizada**: Todo en `config.py` (SimulationConfig)
-- **Reproducibilidad**: Semillas y configuración determinística
+- **Reproducibilidad**: `--semilla S` siembra todo el azar; la misma semilla da el mismo CSV byte a byte
 - **Performance**: Optimizado para simulaciones largas
 - **Extensibilidad**: Fácil agregar nuevos elementos (obstáculos, recompensas, etc.)
 

@@ -29,7 +29,7 @@ staged="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E 
 echo "Eval-gate: hay codigo staged -> corriendo chequeo de sintaxis + tests..." >&2
 
 # 3) Chequeo de sintaxis (Python no tiene typecheck configurado en este repo)
-if ! tc_out="$("$PY" -m compileall -q main.py config.py src tests 2>&1)"; then
+if ! tc_out="$("$PY" -m compileall -q main.py config.py experimento.py src tests 2>&1)"; then
   echo "FALLO chequeo de sintaxis -- commit bloqueado. Ultimas lineas:" >&2
   echo "$tc_out" | tail -30 >&2
   exit 2

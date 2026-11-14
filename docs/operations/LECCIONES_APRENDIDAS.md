@@ -5,6 +5,18 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-003 — 2026-11-14 — En Git Bash, `grep` no ve los CR de un archivo CRLF
+
+**Qué pasó.** En el bloque B de [Medir antes de tocar](../specs/done/MEDIR_ANTES_DE_TOCAR.md), para
+controlar que las líneas nuevas del README (que es CRLF) no hubieran quedado con LF, se contaron
+con `grep -c` las líneas que terminan en CR. Dio 0, como si el archivo fuera LF, mientras `file`
+decía CRLF. El `grep` de Git Bash quita el CR del final de cada línea antes de comparar, salvo con
+`-U` (`--binary`): con `-U` dio las 631 líneas. Se confirmó contando `\r\n` en los bytes con Python.
+
+**Regla.** Para controlar finales de línea, contar bytes (en Python,
+`open(ruta, "rb").read().count(b"\r\n")`) o usar `grep -U`. Un 0 de `grep` sin `-U` no quiere decir
+que el archivo sea LF. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas, junto a la de LEC-002.
+
 ## LEC-002 — 2026-11-14 — El Edit vacía las líneas en blanco que tienen espacios
 
 **Qué pasó.** En el bloque A de [Medir antes de tocar](../specs/active/MEDIR_ANTES_DE_TOCAR.md),

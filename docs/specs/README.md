@@ -21,7 +21,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Medir antes de tocar](active/MEDIR_ANTES_DE_TOCAR.md) | En ejecución, por sesiones (bitácora al final). Leerlo antes de tocar `main.py`, `experimento.py` o `tests/` |
+| _(vacío)_ | |
 
 ## 🔵 Planned (`planned/`)
 
@@ -33,4 +33,4 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Resumen en SPECS_ARCHIVO |
 |------|---------------------------|
-| _(vacío)_ | |
+| [Medir antes de tocar](done/MEDIR_ANTES_DE_TOCAR.md) — flags, semilla, CSV por generación, `experimento.py`, tests | [§ Medir antes de tocar](../archive/SPECS_ARCHIVO.md#medir-antes-de-tocar) |
