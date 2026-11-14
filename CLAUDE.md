@@ -143,7 +143,8 @@ _(vacío — se llena con el primer feature)_
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select
-  Interpreter* → `.venv` (DIAG-24).
+  Interpreter* → `.venv` (DIAG-24). Los `E1101: Module 'pygame' has no … member` de Pylint son
+  falsos: `pylint.args` en ese mismo archivo le deja ver los miembros de pygame (DIAG-26).
 - **No hay producción.** En la bitácora de un spec, "Para verificar en producción" es N/A: lo que
   se verifica es una corrida.
 - **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12

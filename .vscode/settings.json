@@ -1,5 +1,6 @@
 {
     "makefile.configureOnOpen": false,
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-    "pylint.interpreter": ["${workspaceFolder}/.venv/Scripts/python.exe"]
+    "pylint.interpreter": ["${workspaceFolder}/.venv/Scripts/python.exe"],
+    "pylint.args": ["--extension-pkg-allow-list=pygame"]
 }
