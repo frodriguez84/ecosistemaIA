@@ -1,0 +1,25 @@
+{
+  "model": "opus",
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m pytest *)",
+      "Bash(.venv/Scripts/python.exe -m compileall *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-gate.sh\"",
+            "shell": "bash",
+            "timeout": 180,
+            "statusMessage": "Eval-gate: sintaxis + tests…"
+          }
+        ]
+      }
+    ]
+  }
+}

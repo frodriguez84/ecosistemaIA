@@ -1,0 +1,27 @@
+# Backlog — Ecosistema Evolutivo IA
+
+Cola de trabajo. Una línea por ítem + link al spec cuando exista. El **detalle de diseño**
+vive en `docs/specs/`, no acá.
+
+Convención: `- [ ]` pendiente · `- [x]` hecho (con fecha) · `→ spec:` link si tiene spec.
+
+---
+
+## Próximo
+
+En este orden: sin medición, cada cambio al aprendizaje se evalúa a ojo; y la limpieza se
+verifica comparando corridas con la misma semilla. Todo sale del
+[diagnóstico inicial](../qa/AnalisisQA.md#diagnostico-inicial) del 2026-11-14.
+
+1. - [ ] **Medir antes de tocar:** parámetros por línea de comando (sin ventana, generaciones, semilla), corridas reproducibles, métricas por generación a CSV, comparación entre corridas con varias semillas y test de humo. Cubre DIAG-06 y DIAG-07. → spec: a escribir
+2. - [ ] **Limpieza sin cambiar comportamiento:** código muerto, dependencias sin uso, `.pyc` commiteados, duplicación, bugs de reportes, `.env.example` vacío. Se verifica con la misma semilla: mismos números antes y después. Cubre DIAG-14 a DIAG-21, DIAG-23 y lo que queda de DIAG-22. Depende de 1. → spec: a escribir
+3. - [ ] **Modo guiado y modo autónomo:** switch en `config.py`. El guiado conserva la conducción escrita a mano (documentada como tal); el autónomo es neuroevolución real, con sensores del puzzle, acción de golpear y puzzle individual por generación. Incluye los bugs de fitness y la config ignorada. Cubre DIAG-01 a DIAG-05 y DIAG-08 a DIAG-13. Rumbo decidido por Fer el 2026-11-14 (opción "las dos, para comparar"). Depende de 1. → spec: a escribir
+
+## Decisiones pendientes de Fer
+
+_(ninguna)_
+
+## Hecho
+
+- [x] 2026-11-14 — `LICENSE`: MIT, decidido por Fer (DIAG-22). El `.env.example` vacío pasa a la limpieza (ítem 2): no hay variables de entorno.
+- [x] 2026-11-14 — Metodología sembrada (`/bootstrap-project`, plantilla + bitácora en specs) y diagnóstico inicial registrado en [AnalisisQA](../qa/AnalisisQA.md#diagnostico-inicial).
