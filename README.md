@@ -83,7 +83,8 @@ EcosistemaEvolutivo/
 │   └── ui/                 # Interfaz de usuario
 │       ├── renderer.py     # Renderizado con pygame (sprites, partículas)
 │       ├── stats.py        # Panel de estadísticas
-│       └── popup.py        # Popup de resumen generacional
+│       ├── popup.py        # Popup de resumen generacional
+│       └── pantalla_final.py  # Resumen final: por consola o en un cuadro
 │
 ├── assets/
 │   └── sprites/            # Sprites del juego (agentes, objetos, entorno)
@@ -161,6 +162,7 @@ EcosistemaEvolutivo/
   * Renderizado de agentes, mundo, HUD
 * **`stats.py`**: Panel lateral de estadísticas en tiempo real
 * **`popup.py`**: Popup de resumen al final de cada generación
+* **`pantalla_final.py`**: Resumen final de la corrida: por consola sin ventana; con ventana, un cuadro sobre el último cuadro de la simulación, hasta ESC o ENTER
 
 ### 6. `config.py`
 

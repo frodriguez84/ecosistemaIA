@@ -5,6 +5,22 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-005 — 2026-11-14 — `sed -i` en Git Bash deja en LF un archivo CRLF entero
+
+**Qué pasó.** En el bloque C de [Limpieza](../specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),
+para cambiar una línea de imports de `main.py` (CRLF) se usó `sed -i` con un patrón que terminaba
+en `\r$`. El patrón no encontró nada (el `sed` de Git Bash, como su `grep`, ve las líneas sin el
+CR: LEC-003) y aun así reescribió el archivo: las 1.292 líneas quedaron en LF. `git diff` no lo
+mostró, porque `core.autocrlf` compara sin los CR; lo delató el aviso "LF will be replaced by CRLF"
+de Git, y se confirmó contando bytes con Python. Se volvió a CRLF con Python (el archivo era CRLF
+puro) y el diff quedó en lo que se quería cambiar.
+
+**Regla.** En un archivo CRLF no se usa `sed -i`. Se edita con un script de Python que lee y
+escribe bytes, verifica el texto viejo y su unicidad, y escribe CRLF; o con Edit, revisando después
+los blancos (LEC-002). Después de editar, se cuentan los finales de línea con Python: el aviso
+"LF will be replaced by CRLF" sobre un archivo que era CRLF es la señal. Aplicada en
+[`CLAUDE.md`](../../CLAUDE.md) § Notas.
+
 ## LEC-004 — 2026-11-14 — Un control que depende de una tecla puede no haber pasado
 
 **Qué pasó.** En el bloque B de [Limpieza](../specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),

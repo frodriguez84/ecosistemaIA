@@ -7,6 +7,8 @@ import os
 import random
 import numpy as np
 
+from config import SimulationConfig
+
 
 class SpriteManager:
     """Gestor de sprites del juego."""
@@ -101,7 +103,6 @@ class SpriteManager:
             if os.path.exists(path):
                 sprite = pygame.image.load(path).convert_alpha()
                 # Escalar sprite según el factor de escalado actual
-                from config import SimulationConfig
                 scale_factor = SimulationConfig.SPRITE_SCALE_FACTOR
                 if scale_factor != 1.0:
                     original_size = sprite.get_size()
@@ -278,3 +279,72 @@ class ParticleSystem:
         for particle in self.particles:
             pygame.draw.circle(screen, particle['color'], 
                              (int(particle['x']), int(particle['y'])), 2)
+
+
+def dibujar_mundo(surface, world, sprite_manager, tick):
+    """Dibuja el mundo: fondo, pasto, obstáculos, perímetro, estanque, hacha, comida, puertas, cofre
+    y llaves. Lo usan el loop de main.py y la pantalla final; los agentes, las tumbas, las
+    partículas y los paneles los dibuja cada uno."""
+    surface.fill((40, 40, 60))  # Fondo azul oscuro
+
+    # Pasto en el área de juego (1200 de ancho menos los 240 del panel), en damero de dos variantes
+    for x in range(0, 960, 16):
+        for y in range(0, 800, 16):
+            variante = 1 if (x // 16 + y // 16) % 2 == 0 else 2
+            surface.blit(sprite_manager.get_environment_sprite('grass', variante), (x, y))
+
+    for obstacle in world.obstacles:
+        obstacle.draw(surface, sprite_manager, tick)
+    for perimeter_obj in world.perimeter_obstacles:  # Perímetro decorativo
+        perimeter_obj.draw(surface, sprite_manager)
+    for pond_obj in world.pond_obstacles:  # Estanque móvil
+        pond_obj.draw(surface, sprite_manager, tick)
+
+    # Hacha, si nadie la agarró
+    if SimulationConfig.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
+        axe_sprite = sprite_manager.get_environment_sprite('axe')
+        if axe_sprite:
+            x, y = world.axe['x'], world.axe['y']
+            _dibujar_con_halo(surface, axe_sprite, x, y, (255, 255), tick,
+                              lambda: surface.blit(axe_sprite, (x - 10, y - 10)))
+
+    # Manzanas
+    apple_sprite = sprite_manager.get_environment_sprite('apple')
+    for food in world.food_items:
+        if not food['eaten']:
+            surface.blit(apple_sprite, (int(food['x'] - 8), int(food['y'] - 8)))
+
+    # Fortalezas: puertas (encima de los muros), cofre y llaves
+    if SimulationConfig.FORTRESSES_ENABLED:
+        if world.door:
+            world.door.draw(surface, sprite_manager, tick)
+        if world.door_iron:
+            world.door_iron.draw(surface, sprite_manager, tick)
+        if world.chest:
+            world.chest.draw(surface, sprite_manager, tick)
+        if world.red_key and not world.red_key.collected:
+            red_key_sprite = sprite_manager.get_environment_sprite('red_key')
+            if red_key_sprite:
+                _dibujar_con_halo(surface, red_key_sprite, world.red_key.x, world.red_key.y, (255, 100), tick,
+                                  lambda: world.red_key.draw(surface, sprite_manager, tick))
+            else:
+                world.red_key.draw(surface, sprite_manager, tick)
+        if world.gold_key and not world.gold_key.collected:
+            world.gold_key.draw(surface, sprite_manager, tick)
+
+
+def _dibujar_con_halo(surface, sprite, x, y, rojo_verde, tick, dibujar_objeto):
+    """Halo pulsante, el objeto (lo dibuja dibujar_objeto) y un brillo suave encima: el hacha y la
+    llave roja. El azul del color pulsa con el tick."""
+    intensidad = int(50 + 30 * abs(pygame.math.Vector2(1, 1).length() * 0.1 * tick % 1 - 0.5))
+    color = (*rojo_verde, 100 + intensidad)
+    for i in range(3):
+        radio = 15 + i * 5
+        halo = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
+        pygame.draw.circle(halo, (*color, 30 - i * 8), (radio, radio), radio)
+        surface.blit(halo, (x - radio, y - radio))
+    dibujar_objeto()
+    brillo = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+    brillo.fill((*color, 30))
+    brillo.blit(sprite, (0, 0), special_flags=pygame.BLEND_ADD)
+    surface.blit(brillo, (x - 10, y - 10))

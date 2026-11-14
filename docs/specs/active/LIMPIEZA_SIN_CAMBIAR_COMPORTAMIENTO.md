@@ -1,6 +1,6 @@
 # Spec: Limpieza sin cambiar comportamiento
 
-**Estado:** 🟢 Activo — en ejecución desde el 2026-11-14 (bloques A y B ✅; falta C); aprobado por Fer el 2026-11-14
+**Estado:** 🟢 Activo — en ejecución desde el 2026-11-14 (bloques A, B y C ✅, con el chequeo de cierre; falta `/close-spec`); aprobado por Fer el 2026-11-14
 **Prioridad:** Alta — el modo autónomo (ítem 3) va a tocar `main.py` y `genetic_algorithm.py`. Es la
 última oportunidad de limpiarlos con una prueba objetiva de que no cambió nada: después del ítem 3,
 la simulación cambia a propósito y la comparación byte a byte ya no sirve.
@@ -129,12 +129,12 @@ idéntico.
 
 - [x] Línea base generada al arrancar el bloque A, con el hash de su commit en la bitácora. Si existía
   `results/experimento_20261114-160055/`, sus 10 CSV son idénticos a los de la línea base.
-- [ ] Cada bloque cerró con el chequeo completo: 6 CSV idénticos al comienzo de los de la línea base, y
+- [x] Cada bloque cerró con el chequeo completo: 6 CSV idénticos al comienzo de los de la línea base, y
   logs idénticos salvo lo que lista la decisión 18.
-- [ ] Chequeo de cierre: los 10 CSV del experimento 5 × 20 son idénticos a la línea base, y su
+- [x] Chequeo de cierre: los 10 CSV del experimento 5 × 20 son idénticos a la línea base, y su
   `resumen.md` también (salvo la línea de la carpeta). En los logs solo cambian las líneas "Tasa:" del
   análisis detallado y la del tiempo en el resumen final.
-- [ ] Con ventana, `--generaciones 2 --semilla 1` da un CSV igual a las dos primeras generaciones de la
+- [x] Con ventana, `--generaciones 2 --semilla 1` da un CSV igual a las dos primeras generaciones de la
   línea base.
 - [x] No existen `src/agents/brain/`, `src/analytics/metrics.py`, `save_data` ni `print_cluster_report`,
   y `grep -rn "safe\"" src` no encuentra nada.
@@ -143,25 +143,25 @@ idéntico.
 - [x] `git ls-files "*.pyc"` no devuelve nada, y una corrida ya no deja `.pyc` modificados en
   `git status`.
 - [x] `.env.example` no existe.
-- [ ] El comando de Pylint de Implementación da 0 hallazgos (hoy 54).
-- [ ] En `genetic_algorithm.py` hay un solo bucle de 100 intentos, y `random.randint(50, 900)` aparece 3
+- [x] El comando de Pylint de Implementación da 0 hallazgos (hoy 54).
+- [x] En `genetic_algorithm.py` hay un solo bucle de 100 intentos, y `random.randint(50, 900)` aparece 3
   veces (hoy 6). En `main.py`, el reposicionamiento y el cálculo de ticks aparecen una vez cada uno. El
   mundo se dibuja con una sola función, que usan el loop y la pantalla final.
-- [ ] El paso de la simulación y el orden del fin de generación siguen en `_simular`; no hay clases
+- [x] El paso de la simulación y el orden del fin de generación siguen en `_simular`; no hay clases
   nuevas. La pantalla final está en `src/ui/pantalla_final.py`.
 - [x] El reposicionamiento sortea con el alto del mundo, no con el de la ventana (DIAG-27).
-- [ ] DIAG-14: test nuevo verde, que falla con el código de antes; las "Tasa:" del log de cierre valen
+- [x] DIAG-14: test nuevo verde, que falla con el código de antes; las "Tasa:" del log de cierre valen
   `vivos` / 60.
-- [ ] DIAG-15: `test_humo.py` verifica `Tiempo simulado: 0.5 minutos`; la pantalla final muestra el
+- [x] DIAG-15: `test_humo.py` verifica `Tiempo simulado: 0.5 minutos`; la pantalla final muestra el
   mismo número que la consola.
-- [ ] DIAG-16: test nuevo verde sobre los textos de la pantalla final, con cofre y sin cofre; mirada con
+- [x] DIAG-16: test nuevo verde sobre los textos de la pantalla final, con cofre y sin cofre; mirada con
   ventana.
-- [ ] DIAG-17: con la pantalla final abierta, menos de 2 s de CPU en 10 s, con la medición de antes
+- [x] DIAG-17: con la pantalla final abierta, menos de 2 s de CPU en 10 s, con la medición de antes
   anotada.
-- [ ] `python -m pytest -q` verde.
-- [ ] Lo que salió del spec por la decisión 8 está anotado en `AnalisisQA.md` y en el ítem 3 del BACKLOG
+- [x] `python -m pytest -q` verde.
+- [x] Lo que salió del spec por la decisión 8 está anotado en `AnalisisQA.md` y en el ítem 3 del BACKLOG
   (o la bitácora dice que no salió nada).
-- [ ] Docs al día: README (dependencias, estructura sin `brain/` ni `metrics.py`, con
+- [x] Docs al día: README (dependencias, estructura sin `brain/` ni `metrics.py`, con
   `pantalla_final.py`); `CLAUDE.md` (§ Stack, § Estructura, § Variables de entorno, y en § Notas lo de
   código muerto y `.pyc`); DIAG-14 a DIAG-21, DIAG-23, DIAG-26 y DIAG-27 ✅ en `AnalisisQA.md`.
 
@@ -240,10 +240,11 @@ PYTHONPATH="$L" $PY -m pylint --disable=all --enable=W0611,W0612,W0404 \
 ```
 
 CPU con la pantalla final abierta (DIAG-17), en PowerShell. El Python del `.venv` lanza un segundo
-proceso: el de la ventana es el que tiene título.
+proceso: el de la ventana es el que tiene título, y se llama `python3.11` (el Python de la Microsoft
+Store), no `python`: de ahí el `python*` (sesión 3).
 
 ```powershell
-$p = Get-Process python | Where-Object { $_.MainWindowTitle -like "Ecosistema*" }
+$p = Get-Process python* | Where-Object { $_.MainWindowTitle -like "Ecosistema*" }
 $antes = $p.CPU; Start-Sleep -Seconds 10; $p.Refresh(); $p.CPU - $antes
 ```
 
@@ -582,3 +583,98 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
     corridas con ventana, mirar en el log que se llegó al `🏁` antes de medir, y que cada tecla dejó
     su `print` (LEC-004). Los scripts de esta sesión (teclas inyectadas, ramas raras) estaban en su
     scratchpad y se pierden: la técnica está en LEC-004 y en esta entrada.
+
+### Sesión 3 — 2026-11-14 — Bloque C
+- **Hecho:**
+  - Línea base presente (10 CSV y 10 logs). Comparador copiado del spec y verificado contra el bloque.
+  - **Controles de antes, con ventana** (`results/ventana_antes/`). Además de la mirada de Fer, un
+    envoltorio del scratchpad (no sortea: envuelve `pygame.display.flip` y la función de la pantalla
+    final) guardó el último cuadro de la simulación y dos capturas de la pantalla final, en el
+    cuadro 1 y en el 30. DIAG-17: **56 s de CPU en 10 s**. DIAG-16: los cuatro textos sin cofre,
+    en la captura. El fondo era pasto en las 1.200 columnas (tapaba el panel de la derecha), y
+    algo se movía: 463 píxeles cambiaban entre el cuadro 1 y el 30. CSV igual a la línea base; el
+    log, igual salvo las tres líneas del modo con ventana.
+  - **Tests antes del código** (decisión 10): `tests/test_reportes.py` (DIAG-14, con 60 y con 45
+    vivos de 60) y `Tiempo simulado: 0.5 minutos` en `test_humo.py`. Los tres fallaron con el
+    código de antes (120.0%, 90.0% y "Tiempo total: 0.0 minutos"). El de DIAG-16 (con cofre y sin
+    cofre) y uno del tiempo en el cuadro entraron con la función que prueban.
+  - **`dibujar_mundo`** en `src/ui/renderer.py`, con `_dibujar_con_halo` para el hacha y la llave
+    roja; el loop la usa. Comparada píxel por píxel contra el bloque viejo, sacado de
+    `HEAD:main.py`, en 8 ticks y con comida comida y llave recogida: idéntica. Control: el pasto
+    corrido un píxel se detecta. Chequeo rápido idéntico.
+  - **La pantalla final, a `src/ui/pantalla_final.py`:** `mostrar_pantalla_final`,
+    `imprimir_resumen_final` (la consola), `textos_del_cuadro` (sin dibujar), `_dibujar_cuadro` y
+    `_grafico_de_fitness`. Todo se calcula y se dibuja una vez; el loop atiende eventos, hace `flip`
+    y espera con `clock.tick(30)`. DIAG-15: `_simular` suma `ticks_totales` (también la parcial del
+    cofre), que es la columna `ticks` del CSV. DIAG-14 en `learning_monitor.py`. `main.py`: 1.391 →
+    725 líneas.
+  - **Controles de después, con ventana** (`results/ventana_despues/`): CPU **0,19 s en 10 s**; los
+    cuadros 1 y 30, idénticos (quieta); sin cofre, los textos nuevos, y "Tiempo simulado: 0.5 min"
+    en los dos lugares; CSV igual a la línea base (LIMPIEZA-06), y el log con ventana idéntico al de
+    antes. Fer la cerró con ESC. Aparte, dos corridas con la tecla inyectada (LEC-004): ENTER y ESC
+    la cierran, y el proceso termina enseguida.
+  - Pylint en 0. `pytest` 17 de 17. Chequeo rápido: CSV iguales; en el log, solo la "Tasa:" de la
+    generación 5. Contra el código de `HEAD`, en un worktree con 7 generaciones, el log entero cambia
+    solo en esa "Tasa:" y en la línea del tiempo.
+  - **Chequeo completo** (3 × 12): 6 CSV idénticos; en los logs, solo las "Tasa:" de las
+    generaciones 5 y 10 (LIMPIEZA-04).
+  - **Chequeo de cierre** (5 × 20, `results/experimento_20261114-195055/`): 10 CSV idénticos a la
+    línea base; `resumen.md` igual desde la línea 4; en cada log cambian 5 líneas: las 4 "Tasa:"
+    (generaciones 5, 10, 15 y 20) y la del tiempo (LIMPIEZA-05). Un script del scratchpad verificó
+    cada "Tasa:" contra `vivos` / 60 de su fila del CSV y el tiempo contra la suma de `ticks` / 3.600
+    (7,3 minutos); control: el log del código viejo da MAL.
+  - Docs: DIAG-14 a DIAG-17, DIAG-21 y DIAG-26 ✅ en `AnalisisQA.md` (con eso, todos los DIAG del
+    spec); README y `CLAUDE.md` § Estructura con `pantalla_final.py`; LEC-005 y su regla en
+    `CLAUDE.md` § Notas; el comando de CPU del spec, corregido; BACKLOG (ítem 2, y dos hallazgos en
+    el ítem 3) y manifiesto.
+  - Commit: `limpieza: dibujo y reportes (bloque C)`.
+- **Estados:**
+  - DoD: todo ✅. Falta solo `/close-spec`.
+  - QA verificado en esta sesión: LIMPIEZA-04, 05, 06, 10, 12, 14, 15, 16, 17, 18, 19, 20 (ninguno)
+    y 21. Con las sesiones 1 y 2, los 21 casos.
+  - Decisión 8: no salió nada del spec.
+  - **Tiempos medidos:** chequeo rápido 75-79 s; completo 177 s; cierre 485 s.
+- **Desvíos del spec, y por qué:**
+  - **DIAG-17 antes daba 56 s, no ~10** (un núcleo, como estimaba el spec): el K-Means del
+    clustering es multihilo y se recalculaba en cada cuadro. El control cumple su función: el
+    después (0,19 s) es menos de 2 s y el antes no.
+  - **El comando de CPU del spec no encontraba la ventana:** el proceso con título se llama
+    `python3.11` (el `.venv` lanza el Python de la Microsoft Store). Corregido en § Implementación
+    (`Get-Process python*`).
+  - Más evidencia que la del spec: capturas de la pantalla final antes y después (la decisión 21
+    pedía mirarla), y las dos teclas inyectadas además del ESC de Fer.
+  - En `renderer.py`, `from config import SimulationConfig` subió al módulo (lo usa
+    `dibujar_mundo`) y salió el import local de `_load_sprite`, que si no habría sido un W0404. De
+    paso, `reload_sprites` (que nadie llama) ya no tira `NameError`.
+  - En el cuadro, además de los cuatro textos de DIAG-16: sin cofre, "Resultado" va en gris (no en
+    verde), y "Tiempo total de simulación" pasó a "Tiempo simulado", como el encabezado.
+  - "¿APRENDIERON?" no cambió de lógica: se reordenó al mudarla (mismas ramas, mismos umbrales) y
+    salieron las variables sin usar que la rodeaban.
+  - En el resumen por consola, el promedio de "las últimas 3 generaciones" se calcula con
+    `generation_data[-3:]`, que cubre las dos ramas de antes con la misma suma (el log de cierre
+    lo confirma: esa línea no cambió).
+  - El `sed -i` de un import dejó `main.py` entero en LF, sin que `git diff` lo mostrara; se volvió
+    a CRLF con Python antes de seguir (LEC-005).
+  - Hallazgos fuera de alcance, al ítem 3 del BACKLOG: el `→` de "¿APRENDIERON?" sale como un
+    cuadrado (la fuente de pygame no tiene el glifo), y el id del "TOP AGENTE" es `id(self)`, que
+    cambia entre corridas iguales (#1152 antes, #3760 después: el mismo agente, con fitness 67.0).
+- **A medias o bloqueado:** nada bloqueado. Falta `/close-spec` (una cuarta sesión corta: el
+  contexto de esta no daba para el cierre completo).
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión — cierre:**
+  1. `git status -sb`: limpio, con el commit del bloque C (sin push). No hay nada que verificar
+     antes de construir encima: el chequeo de cierre ya corrió y su resultado está arriba.
+  2. `/close-spec docs/specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md`. El checker de
+     `/qa-spec` verifica contra el código y contra esta bitácora; la evidencia de las corridas está
+     en las entradas de las tres sesiones (las carpetas de `results/` no están en git). Dos casos
+     que el checker puede leer mal: LIMPIEZA-13, cuyo control no dio distinto (el spec dice que
+     entonces "vale la lectura", y la sesión 2 además ejercitó la rama aparte), y LIMPIEZA-17, cuyo
+     "antes ~10 s" fue 56 s (ver Desvíos).
+  3. Con el QA APROBADO, `/close-spec` sigue su checklist: `SPECS_ARCHIVO`, Estado ✅, `git mv` a
+     `done/`, manifiesto, BACKLOG ítem 2 ✅, stub en la ruta vieja y lecciones (LEC-005 ya está).
+  4. Borrar la memoria `spec-en-ejecucion` y actualizar `estado-inicial` (limpieza ✅, sigue el
+     ítem 3). Preguntarle a Fer si borra `results/linea_base_limpieza/` y las otras carpetas de
+     `results/` de este spec.
+  5. Commit con confirmación.
+  - **Trampas:** en los archivos CRLF de `src/` y `main.py`, nada de `sed -i` (LEC-005). El
+    proceso de la ventana se llama `python3.11`.

@@ -98,3 +98,11 @@ def test_sin_evolucion_arranca_igual_que_con_evolucion(corridas):
     # Con la misma semilla, la generación 1 es la misma en los dos modos: lo distinto empieza
     # cuando se arma la generación 2
     assert con[:i] + con[i + 1:] == sin[:i] + sin[i + 1:]
+
+
+def test_el_resumen_final_dice_el_tiempo_simulado(corridas):
+    # DIAG-15: decía "Tiempo total: 0.0 minutos" (división entera, y solo de la última generación).
+    # Dos generaciones de 960 ticks, a 60 ticks por segundo, son 0,53 minutos simulados
+    for nombre, corrida in corridas.items():
+        log = corrida["log"].read_text(encoding="utf-8", errors="replace")
+        assert "Tiempo simulado: 0.5 minutos" in log, f"{nombre}:\n{_cola_del_log(corrida)}"

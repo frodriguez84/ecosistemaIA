@@ -71,6 +71,32 @@ estado en el BACKLOG.
 > `(100, 100)`, cosa que no pasa en ninguna corrida de la línea base. Por eso la rama se ejercitó
 > aparte, contra el bloque viejo: con alto 800, mismas posiciones, mismos sorteos y mismo estado del
 > azar; con 867 (la ventana agrandada), el código viejo sorteaba distinto.
+>
+> ✅ DIAG-14 (2026-11-14, spec *Limpieza*, bloque C): `record_generation` guarda `total_agents` y la
+> "Tasa:" divide por eso. `tests/test_reportes.py` lo prueba con 60 y con 45 vivos de 60 (100.0% y
+> 75.0%); con el código de antes fallaba (120.0% y 90.0%). En los logs de la verificación, cada
+> "Tasa:" vale `vivos` / 60 de la fila del CSV de esa generación (LIMPIEZA-14).
+>
+> ✅ DIAG-15 (2026-11-14, spec *Limpieza*, bloque C): el tiempo pasa a ser el simulado: `_simular`
+> suma los ticks de cada generación (también la parcial del cofre), o sea, la columna `ticks` del
+> CSV, y la consola y la pantalla dicen `Tiempo simulado`, con división real. Dos generaciones dan
+> 0.5 minutos (antes 0.0); `test_humo.py` lo verifica, y fallaba con el código de antes. Con ventana,
+> la pantalla final muestra el mismo número (LIMPIEZA-15).
+>
+> ✅ DIAG-16 (2026-11-14, spec *Limpieza*, bloque C): eran cuatro textos, no uno: "Resultado:
+> Completado", "Cofre: SI" (fijo), "Primera vez con cofre abierto: Gen N" (salía con la generación
+> actual) y el mensaje final. Ahora dependen de si se abrió el cofre; sin cofre dicen "Resultado: No
+> logrado", "Cofre: NO", "El cofre no se abrió en ninguna generación" y "Los agentes no llegaron a
+> abrir el cofre". Los textos se arman en `textos_del_cuadro` (`src/ui/pantalla_final.py`), sin
+> dibujar, y `tests/test_reportes.py` la prueba con cofre y sin cofre. Control: la captura de la
+> pantalla con ventana antes del cambio, con los cuatro textos (LIMPIEZA-16).
+>
+> ✅ DIAG-17 (2026-11-14, spec *Limpieza*, bloque C): con la pantalla final abierta, **56 s de CPU
+> en 10 s** antes del cambio: no un núcleo sino más de cinco, porque el K-Means del clustering
+> (multihilo) se recalculaba en cada cuadro. Ahora todo se calcula y se dibuja una vez, y el loop
+> solo atiende eventos y muestra, con `clock.tick(30)`: **0,19 s en 10 s**. La pantalla queda quieta
+> (dos capturas a un segundo de distancia, idénticas) y su fondo es el mundo con el dibujo del loop
+> (LIMPIEZA-17, LIMPIEZA-18).
 
 ### Limpieza y deuda
 
@@ -140,6 +166,16 @@ estado en el BACKLOG.
 > DIAG-26, parcial (2026-11-14, spec *Limpieza*, bloque B): salieron los 6 imports y variables sin
 > usar de `main.py` que no están en la pantalla final. Quedan 31, todos en `show_final_screen`
 > (bloque C).
+>
+> ✅ DIAG-21 (2026-11-14, spec *Limpieza*, bloque C): el mundo se dibuja con una sola función,
+> `dibujar_mundo` (`src/ui/renderer.py`), que usan el loop y la pantalla final; el halo del hacha y
+> el de la llave roja son una función. Comparada píxel por píxel contra el bloque viejo, sacado de
+> `HEAD:main.py`, en ocho ticks y con comida comida y llave recogida: idéntica (control: el pasto
+> corrido un píxel se detecta). La pantalla final se mudó a `src/ui/pantalla_final.py`; `main.py`
+> pasó de 1.391 líneas (al arrancar el bloque C) a 725.
+>
+> ✅ DIAG-26 (2026-11-14, spec *Limpieza*, bloque C): los 31 de `show_final_screen` se fueron con su
+> reescritura. El comando de Pylint del spec da 0 hallazgos (LIMPIEZA-10).
 
 ### Experimento: con evolución contra sin evolución
 

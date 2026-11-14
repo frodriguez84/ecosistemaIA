@@ -43,7 +43,8 @@ class LearningMonitor:
             'max_age': float(np.max(ages)),
             'avg_distance': float(np.mean(distances)),
             'diversity': float(self._calculate_diversity(agents)),
-            'alive_count': len([a for a in agents if a.alive])
+            'alive_count': len([a for a in agents if a.alive]),
+            'total_agents': len(agents),  # Para la tasa de supervivencia (DIAG-14)
         }
         
         # Realizar clustering de comportamientos (solo cada 3 generaciones para velocidad)
@@ -168,7 +169,7 @@ class LearningMonitor:
         print(f"      - Promedio: {gen_data['avg_food']:.1f}")
         print(f"      - Máximo: {gen_data['max_food']:.0f}")
         print(f"   ⏱️ SUPERVIVENCIA:")
-        print(f"      - Tasa: {(gen_data['alive_count']/gen_data.get('total_agents', 50)*100):.1f}%")
+        print(f"      - Tasa: {gen_data['alive_count'] / gen_data['total_agents'] * 100:.1f}%")
         print(f"      - Tiempo promedio: {gen_data['avg_age']/60/60:.1f} min")
         print(f"      - Tiempo máximo: {gen_data['max_age']/60/60:.1f} min")
         print(f"   🧬 DIVERSIDAD GENÉTICA: {gen_data['diversity']:.4f}")

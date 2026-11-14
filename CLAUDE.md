@@ -47,7 +47,7 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 
 ```
 EcosistemaEvolutivo/
-├── main.py              ← punto de entrada: flags, semilla, CSV; loop de simulación, render y pantalla final
+├── main.py              ← punto de entrada: flags, semilla, CSV; loop de simulación y render
 ├── config.py            ← SimulationConfig: parámetros centralizados (varios se ignoran, ver Notas)
 ├── experimento.py       ← con evolución contra sin evolución, en varias semillas → resumen.md
 ├── requirements.txt
@@ -65,7 +65,7 @@ EcosistemaEvolutivo/
 │   ├── analytics/
 │   │   ├── learning_monitor.py    ← métricas por generación, diversidad, reportes por consola
 │   │   └── clustering.py          ← K-Means + PCA sobre comportamientos
-│   └── ui/                        ← renderer (sprites, partículas), panel de stats, popup de resumen
+│   └── ui/                        ← renderer (sprites, partículas, dibujar_mundo), panel de stats, popup de resumen, pantalla final
 ├── docs/                ← metodología: specs, backlog, QA (índice en docs/README.md)
 └── .claude/             ← skills del proyecto y hook pre-commit
 ```
@@ -132,6 +132,7 @@ _(vacío — se llena con el primer feature)_
   las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
   Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales
   de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003).
+  En un archivo CRLF, nunca `sed -i`: lo deja entero en LF y `git diff` no lo muestra (LEC-005).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base). El experimento con
   evolución contra sin evolución en varias semillas es `python experimento.py`.
