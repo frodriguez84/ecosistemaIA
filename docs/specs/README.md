@@ -27,7 +27,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [Medir antes de tocar](planned/MEDIR_ANTES_DE_TOCAR.md) | Sin gate. Primero de la cola: bloquea la limpieza y los modos guiado/autónomo |
 
 ## ⚫ Done (`done/`)
 
