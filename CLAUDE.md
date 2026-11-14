@@ -220,4 +220,5 @@ hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 | Índice de docs por rol | `docs/README.md` |
 | Specs implementados (resumen) | `docs/archive/SPECS_ARCHIVO.md` (cuando exista) |
 | QA + IDs trazables | `docs/qa/AnalisisQA.md` |
-| Pendientes | `docs/product/BACKLOG.md` |
+| Pendientes | `docs/product/BACKLOG.md` (no hay `PENDIENTES.md`: el BACKLOG es el tablero) |
+| Ideas sin decidir y lo que aparece fuera de alcance | `docs/product/mejoras_futuras.md` (acá, no en `docs/specs/` como dice la guía global) |

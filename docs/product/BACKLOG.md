@@ -1,7 +1,8 @@
 # Backlog — Ecosistema Evolutivo IA
 
 Cola de trabajo. Una línea por ítem + link al spec cuando exista. El **detalle de diseño**
-vive en `docs/specs/`, no acá.
+vive en `docs/specs/`, no acá. Las ideas que todavía no se decidieron viven en
+[mejoras_futuras.md](mejoras_futuras.md).
 
 Convención: `- [ ]` pendiente · `- [x]` hecho (con fecha) · `→ spec:` link si tiene spec.
 

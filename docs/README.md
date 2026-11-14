@@ -11,7 +11,7 @@
 | **Agente / dev** | [`CLAUDE.md`](../CLAUDE.md) | Specs activos en [`specs/active/`](specs/active/); manifiesto [`specs/README.md`](specs/README.md); hecho en [`archive/SPECS_ARCHIVO.md`](archive/SPECS_ARCHIVO.md) |
 | **QA** | [`qa/AnalisisQA.md`](qa/AnalisisQA.md) | No condensar — IDs y pass/fail son trazabilidad |
 | **Ops / local dev** | [`operations/OPERACIONES.md`](operations/OPERACIONES.md) | [`operations/LECCIONES_APRENDIDAS.md`](operations/LECCIONES_APRENDIDAS.md) |
-| **Pendientes** | [`product/BACKLOG.md`](product/BACKLOG.md) | — |
+| **Pendientes** | [`product/BACKLOG.md`](product/BACKLOG.md) | Ideas sin decidir en [`product/mejoras_futuras.md`](product/mejoras_futuras.md) |
 
 ---
 
@@ -22,7 +22,8 @@ docs/
 ├── README.md                 ← este archivo
 ├── AGENTES.md                ← formato de spec + autoría (fuente de verdad del template)
 ├── product/                  ← estado y cola de trabajo
-│   └── BACKLOG.md
+│   ├── BACKLOG.md
+│   └── mejoras_futuras.md    ← ideas sin decidir y lo que aparece fuera de alcance
 ├── specs/
 │   ├── README.md             ← manifiesto (activo / planned / done)
 │   ├── active/
@@ -48,7 +49,7 @@ No crear archivos vacíos "por completitud" — el lugar está reservado acá, c
 | `reference/` | Cómo funciona el producto **ya construido** (estable) | Decisiones aún no implementadas |
 | `operations/` | Correr el proyecto; lecciones aprendidas | Diseño de features |
 | `qa/` | Evidencia de QA (pass/fail, IDs trazables) — **nunca borrar histórico** | Diseño; specs |
-| `product/` | Cola de trabajo (BACKLOG) — una línea + link al spec | El detalle de diseño (va en `specs/`) |
+| `product/` | Cola de trabajo (BACKLOG) — una línea + link al spec; ideas sin decidir (`mejoras_futuras.md`) | El detalle de diseño (va en `specs/`) |
 | `archive/` | Resumen condensado de lo ya implementado | Prompts/schemas largos |
 | `security/` | Auditorías, hardening, endpoint audit | — |
 
