@@ -27,7 +27,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [Limpieza sin cambiar comportamiento](planned/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) — código muerto, dependencias, `.pyc`, duplicación y reportes, con el mismo CSV byte a byte | En diseño: falta la aprobación de Fer. Tres sesiones, con bitácora |
 
 ## ⚫ Done (`done/`)
 
