@@ -5,6 +5,23 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-004 — 2026-11-14 — Un control que depende de una tecla puede no haber pasado
+
+**Qué pasó.** En el bloque B de [Limpieza](../specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),
+el control de LIMPIEZA-13 pedía apretar `+` en la ventana durante la generación 1 y comparar el CSV
+contra la línea base. Fer lo hizo dos veces y el CSV dio igual: habría quedado anotado como "el
+control no dio distinto". Pero el log no tenía ninguna línea `🔍 Zoom IN`: la tecla no había llegado
+al juego (no se supo por qué: teclado numérico, foco o distribución del teclado), y un CSV igual no
+decía nada del zoom. Se resolvió inyectando las teclas: un script envuelve `pygame.event.get` y
+agrega los eventos, que entran por el mismo manejador de `main.py`. El script además contó los
+sorteos que usaban el alto agrandado, que era lo que el control quería saber: 0.
+
+**Regla.** Un control que depende de una acción manual verifica en el log que la acción pasó (cada
+tecla de `main.py` deja su `print`) antes de leer el resultado. Si no pasó, o si se quiere
+repetible, el evento se inyecta envolviendo `pygame.event.get`. Y cuando un resultado igual puede
+deberse a que el código no corrió, se mide si corrió. Aplicada en [`CLAUDE.md`](../../CLAUDE.md)
+§ Notas.
+
 ## LEC-003 — 2026-11-14 — En Git Bash, `grep` no ve los CR de un archivo CRLF
 
 **Qué pasó.** En el bloque B de [Medir antes de tocar](../specs/done/MEDIR_ANTES_DE_TOCAR.md), para

@@ -1,6 +1,6 @@
 # Spec: Limpieza sin cambiar comportamiento
 
-**Estado:** 🟢 Activo — en ejecución desde el 2026-11-14 (bloque A); aprobado por Fer el 2026-11-14
+**Estado:** 🟢 Activo — en ejecución desde el 2026-11-14 (bloques A y B ✅; falta C); aprobado por Fer el 2026-11-14
 **Prioridad:** Alta — el modo autónomo (ítem 3) va a tocar `main.py` y `genetic_algorithm.py`. Es la
 última oportunidad de limpiarlos con una prueba objetiva de que no cambió nada: después del ítem 3,
 la simulación cambia a propósito y la comparación byte a byte ya no sirve.
@@ -149,7 +149,7 @@ idéntico.
   mundo se dibuja con una sola función, que usan el loop y la pantalla final.
 - [ ] El paso de la simulación y el orden del fin de generación siguen en `_simular`; no hay clases
   nuevas. La pantalla final está en `src/ui/pantalla_final.py`.
-- [ ] El reposicionamiento sortea con el alto del mundo, no con el de la ventana (DIAG-27).
+- [x] El reposicionamiento sortea con el alto del mundo, no con el de la ventana (DIAG-27).
 - [ ] DIAG-14: test nuevo verde, que falla con el código de antes; las "Tasa:" del log de cierre valen
   `vivos` / 60.
 - [ ] DIAG-15: `test_humo.py` verifica `Tiempo simulado: 0.5 minutos`; la pantalla final muestra el
@@ -475,3 +475,110 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
   - **Trampas:** en el bloque B no cambia ni un `print`. LEC-002 en `main.py` y
     `genetic_algorithm.py` (CRLF, con muchas líneas en blanco con espacios). Los `.pyc` ya no están
     en el índice: no van a aparecer en `git status`.
+
+### Sesión 2 — 2026-11-14 — Bloque B
+- **Hecho:**
+  - Línea base presente (10 CSV y 10 logs). Comparador copiado del spec y verificado con `diff`
+    contra el bloque.
+  - **Control de LIMPIEZA-13, antes del cambio.** Con Fer en la ventana, dos intentos: el `+` no
+    llegó al juego (el log no tenía ningún `🔍 Zoom IN`; causa no determinada: teclado numérico, foco
+    o distribución del teclado). Se hizo con las teclas inyectadas: un script del scratchpad
+    envuelve `pygame.event.get`, mete dos `K_PLUS` en la generación 1 (1300×867 y 1400×934) y
+    `K_RETURN` para cerrar la pantalla final, y cuenta los `randint(20, alto - 20)` con el alto
+    agrandado. CSV de 3 generaciones igual a la línea base; log igual salvo las líneas del modo con
+    ventana y las del zoom; **0 sorteos con el alto de la ventana**. El control no dio distinto,
+    como preveía el spec: ese sorteo no corre. `fix_agent_positions` corre justo antes y ya saca a
+    los agentes de fortalezas y obstáculos; el reposicionamiento solo mueve a alguien si
+    `find_safe_position` cayó a `(100, 100)`, y eso no pasa en ninguna de las 10 corridas de la
+    línea base.
+  - **`genetic_algorithm.py`** (decisiones 11 y 15): `_choca`, `_posicion_libre` y
+    `_posicion_de_respaldo`; las ramas `"elitism"` y método desconocido, juntas; sin los
+    `if i < len(agents)`. 443 → 299 líneas, `randint(50, 900)` 3 veces, un solo bucle de 100.
+    Chequeo rápido idéntico. Lectura de sorteos: mismas llamadas, mismos argumentos, mismo orden.
+    **Prueba extra de las ramas que la config no usa** (usa `meeting_pool`): `elitism`,
+    `tournament` y un método desconocido, semillas 1 y 2 × 7 generaciones, antes y después del
+    cambio: CSV y log idénticos. Control: `elitism` da otro CSV que la línea base desde la
+    generación 2, y el método desconocido da el mismo que `elitism`.
+  - **`main.py`** (decisiones 12, 13, 15 y 16): `_reposicionar_agentes` (sortea con
+    `world.screen_height`: DIAG-27), `_ticks_de_generacion`, `_imprimir_fin_de_generacion` y
+    `_datos_del_popup`. En `_simular` quedan, en orden: fitness de todos → reporte → fila del CSV →
+    datos del popup → monitor → evolución → reposicionamiento → comida. Salieron el
+    `if fixed_count > 0: pass` con su contador, y el `if agents:`/`else` del reporte (con 0 agentes,
+    `_fila_csv` ya dividía por cero: no era alcanzable). Chequeo rápido idéntico.
+  - **El cuerpo de `_reposicionar_agentes` no corre en las semillas de la verificación,** así que se
+    ejercitó aparte (script del scratchpad): mundo real, 5 agentes puestos sobre obstáculos, contra
+    el bloque viejo sacado de `HEAD:main.py`; y forzando el respaldo (sin lugar libre: 500 intentos ×
+    60 agentes y la grilla). Mismas posiciones, mismos sorteos, mismo estado final del azar y los
+    mismos 60 avisos. Control: el bloque viejo con alto 867 da otros sorteos.
+  - **Control de LIMPIEZA-13, después del cambio:** zoom inyectado, CSV igual, 0 sorteos con el
+    alto de la ventana.
+  - Pylint: los 6 hallazgos de `main.py` fuera de la pantalla final (imports de las líneas 17 y 19,
+    `attempt`, `population_size`). Quedan los 31 de `show_final_screen`.
+  - **Chequeo completo** (`experimento.py --semillas 1 2 3 --generaciones 12`): 6 CSV y 6 logs
+    idénticos. `pytest` 11 de 11.
+  - Docs: DIAG-27 ✅, DIAG-21 y DIAG-26 parciales en `AnalisisQA.md`; BACKLOG (ítem 2, y en el
+    ítem 3 la nota del reposicionamiento que casi nunca mueve a nadie); LEC-004 y su regla en
+    `CLAUDE.md` § Notas.
+  - Commit: `limpieza: duplicación de la simulación (bloque B)`.
+- **Estados:**
+  - DoD ✅: DIAG-27. Parciales: chequeo completo por bloque (A y B ✅), Pylint (quedan 31, todos de
+    la pantalla final), duplicación (falta el dibujo del mundo), estructura (falta mudar la
+    pantalla final), `pytest` verde (hasta acá).
+  - QA verificado: LIMPIEZA-03, LIMPIEZA-11 y LIMPIEZA-13 (el control no dio distinto: se anota y
+    vale la lectura, con la medición y la prueba aparte de la rama). Parciales: LIMPIEZA-10 y
+    LIMPIEZA-12 (reposicionamiento y ticks una vez cada uno, paso y fin de generación en
+    `_simular`, sin clases nuevas; falta la pantalla final).
+  - Decisión 8: no salió nada del spec.
+  - **Tiempos medidos:** chequeo rápido 77-82 s; completo 3 min.
+- **Desvíos del spec, y por qué:**
+  - LIMPIEZA-13 con teclas inyectadas, no apretadas: el `+` de Fer no llegó dos veces (LEC-004).
+    Las teclas inyectadas entran por el mismo manejador de eventos de `main.py`.
+  - Los cuatro cambios de `main.py` entraron en una sola edición, con un chequeo rápido para todos y
+    no uno por cambio. Dio idéntico, así que no hizo falta separar.
+  - Más pruebas que las del spec (la decisión 7 pedía lectura para las ramas raras): las variantes
+    de selección y la rama del reposicionamiento, ejercitadas aparte.
+  - `genetic_algorithm.py` y `main.py` se editaron con scripts que reemplazan rangos de líneas
+    verificados (extremos y unicidad), no con Edit: así no se tocan las líneas en blanco con espacios
+    (LEC-002). `git diff` no muestra blancos cambiados fuera de lo reescrito.
+- **A medias o bloqueado:** nada bloqueado. Falta el bloque C.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión — bloque C:**
+  1. `git status -sb` y confirmar que `results/linea_base_limpieza/` tiene 10 CSV y 10 logs (si
+     falta, se regenera desde `1ad83b9` con `git worktree` y se repite el control de la decisión 2).
+     Copiar el comparador de § El comparador al scratchpad con `Write`.
+  2. **Antes de tocar nada, los controles de antes, con Fer, en una sola corrida con ventana:**
+     `main.py --generaciones 2 --semilla 1 --csv results/ventana_antes/corrida_s1_evolucion.csv`.
+     Cuando el log muestre el `🏁` (la pantalla final abierta): (a) DIAG-17, CPU durante 10 s con el
+     comando de PowerShell del spec (se espera ~10 s); (b) Fer mira la pantalla final: los cuatro
+     textos de DIAG-16 sin cofre, el fondo y las partículas en movimiento (LIMPIEZA-18, antes);
+     (c) Fer la cierra con ESC. El CSV, con el comparador contra la línea base. Estos controles se
+     pierden si se hacen después del cambio.
+  3. Los tests antes del código (decisión 10), corridos contra el código de hoy: el de DIAG-14 en
+     `tests/test_reportes.py` y la verificación de `Tiempo simulado: 0.5 minutos` en `test_humo.py`.
+     Los dos tienen que fallar. El de DIAG-16 llama a una función que todavía no existe: su control
+     es la mirada del paso 2. Se commitean junto con los arreglos (el gate no deja commitear tests
+     rojos).
+  4. `dibujar_mundo` en `src/ui/renderer.py` (pista del spec), usado por el loop.
+  5. La pantalla final a `src/ui/pantalla_final.py` (decisiones 17 a 20): el resumen por consola,
+     la función que arma los textos sin dibujar (DIAG-16), la pantalla quieta, dibujada una vez con
+     `dibujar_mundo`, y su loop con `clock.tick(30)` (DIAG-17), sin los 31 hallazgos de Pylint. DIAG-15:
+     `_simular` suma los ticks de cada generación (también la parcial del cofre) y la consola y la
+     pantalla muestran el mismo tiempo simulado. DIAG-14 en `learning_monitor.py`.
+  6. Verificar: `pytest` (tests nuevos verdes), Pylint en 0, chequeo rápido. Después, con Fer, la
+     misma corrida con ventana (`results/ventana_despues/`): CSV igual (LIMPIEZA-06), CPU menos de
+     2 s (LIMPIEZA-17), los textos sin cofre (LIMPIEZA-16), fondo y quietud; ESC y ENTER cierran
+     (LIMPIEZA-18).
+  7. Chequeo completo (en los logs solo cambian las "Tasa:" de las generaciones 5 y 10:
+     LIMPIEZA-04), bitácora y commit con confirmación. **Si el contexto no da para más, el corte es
+     acá:** el cierre pasa a una cuarta sesión.
+  8. Si da: chequeo de cierre 5 × 20 (LIMPIEZA-05, con el `diff` de `resumen.md` del spec), docs
+     (README y `CLAUDE.md` § Estructura con `pantalla_final.py`; los DIAG ✅), `/close-spec`, y
+     borrar la memoria `spec-en-ejecucion`.
+  - **Trampas:** el chequeo rápido y el completo corren sin ventana: no ejercitan el dibujo ni la
+    pantalla final con ventana; eso lo cubren las corridas de los pasos 2 y 6, y la lectura. Desde
+    DIAG-14, el comparador va a mostrar las "Tasa:" como diferencias: cada una tiene que valer
+    `vivos` / 60 de la fila del CSV de esa generación. La línea del tiempo del resumen final (DIAG-15)
+    queda después del `🏁`: en las corridas cortas el comparador no la mira; en el 5 × 20, sí. En las
+    corridas con ventana, mirar en el log que se llegó al `🏁` antes de medir, y que cada tecla dejó
+    su `print` (LEC-004). Los scripts de esta sesión (teclas inyectadas, ramas raras) estaban en su
+    scratchpad y se pierden: la técnica está en LEC-004 y en esta entrada.

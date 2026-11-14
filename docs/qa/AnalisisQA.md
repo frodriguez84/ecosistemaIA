@@ -60,6 +60,17 @@ estado en el BACKLOG.
 > ✅ DIAG-25 (2026-11-14, spec *Medir*): `main.py` y `experimento.py` reconfiguran `stdout` y
 > `stderr` a UTF-8 antes del primer `print`. `python main.py --sin-ventana > corrida.log` termina
 > sin error y el log tiene los emojis (MEDIR-12); el test de humo corre así.
+>
+> ✅ DIAG-27 (2026-11-14, spec *Limpieza*, bloque B): el reposicionamiento pasó a
+> `_reposicionar_agentes` (`main.py`), que sortea la `y` con el alto del mundo
+> (`world.screen_height`, 800), no con el de la ventana. Medido con el zoom inyectado (dos `+` en la
+> generación 1; LIMPIEZA-13): antes y después del cambio, el CSV de 3 generaciones es igual a la
+> línea base y ningún sorteo usó el alto agrandado. El control no dio distinto porque, en la
+> práctica, ese sorteo no corre: `fix_agent_positions` ya saca antes a los agentes de fortalezas y
+> obstáculos, y el reposicionamiento solo mueve a alguien si `find_safe_position` cayó a
+> `(100, 100)`, cosa que no pasa en ninguna corrida de la línea base. Por eso la rama se ejercitó
+> aparte, contra el bloque viejo: con alto 800, mismas posiciones, mismos sorteos y mismo estado del
+> azar; con 867 (la ventana agrandada), el código viejo sorteaba distinto.
 
 ### Limpieza y deuda
 
@@ -116,6 +127,19 @@ estado en el BACKLOG.
 > ✅ DIAG-23 (2026-11-14, spec *Limpieza*, bloque A): `world.py` ya no importa `pygame`. Con él se
 > fueron los otros imports y variables sin usar de `src/` (W0611, W0612 y W0404): el comando de
 > Pylint del spec da 0 en `src/`. Quedan los 37 de `main.py`, para los bloques B y C.
+>
+> DIAG-21, parcial (2026-11-14, spec *Limpieza*, bloque B): en `genetic_algorithm.py`, la búsqueda
+> de posición válida es un solo método (`_posicion_libre`, con `_choca` y `_posicion_de_respaldo`) y
+> `random.randint(50, 900)` aparece 3 veces (eran 6); el archivo pasó de 443 a 299 líneas. En
+> `main.py`, el reposicionamiento y el cálculo de ticks están una vez cada uno, y el reporte de fin
+> de generación y los datos del cuadro de resumen salieron de `_simular`. CSV y log iguales a la
+> línea base (LIMPIEZA-03, LIMPIEZA-11), también con los métodos de selección que la config no usa
+> (`elitism`, `tournament` y uno desconocido), comparados antes y después. Falta el dibujo del mundo
+> (bloque C).
+>
+> DIAG-26, parcial (2026-11-14, spec *Limpieza*, bloque B): salieron los 6 imports y variables sin
+> usar de `main.py` que no están en la pantalla final. Quedan 31, todos en `show_final_screen`
+> (bloque C).
 
 ### Experimento: con evolución contra sin evolución
 

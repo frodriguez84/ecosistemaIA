@@ -142,6 +142,10 @@ _(vacío — se llena con el primer feature)_
   falsos: `pylint.args` en ese mismo archivo le deja ver los miembros de pygame (DIAG-26).
 - **No hay producción.** En la bitácora de un spec, "Para verificar en producción" es N/A: lo que
   se verifica es una corrida.
+- **Un control con ventana que depende de una tecla se verifica en el log:** cada tecla de
+  `main.py` deja su `print` (`🔍 Zoom IN`…); si no está, la tecla no llegó y el resultado no dice
+  nada. Para hacerlo repetible, el evento se inyecta envolviendo `pygame.event.get` desde un script
+  (LEC-004).
 - **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12
   núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4. Redirigida a
   archivo, la salida sale con buffer y aparece toda al final: para leer un log mientras corre,

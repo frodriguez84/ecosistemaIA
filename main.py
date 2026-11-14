@@ -14,9 +14,7 @@ import csv
 import numpy as np
 
 from config import SimulationConfig
-from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork
 from src.world.world import World
-from src.world.obstacles import Obstacle, Axe
 from src.evolution.genetic_algorithm import GeneticAlgorithm
 from src.ui.renderer import SpriteManager, ParticleSystem
 from src.ui.stats import StatsPanel
@@ -34,7 +32,7 @@ def find_safe_position(world, agents, radius=16):
     max_attempts = 100
     grass_area_width = 960  # Área de pasto válida
     
-    for attempt in range(max_attempts):
+    for _ in range(max_attempts):
         # Generar posición aleatoria en área de pasto
         x = random.randint(radius, grass_area_width - radius)
         y = random.randint(radius, 800 - radius)
@@ -85,8 +83,6 @@ def find_safe_position(world, agents, radius=16):
 
 def fix_agent_positions(world, agents):
     """Detecta y corrige agentes en posiciones inválidas."""
-    fixed_count = 0
-    
     for agent in agents:
         if not agent.alive:
             continue
@@ -124,12 +120,64 @@ def fix_agent_positions(world, agents):
             safe_x, safe_y = find_safe_position(world, agents, agent.radius)
             agent.x = safe_x
             agent.y = safe_y
-            fixed_count += 1
-            
-    
-    if fixed_count > 0:
-        pass  # Se removió el print para reducir spam en consola
-        
+
+
+def _reposicionar_agentes(world, agents, config):
+    """Con fortalezas activas, mueve a los agentes que quedaron en una fortaleza o sobre un obstáculo.
+
+    La y se sortea con el alto del mundo, no con el de la ventana: el zoom no cambia la simulación
+    (DIAG-27).
+    """
+    if not config.FORTRESSES_ENABLED:
+        return
+
+    for agent in agents:
+        # Verificar si está dentro de fortalezas O sobre obstáculos
+        needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or
+                               any(obstacle.collides_with(agent.x, agent.y, agent.radius)
+                                   for obstacle in world.obstacles))
+
+        if needs_repositioning:
+            # Reposicionar fuera de fortalezas, obstáculos, perímetro y estanque
+            attempts = 0
+            while attempts < 500:  # Más intentos para mayor seguridad
+                new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
+                new_y = random.randint(20, world.screen_height - 20)  # Evitando perímetro superior e inferior
+
+                # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
+                if (not world._is_inside_fortress(new_x, new_y) and
+                    not any(obstacle.collides_with(new_x, new_y, agent.radius)
+                            for obstacle in world.obstacles) and
+                    not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                            for perimeter_obj in world.perimeter_obstacles) and
+                    not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
+                            for pond_obj in world.pond_obstacles)):
+                    agent.x = new_x
+                    agent.y = new_y
+                    break
+                attempts += 1
+
+            # Si no se pudo reposicionar después de 500 intentos, usar posición segura
+            if attempts >= 500:
+                # Buscar posición segura que no esté en estanque
+                safe_x, safe_y = 100, 100  # Posición por defecto
+                for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
+                    for test_y in [100, 200, 300, 400, 500, 600]:
+                        # Verificar que no esté en estanque
+                        safe_position = True
+                        for pond_obj in world.pond_obstacles:
+                            if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
+                                safe_position = False
+                                break
+                        if safe_position:
+                            safe_x, safe_y = test_x, test_y
+                            break
+                    if safe_position:
+                        break
+
+                agent.x = safe_x
+                agent.y = safe_y
+                print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
 
 
 # Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6)
@@ -200,6 +248,110 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
     return [round(float(valor), 4) if isinstance(valor, float) else valor for valor in fila]
 
 
+def _ticks_de_generacion(config, generacion):
+    """Ticks que dura una generación: con tiempo adaptativo, se alarga cada TICKS_INCREMENT_FREQUENCY generaciones."""
+    if not config.ADAPTIVE_TIME_ENABLED:
+        return config.BASE_TICKS
+    incrementos_aplicados = (generacion - 1) // config.TICKS_INCREMENT_FREQUENCY
+    return config.BASE_TICKS + (config.TICKS_INCREMENT_AMOUNT * incrementos_aplicados)
+
+
+def _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, learning_monitor,
+                                simulation_start_time):
+    """Reporte por consola del fin de una generación. Solo lee: espera el fitness ya calculado.
+
+    alive_agents son los vivos al empezar el último tick; la tasa de supervivencia los vuelve a contar.
+    """
+    # Calcular tiempo acumulado desde el inicio de la simulación
+    elapsed_time = time.time() - simulation_start_time
+    elapsed_minutes = int(elapsed_time // 60)
+    elapsed_seconds = int(elapsed_time % 60)
+
+    print(f"\n🧬 Generación {generation} terminada")
+    print(f"   - Agentes vivos: {len(alive_agents)}")
+    print(f"   - Segundos: {tick/60:.1f}")
+
+    # Contar árboles cortados (estado del mundo, que se acumula entre generaciones)
+    trees_cut_this_generation = 0
+    if hasattr(world, 'trees'):
+        trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
+
+    # Estadísticas de puzzle (llaves, puertas, cofre)
+    red_key_status = "LLAVE RECOGIDA" if world.red_key_collected else "NO RECOGIDA"
+    gold_key_status = "LLAVE RECOGIDA" if world.gold_key_collected else "NO RECOGIDA"
+
+    door_status = "PUERTA ABIERTA" if world.door and world.door.is_open else "PUERTA CERRADA"
+    iron_door_status = "PUERTA ABIERTA" if world.door_iron and world.door_iron.is_open else "PUERTA CERRADA"
+
+    chest_status = "COFRE ABIERTO" if world.chest and world.chest.is_open else "COFRE CERRADO"
+
+    alive_agents_for_stats = [a for a in agents if a.alive]
+    avg_fitness = sum(agent.fitness for agent in agents) / len(agents)
+    max_fitness = max(agent.fitness for agent in agents)
+    min_fitness = min(agent.fitness for agent in agents)
+    avg_age = sum(agent.age for agent in agents) / len(agents)
+    avg_food = sum(agent.food_eaten for agent in agents) / len(agents)
+    max_food = max(agent.food_eaten for agent in agents)
+
+    # Calcular diversidad genética
+    diversity = learning_monitor.calculate_diversity(agents)
+
+    # ESTANDARIZAR LOGS - Siempre el mismo formato y orden
+    print(f"   📊 FITNESS:")
+    print(f"      - Promedio: {avg_fitness:.1f}/100")
+    print(f"      - Máximo: {max_fitness:.1f}/100")
+    print(f"      - Mínimo: {min_fitness:.1f}/100")
+    print(f"   🍎 COMIDA:")
+    print(f"      - Promedio: {avg_food:.1f}")
+    print(f"      - Máximo: {max_food}")
+    print(f"   ⏱️ SUPERVIVENCIA:")
+    print(f"      - Tasa: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
+    print(f"      - Tiempo promedio: {avg_age/60/60:.1f} min")
+    print(f"   🧬 DIVERSIDAD GENÉTICA: {diversity:.4f}")
+    print(f"   🧩 PUZZLE:")
+    print(f"      - Llave roja: {red_key_status}")
+    print(f"      - Llave dorada: {gold_key_status}")
+    print(f"      - Puerta madera: {door_status}")
+    print(f"      - Puerta hierro: {iron_door_status}")
+    print(f"      - Cofre: {chest_status}")
+    print(f"      - Árboles cortados: {trees_cut_this_generation}")
+    print(f"   - ⏱️ Tiempo real acumulado: {elapsed_minutes}m {elapsed_seconds}s")
+
+
+def _datos_del_popup(generation, tick, agents, alive_agents, world, learning_monitor):
+    """Datos del cuadro de resumen de una generación. Solo lee: espera el fitness ya calculado."""
+    alive_agents_for_stats = [a for a in agents if a.alive]
+    trees_cut_this_generation = 0
+    if hasattr(world, 'trees'):
+        trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
+    return {
+        'generation': generation,
+        'avg_fitness': sum(agent.fitness for agent in agents) / len(agents),
+        'max_fitness': max(agent.fitness for agent in agents),
+        'avg_age': sum(agent.age for agent in agents) / len(agents),
+        'avg_food': sum(agent.food_eaten for agent in agents) / len(agents),
+        'avg_energy': (sum(agent.energy for agent in alive_agents_for_stats) / len(alive_agents_for_stats)
+                       if alive_agents_for_stats else 0),
+        'avg_exploration': sum(agent.distance_traveled for agent in agents) / len(agents),
+        'survival_rate': len(alive_agents) / len(agents) * 100,
+        'avg_movement_skill': sum(agent.get_movement_skill() for agent in agents) / len(agents),
+        'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents),
+        'avg_obstacle_skill': sum(agent.get_obstacle_skill() for agent in agents) / len(agents),
+        'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents),
+        'trees_cut': trees_cut_this_generation,
+        # Datos del puzzle
+        'red_key_collected': world.red_key_collected,
+        'gold_key_collected': world.gold_key_collected,
+        'doors_opened': (1 if world.door and world.door.is_open else 0) + (1 if world.door_iron and world.door_iron.is_open else 0),
+        'chest_opened': world.chest.is_open if world.chest else False,
+        'total_agents': len(agents),
+        'alive_count': len(alive_agents_for_stats),
+        'diversity': learning_monitor.calculate_diversity(agents),
+        'generation_time': 0,  # Se puede calcular si es necesario
+        'generation_time_ticks': tick  # Tiempo en ticks de esta generación
+    }
+
+
 def main(argv=None):
     """Punto de entrada: lee los flags, siembra el azar y corre la simulación escribiendo el CSV."""
     # Antes del primer print: con la salida redirigida a un archivo, Windows usa cp1252 y el
@@ -254,7 +406,6 @@ def _simular(semilla, evolucion, escribir_fila):
     # Obtener parámetros de la configuración
     screen_width = config.SCREEN_WIDTH
     screen_height = config.SCREEN_HEIGHT
-    population_size = config.POPULATION_SIZE
     max_generations = config.MAX_GENERATIONS
     target_fps = 999999 if config.HEADLESS_MODE else config.TARGET_FPS
     
@@ -308,57 +459,7 @@ def _simular(semilla, evolucion, escribir_fila):
     agents = ga._create_random_population()
     
     # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos
-    if config.FORTRESSES_ENABLED:
-        
-        for agent in agents:
-            # Verificar si está dentro de fortalezas O sobre obstáculos
-            needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
-                                  any(obstacle.collides_with(agent.x, agent.y, agent.radius) 
-                                      for obstacle in world.obstacles))
-            
-            if needs_repositioning:
-                # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
-                attempts = 0
-                while attempts < 500:  # Más intentos para mayor seguridad
-                    # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
-                    # Usar dimensiones escaladas dinámicamente
-                    new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
-                    new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
-                    
-                    # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
-                    if (not world._is_inside_fortress(new_x, new_y) and
-                        not any(obstacle.collides_with(new_x, new_y, agent.radius) 
-                               for obstacle in world.obstacles) and
-                        not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                               for perimeter_obj in world.perimeter_obstacles) and
-                        not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                               for pond_obj in world.pond_obstacles)):
-                        agent.x = new_x
-                        agent.y = new_y
-                        break
-                    attempts += 1
-                
-                # Si no se pudo reposicionar después de 500 intentos, usar posición segura
-                if attempts >= 500:
-                    # Buscar posición segura que no esté en estanque
-                    safe_x, safe_y = 100, 100  # Posición por defecto
-                    for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
-                        for test_y in [100, 200, 300, 400, 500, 600]:
-                            # Verificar que no esté en estanque
-                            safe_position = True
-                            for pond_obj in world.pond_obstacles:
-                                if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
-                                    safe_position = False
-                                    break
-                            if safe_position:
-                                safe_x, safe_y = test_x, test_y
-                                break
-                        if safe_position:
-                            break
-                    
-                    agent.x = safe_x
-                    agent.y = safe_y
-                    print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
+    _reposicionar_agentes(world, agents, config)
     
     # Crear panel de estadísticas (más alto)
     stats_panel = StatsPanel(screen_width - config.get_stats_panel_width(), 10, config.get_stats_panel_width() - 10, 300)  # Panel dinámico
@@ -379,12 +480,7 @@ def _simular(semilla, evolucion, escribir_fila):
     paused = False
     generation = 1
     # Calcular tiempo máximo adaptativo con incremento gradual
-    if config.ADAPTIVE_TIME_ENABLED:
-        # Calcular cuántos incrementos aplicar: cada TICKS_INCREMENT_FREQUENCY generaciones
-        incrementos_aplicados = (generation - 1) // config.TICKS_INCREMENT_FREQUENCY
-        max_ticks_per_generation = config.BASE_TICKS + (config.TICKS_INCREMENT_AMOUNT * incrementos_aplicados)
-    else:
-        max_ticks_per_generation = config.BASE_TICKS
+    max_ticks_per_generation = _ticks_de_generacion(config, generation)
     print(f"🎮 Generación {generation} iniciada ⏱️ {max_ticks_per_generation} ticks")
     tick = 0
     
@@ -501,105 +597,18 @@ def _simular(semilla, evolucion, escribir_fila):
         
         # Verificar si todos murieron o se acabó el tiempo
         if len(alive_agents) == 0 or tick >= max_ticks_per_generation:
-            # Calcular tiempo acumulado desde el inicio de la simulación
-            elapsed_time = time.time() - simulation_start_time
-            elapsed_minutes = int(elapsed_time // 60)
-            elapsed_seconds = int(elapsed_time % 60)
-            
-            print(f"\n🧬 Generación {generation} terminada")
-            print(f"   - Agentes vivos: {len(alive_agents)}")
-            print(f"   - Segundos: {tick/60:.1f}")
-            
-            
-            # Contar árboles cortados en esta generación
-            trees_cut_this_generation = 0
-            if hasattr(world, 'trees'):
-                trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
-            
-            # Estadísticas de puzzle (llaves, puertas, cofre)
-            red_key_status = "LLAVE RECOGIDA" if world.red_key_collected else "NO RECOGIDA"
-            gold_key_status = "LLAVE RECOGIDA" if world.gold_key_collected else "NO RECOGIDA"
-            
-            door_status = "PUERTA ABIERTA" if world.door and world.door.is_open else "PUERTA CERRADA"
-            iron_door_status = "PUERTA ABIERTA" if world.door_iron and world.door_iron.is_open else "PUERTA CERRADA"
-            
-            chest_status = "COFRE ABIERTO" if world.chest and world.chest.is_open else "COFRE CERRADO"
-            
-            if agents:
-                # Recalcular agentes vivos para las estadísticas
-                alive_agents_for_stats = [a for a in agents if a.alive]
-                
-                # Calcular fitness de todos los agentes antes de las estadísticas
-                for agent in agents:
-                    agent._calculate_fitness()
-                
-                avg_fitness = sum(agent.fitness for agent in agents) / len(agents)
-                max_fitness = max(agent.fitness for agent in agents)
-                min_fitness = min(agent.fitness for agent in agents)
-                avg_age = sum(agent.age for agent in agents) / len(agents)
-                avg_food = sum(agent.food_eaten for agent in agents) / len(agents)
-                max_food = max(agent.food_eaten for agent in agents)
-                avg_energy = sum(agent.energy for agent in alive_agents_for_stats) / len(alive_agents_for_stats) if alive_agents_for_stats else 0
-                
-                # Calcular diversidad genética
-                diversity = learning_monitor.calculate_diversity(agents)
-                
-                # ESTANDARIZAR LOGS - Siempre el mismo formato y orden
-                print(f"   📊 FITNESS:")
-                print(f"      - Promedio: {avg_fitness:.1f}/100")
-                print(f"      - Máximo: {max_fitness:.1f}/100")
-                print(f"      - Mínimo: {min_fitness:.1f}/100")
-                print(f"   🍎 COMIDA:")
-                print(f"      - Promedio: {avg_food:.1f}")
-                print(f"      - Máximo: {max_food}")
-                print(f"   ⏱️ SUPERVIVENCIA:")
-                print(f"      - Tasa: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
-                print(f"      - Tiempo promedio: {avg_age/60/60:.1f} min")
-                print(f"   🧬 DIVERSIDAD GENÉTICA: {diversity:.4f}")
-                print(f"   🧩 PUZZLE:")
-                print(f"      - Llave roja: {red_key_status}")
-                print(f"      - Llave dorada: {gold_key_status}")
-                print(f"      - Puerta madera: {door_status}")
-                print(f"      - Puerta hierro: {iron_door_status}")
-                print(f"      - Cofre: {chest_status}")
-                print(f"      - Árboles cortados: {trees_cut_this_generation}")
-                print(f"   - ⏱️ Tiempo real acumulado: {elapsed_minutes}m {elapsed_seconds}s")
-            else:
-                avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
-                alive_agents_for_stats = []  # Lista vacía si no hay agentes
-            
+            # Fitness de todos los agentes, antes del reporte, la fila del CSV y la evolución
+            for agent in agents:
+                agent._calculate_fitness()
+            _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, learning_monitor,
+                                        simulation_start_time)
+
             # Fila del CSV, antes de la pantalla final (que con ventana espera una tecla)
             escribir_fila(_fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor))
 
-            # Preparar datos para el cuadro de resumen
-            generation_data = {
-                'generation': generation,
-                'avg_fitness': avg_fitness,
-                'max_fitness': max_fitness,
-                'avg_age': avg_age,
-                'avg_food': avg_food,
-                'avg_energy': avg_energy,
-                'avg_exploration': sum(agent.distance_traveled for agent in agents)/len(agents) if agents else 0,
-                'survival_rate': len(alive_agents)/len(agents)*100 if agents else 0,
-                'avg_movement_skill': sum(agent.get_movement_skill() for agent in agents) / len(agents) if agents else 0,
-                'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents) if agents else 0,
-                'avg_obstacle_skill': sum(agent.get_obstacle_skill() for agent in agents) / len(agents) if agents else 0,
-                'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents) if agents else 0,
-                'trees_cut': trees_cut_this_generation,
-                # Datos del puzzle
-                'red_key_collected': world.red_key_collected,
-                'gold_key_collected': world.gold_key_collected,
-                'doors_opened': (1 if world.door and world.door.is_open else 0) + (1 if world.door_iron and world.door_iron.is_open else 0),
-                'chest_opened': world.chest.is_open if world.chest else False,
-                'total_agents': len(agents),
-                'alive_count': len(alive_agents_for_stats),
-                'diversity': learning_monitor.calculate_diversity(agents) if hasattr(learning_monitor, 'calculate_diversity') else 0,
-                'generation_time': 0,  # Se puede calcular si es necesario
-                'generation_time_ticks': tick  # Tiempo en ticks de esta generación
-            }
-            
-            # Añadir fitness promedio al historial
-            fitness_history.append(avg_fitness)
+            # Datos del cuadro de resumen, y el fitness promedio al historial del gráfico
+            generation_data = _datos_del_popup(generation, tick, agents, alive_agents, world, learning_monitor)
+            fitness_history.append(generation_data['avg_fitness'])
             
             # Registrar datos en el monitor de aprendizaje
             gen_data = learning_monitor.record_generation(generation, agents, world)
@@ -635,57 +644,7 @@ def _simular(semilla, evolucion, escribir_fila):
             fix_agent_positions(world, agents)
             
             # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos (después de evolucionar)
-            if config.FORTRESSES_ENABLED:
-                
-                for agent in agents:
-                    # Verificar si está dentro de fortalezas O sobre obstáculos
-                    needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or 
-                                          any(obstacle.collides_with(agent.x, agent.y, agent.radius) 
-                                              for obstacle in world.obstacles))
-                    
-                    if needs_repositioning:
-                        # Reposicionar fuera de fortalezas, obstáculos Y zona de estadísticas
-                        attempts = 0
-                        while attempts < 500:  # Más intentos para mayor seguridad
-                            # Área de juego válida: solo pasto, excluyendo perímetro y panel de estadísticas
-                            # Usar dimensiones escaladas dinámicamente
-                            new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
-                            new_y = random.randint(20, screen_height - 20)  # Evitando perímetro superior e inferior
-                            
-                            # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
-                            if (not world._is_inside_fortress(new_x, new_y) and
-                                not any(obstacle.collides_with(new_x, new_y, agent.radius) 
-                                       for obstacle in world.obstacles) and
-                                not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                                       for perimeter_obj in world.perimeter_obstacles) and
-                                not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                                       for pond_obj in world.pond_obstacles)):
-                                agent.x = new_x
-                                agent.y = new_y
-                                break
-                            attempts += 1
-                        
-                        # Si no se pudo reposicionar después de 500 intentos, usar posición segura
-                        if attempts >= 500:
-                            # Buscar posición segura que no esté en estanque
-                            safe_x, safe_y = 100, 100  # Posición por defecto
-                            for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
-                                for test_y in [100, 200, 300, 400, 500, 600]:
-                                    # Verificar que no esté en estanque
-                                    safe_position = True
-                                    for pond_obj in world.pond_obstacles:
-                                        if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
-                                            safe_position = False
-                                            break
-                                    if safe_position:
-                                        safe_x, safe_y = test_x, test_y
-                                        break
-                                if safe_position:
-                                    break
-                            
-                            agent.x = safe_x
-                            agent.y = safe_y
-                            print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
+            _reposicionar_agentes(world, agents, config)
             
             world.reset_food()
             world.tick = 0
@@ -697,12 +656,7 @@ def _simular(semilla, evolucion, escribir_fila):
             dead_ids.clear()
             
             # Recalcular tiempo máximo para la nueva generación con incremento gradual
-            if config.ADAPTIVE_TIME_ENABLED:
-                # Calcular cuántos incrementos aplicar: cada TICKS_INCREMENT_FREQUENCY generaciones
-                incrementos_aplicados = (generation - 1) // config.TICKS_INCREMENT_FREQUENCY
-                max_ticks_per_generation = config.BASE_TICKS + (config.TICKS_INCREMENT_AMOUNT * incrementos_aplicados)
-            else:
-                max_ticks_per_generation = config.BASE_TICKS
+            max_ticks_per_generation = _ticks_de_generacion(config, generation)
             
             print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation/60} seg")
             
