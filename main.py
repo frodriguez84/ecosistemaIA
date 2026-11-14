@@ -8,6 +8,10 @@ import time
 import sys
 import random
 import statistics as _stats
+import argparse
+import csv
+
+import numpy as np
 
 from config import SimulationConfig
 from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork
@@ -128,8 +132,118 @@ def fix_agent_positions(world, agents):
         
 
 
-def main():
-    """Función principal."""
+# Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6)
+COLUMNAS_CSV = [
+    "semilla", "evolucion", "generacion", "ticks",
+    "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
+    "manzanas_prom", "manzanas_max", "vivos", "distancia_prom", "diversidad",
+    "arboles_cortados", "llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre",
+]
+
+
+def _leer_argumentos(argv):
+    """Lee los flags de la línea de comando. Sin flags, mandan los valores de config.py."""
+    parser = argparse.ArgumentParser(
+        description="Ecosistema Evolutivo IA: corre la simulación y deja un CSV con una fila por generación.",
+        add_help=False,
+    )
+    parser.add_argument("-h", "--help", action="help", help="Muestra esta ayuda y sale.")
+    parser.add_argument("--sin-ventana", action="store_true",
+                        help="Corre sin abrir ventana (más rápido). Pisa HEADLESS_MODE de config.py.")
+    parser.add_argument("--generaciones", type=int, metavar="N",
+                        help="Cantidad de generaciones. Pisa MAX_GENERATIONS de config.py.")
+    parser.add_argument("--semilla", type=int, metavar="S",
+                        help="Semilla del azar, para repetir una corrida. Sin ella se sortea una y se imprime.")
+    parser.add_argument("--sin-evolucion", action="store_true",
+                        help="Línea base: cada generación arranca con cerebros al azar y no hereda nada.")
+    parser.add_argument("--csv", metavar="RUTA",
+                        help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<evolucion|sin_evolucion>.csv.")
+    args = parser.parse_args(argv)
+    if args.generaciones is not None and args.generaciones < 1:
+        parser.error("--generaciones tiene que ser 1 o más")
+    if args.semilla is not None and not 0 <= args.semilla < 2**32:
+        parser.error("--semilla tiene que estar entre 0 y 4294967295")
+    return args
+
+
+def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_monitor):
+    """Arma la fila del CSV de una generación. Espera el fitness ya calculado en cada agente.
+
+    Hace las mismas cuentas que el reporte por consola del final de generación. Los decimales van
+    redondeados a 4 para que dos corridas con la misma semilla den el mismo archivo byte a byte.
+    Las columnas del puzzle son el estado del mundo, que se acumula entre generaciones.
+    """
+    fitness = [float(agent.fitness) for agent in agents]
+    manzanas = [agent.food_eaten for agent in agents]
+    arboles_cortados = len([tree for tree in world.trees if tree.is_cut]) if hasattr(world, 'trees') else 0
+    fila = [
+        semilla,
+        int(evolucion),
+        generacion,
+        ticks,
+        sum(fitness) / len(fitness),
+        max(fitness),
+        min(fitness),
+        _stats.pstdev(fitness),
+        sum(manzanas) / len(manzanas),
+        max(manzanas),
+        len([agent for agent in agents if agent.alive]),
+        sum(agent.distance_traveled for agent in agents) / len(agents),
+        learning_monitor.calculate_diversity(agents),
+        arboles_cortados,
+        int(bool(world.red_key_collected)),
+        int(bool(world.door and world.door.is_open)),
+        int(bool(world.gold_key_collected)),
+        int(bool(world.door_iron and world.door_iron.is_open)),
+        int(bool(world.chest and world.chest.is_open)),
+    ]
+    return [round(float(valor), 4) if isinstance(valor, float) else valor for valor in fila]
+
+
+def main(argv=None):
+    """Punto de entrada: lee los flags, siembra el azar y corre la simulación escribiendo el CSV."""
+    # Antes del primer print: con la salida redirigida a un archivo, Windows usa cp1252 y el
+    # primer emoji tira UnicodeEncodeError (DIAG-25)
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
+    args = _leer_argumentos(argv)
+    # Se pisan en la clase, no en una instancia: show_final_screen lee SimulationConfig directo
+    if args.sin_ventana:
+        SimulationConfig.HEADLESS_MODE = True
+    if args.generaciones is not None:
+        SimulationConfig.MAX_GENERATIONS = args.generaciones
+
+    # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
+    semilla = args.semilla if args.semilla is not None else random.SystemRandom().randrange(1_000_000)
+    random.seed(semilla)
+    np.random.seed(semilla)
+    evolucion = not args.sin_evolucion
+    print(f"🎲 Semilla: {semilla} ({'con' if evolucion else 'sin'} evolución)")
+
+    ruta_csv = args.csv or os.path.join(
+        "results", f"corrida_s{semilla}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+    if os.path.exists(ruta_csv):
+        print(f"⚠️ El CSV ya existe y se va a pisar: {ruta_csv}")
+    os.makedirs(os.path.dirname(ruta_csv) or ".", exist_ok=True)
+
+    with open(ruta_csv, "w", newline="", encoding="utf-8") as archivo_csv:
+        escritor = csv.writer(archivo_csv)
+        escritor.writerow(COLUMNAS_CSV)
+
+        def escribir_fila(fila):
+            # Se vacía en cada generación: una corrida cortada deja sus generaciones completas
+            escritor.writerow(fila)
+            archivo_csv.flush()
+
+        try:
+            _simular(semilla, evolucion, escribir_fila)
+        finally:
+            print(f"📄 CSV de la corrida: {ruta_csv}")
+
+
+def _simular(semilla, evolucion, escribir_fila):
+    """Corre la simulación. Con evolucion=False, cada generación arranca con cerebros al azar."""
     print("🎨 Ecosistema Evolutivo IA")
     
     
@@ -353,6 +467,11 @@ def main():
                     
                     # Intentar abrir cofre
                     if agent._try_open_chest(world):
+                        # Antes de salir, la fila de esta generación (parcial), con cofre = 1
+                        for otro in agents:
+                            otro._calculate_fitness()
+                        escribir_fila(_fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor))
+
                         # ¡COFRE ABIERTO! Mostrar pantalla de FIN
                         print(f"\n🏆 ¡¡¡COFRE ABIERTO!!! 🏆")
                         print(f"🎯 Agente {agent.id} ha completado la misión en la generación {generation}")
@@ -449,6 +568,9 @@ def main():
                 avg_fitness = max_fitness = avg_age = avg_food = avg_energy = 0
                 alive_agents_for_stats = []  # Lista vacía si no hay agentes
             
+            # Fila del CSV, antes de la pantalla final (que con ventana espera una tecla)
+            escribir_fila(_fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor))
+
             # Preparar datos para el cuadro de resumen
             generation_data = {
                 'generation': generation,
@@ -502,8 +624,11 @@ def main():
                 show_final_screen(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, mission_completed=False)
                 return
 
-            # Evolucionar
-            agents = ga.evolve(agents, generation)
+            # Evolucionar. La línea base (--sin-evolucion) arranca de cero: cerebros al azar, sin herencia
+            if evolucion:
+                agents = ga.evolve(agents, generation)
+            else:
+                agents = ga._create_random_population()
             
             # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
             print("🔍 Verificando posiciones de agentes...")

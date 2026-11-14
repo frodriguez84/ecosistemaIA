@@ -1,6 +1,6 @@
 # Spec: Medir antes de tocar
 
-**Estado:** 🔵 Planned — en diseño
+**Estado:** 🟢 Activo — Parcial: bloque A ✅ (2026-11-14); bloque B pendiente
 **Prioridad:** Alta — sin medición, cada cambio al aprendizaje se evalúa a ojo (LEC-001), y la
 limpieza no tiene cómo probar que no cambió nada.
 **Gate:** Ninguno
@@ -72,20 +72,20 @@ azar. Un test de humo cuida que todo esto siga andando.
 
 ## Criterios de done (DoD)
 
-- [ ] `python main.py --sin-ventana --generaciones 2 --semilla 7` corre sin editar `config.py`, sin
+- [x] `python main.py --sin-ventana --generaciones 2 --semilla 7` corre sin editar `config.py`, sin
   abrir ventana, y termina después de 2 generaciones.
-- [ ] `python main.py` sin flags abre la ventana con los valores de `config.py`, como hoy.
-- [ ] `python main.py --help` lista los cinco flags con su descripción en español.
-- [ ] Toda corrida imprime su semilla al arrancar y la ruta del CSV al terminar. Sin `--semilla`, la
+- [x] `python main.py` sin flags abre la ventana con los valores de `config.py`, como hoy.
+- [x] `python main.py --help` lista los cinco flags con su descripción en español.
+- [x] Toda corrida imprime su semilla al arrancar y la ruta del CSV al terminar. Sin `--semilla`, la
   semilla se sortea y aparece en el CSV.
-- [ ] Dos corridas con la misma semilla dan CSV idénticos byte a byte, con evolución y sin evolución.
-- [ ] La misma semilla con ventana y sin ventana da el mismo CSV (2 generaciones).
-- [ ] El CSV tiene exactamente las columnas de la decisión 6, una fila por generación, y cortar la
+- [x] Dos corridas con la misma semilla dan CSV idénticos byte a byte, con evolución y sin evolución.
+- [x] La misma semilla con ventana y sin ventana da el mismo CSV (2 generaciones).
+- [x] El CSV tiene exactamente las columnas de la decisión 6, una fila por generación, y cortar la
   corrida con Ctrl+C deja las generaciones terminadas escritas.
-- [ ] Si se abre el cofre, el CSV tiene la fila de esa generación con `cofre = 1`.
-- [ ] Con `--sin-evolucion`, cada generación arranca con cerebros al azar, y la generación 1 es igual
+- [x] Si se abre el cofre, el CSV tiene la fila de esa generación con `cofre = 1`.
+- [x] Con `--sin-evolucion`, cada generación arranca con cerebros al azar, y la generación 1 es igual
   a la de la corrida con evolución de la misma semilla (salvo la columna `evolucion`).
-- [ ] `python main.py --sin-ventana --generaciones 1 > corrida.log` termina sin error de encoding.
+- [x] `python main.py --sin-ventana --generaciones 1 > corrida.log` termina sin error de encoding.
 - [ ] `python experimento.py --semillas 1 2 --generaciones 10 --paralelo 2` deja 4 CSV, 4 logs y
   `resumen.md` en su carpeta, y el resumen trae lo de las decisiones 13 y 14.
 - [ ] `python -m pytest -q` pasa (`test_humo.py` y `test_resumen.py`) en menos de 90 segundos.
@@ -188,5 +188,61 @@ Dos sesiones, en secuencia:
 
 ## Bitácora de ejecución
 
-_(vacía — la primera sesión agrega su entrada al cerrar, con el formato de
-[`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones")_
+Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
+
+### Sesión 1 — 2026-11-14 — Bloque A
+- **Hecho:**
+  - `main.py`: `main(argv=None)` reconfigura `stdout` y `stderr` a UTF-8, lee los flags con
+    `argparse` (también `-h` en español), pisa `HEADLESS_MODE` y `MAX_GENERATIONS` en la clase y
+    siembra `random` y `np.random`. El cuerpo de la simulación pasó a
+    `_simular(semilla, evolucion, escribir_fila)`. Sus únicos cambios son la fila del CSV, al final
+    de cada generación y al abrirse el cofre, y el switch de `--sin-evolucion` (decisión 10). La
+    fila la arma `_fila_csv()`.
+  - `src/ui/renderer.py`: `ParticleSystem` usa su propio `random.Random()`.
+  - `tests/test_humo.py`: 4 tests sobre 3 corridas en paralelo; tarda unos 18 s.
+  - Gate pre-commit: el código 5 de pytest ya bloquea, y compila también `tests/`.
+  - Spec movido a `active/`, con el manifiesto, el BACKLOG y la memoria de proyecto al día.
+  - LEC-002 (el Edit vacía las líneas en blanco con espacios) y su regla en `CLAUDE.md` § Notas.
+  - Commit: `medir: flags, semilla, CSV por generación y test de humo (bloque A)`.
+- **Estados:**
+  - DoD: los diez primeros criterios ✅. Quedan parciales tres: `pytest` (falta
+    `test_resumen.py`), el gate (falta compilar `experimento.py`) y "el diff no toca `src/agents/`,
+    `src/world/` ni `src/evolution/`" (✅ hasta acá, vale para el spec entero).
+  - QA verificado con corridas: MEDIR-01 a MEDIR-10, MEDIR-12, MEDIR-17 y MEDIR-19. MEDIR-16 vale
+    solo para `test_humo.py`. MEDIR-20 se verificó leyendo el código, porque ninguna corrida abrió el
+    cofre: ni las de 2 generaciones ni una de 13 con ventana.
+  - MEDIR-11 tiene un indicio con 2 generaciones, semilla 7: sin evolución, la diversidad pasa de
+    0,2283 a 0,2288; con evolución baja a 0,2204. Se confirma en B, con 10 generaciones o más.
+  - Para B: MEDIR-13, MEDIR-14, MEDIR-15 y MEDIR-18.
+- **Desvíos del spec, y por qué:**
+  - Gate (decisión 17): `experimento.py` todavía no está en el `compileall` porque no existe.
+    `compileall` con una ruta que no existe falla, y bloquearía todo commit de código. Lo suma B.
+  - MEDIR-09: el Ctrl+C se simuló con `_thread.interrupt_main()`, que levanta `KeyboardInterrupt` en
+    el hilo principal, igual que Ctrl+C. Cortada en la generación 3, la corrida dejó las
+    generaciones 1 y 2, iguales byte a byte a las de la corrida completa. El script quedó en el
+    scratchpad, no en el repo.
+  - Detalles que el spec no fijaba: la semilla sorteada va de 0 a 999.999, para que sea cómoda de
+    tipear. `--generaciones` menor que 1 y `--semilla` fuera de 0 a 2³² − 1 (el rango de numpy) dan
+    error de `argparse`. Los encabezados `usage:` y `options:` de `argparse` quedan en inglés.
+- **A medias o bloqueado:** nada bloqueado. Falta todo el bloque B.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión:** bloque B.
+  - **Primer paso:** el resumen como función pura, con `tests/test_resumen.py` primero (decisión 16,
+    CSV armados a mano con números redondos).
+  - **Después, en orden:** `experimento.py` (lanzador y `resumen.md`); MEDIR-13, MEDIR-14 y
+    MEDIR-15; sumar `experimento.py` al `compileall` de `.claude/hooks/pre-commit-gate.sh`; el
+    experimento completo en segundo plano (MEDIR-18), registrado en `AnalisisQA.md` junto al de una
+    semilla del diagnóstico; y el último ítem del DoD (README, `CLAUDE.md` § Notas y
+    § Convenciones, DIAG-06, DIAG-07 y DIAG-25 ✅). B es el último bloque: con el DoD completo, se
+    cierra con `/close-spec docs/specs/active/MEDIR_ANTES_DE_TOCAR.md` (corre `/qa-spec`), y se
+    borra la memoria de proyecto `spec-en-ejecucion`.
+  - **Trampa:** la salida redirigida a archivo sale con buffer. Si una corrida se mata, su log
+    pierde la cola, y un script que lee el log de otra corrida mientras corre necesita `python -u`
+    o `PYTHONUNBUFFERED=1`. En esta sesión eso dejó abierta 5 minutos la ventana de MEDIR-02.
+  - **Trampa:** tiempos medidos en esta máquina (12 núcleos): 2 generaciones sin ventana tardan
+    unos 15 s con el arranque, unos 6 s por generación de 960 ticks; 3 corridas en paralelo, unos
+    18 s. La nota de `CLAUDE.md` ("~10 s por generación") queda vieja: corregirla con las docs.
+  - **Trampa:** `main.py` necesita el `cwd` en la raíz, porque los sprites se cargan con la ruta
+    relativa `assets/sprites`.
+  - **Trampa:** después de editar código, revisar `git diff` por líneas en blanco vaciadas (LEC-002).
+    El `.pyc` de `src/ui/__pycache__/renderer` aparece modificado: no stagearlo.

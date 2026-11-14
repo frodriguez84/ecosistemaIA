@@ -29,18 +29,18 @@ staged="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E 
 echo "Eval-gate: hay codigo staged -> corriendo chequeo de sintaxis + tests..." >&2
 
 # 3) Chequeo de sintaxis (Python no tiene typecheck configurado en este repo)
-if ! tc_out="$("$PY" -m compileall -q main.py config.py src 2>&1)"; then
+if ! tc_out="$("$PY" -m compileall -q main.py config.py src tests 2>&1)"; then
   echo "FALLO chequeo de sintaxis -- commit bloqueado. Ultimas lineas:" >&2
   echo "$tc_out" | tail -30 >&2
   exit 2
 fi
 
 # 4) Tests
-#    OJO dia 0: pytest sale con codigo 5 cuando no encuentra tests. Mientras no haya suite,
-#    el 5 se acepta. SACAR esa excepcion cuando exista la primera suite real.
+#    Ya hay suite (tests/): el codigo 5 de pytest ("no hay tests") tambien bloquea, porque
+#    quiere decir que la suite desaparecio o dejo de recolectarse.
 test_out="$("$PY" -m pytest -q 2>&1)"
 test_rc=$?
-if [ "$test_rc" -ne 0 ] && [ "$test_rc" -ne 5 ]; then
+if [ "$test_rc" -ne 0 ]; then
   echo "FALLO tests -- commit bloqueado. Ultimas lineas:" >&2
   echo "$test_out" | tail -30 >&2
   exit 2

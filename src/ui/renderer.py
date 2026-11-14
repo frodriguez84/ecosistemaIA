@@ -233,15 +233,18 @@ class ParticleSystem:
     
     def __init__(self):
         self.particles = []
+        # Generador propio: el dibujo (que solo corre con ventana) no consume el azar de la
+        # simulación, así la misma semilla da lo mismo con ventana y sin ella
+        self.rng = random.Random()
     
     def add_death_effect(self, x, y):
         """Agrega efecto de muerte."""
         for _ in range(5):
             particle = {
-                'x': x + random.randint(-10, 10),
-                'y': y + random.randint(-10, 10),
-                'vx': random.uniform(-2, 2),
-                'vy': random.uniform(-2, 2),
+                'x': x + self.rng.randint(-10, 10),
+                'y': y + self.rng.randint(-10, 10),
+                'vx': self.rng.uniform(-2, 2),
+                'vy': self.rng.uniform(-2, 2),
                 'life': 30,
                 'color': (255, 0, 0)
             }
@@ -251,10 +254,10 @@ class ParticleSystem:
         """Agrega efecto de comer comida."""
         for _ in range(3):
             particle = {
-                'x': x + random.randint(-5, 5),
-                'y': y + random.randint(-5, 5),
-                'vx': random.uniform(-1, 1),
-                'vy': random.uniform(-1, 1),
+                'x': x + self.rng.randint(-5, 5),
+                'y': y + self.rng.randint(-5, 5),
+                'vx': self.rng.uniform(-1, 1),
+                'vy': self.rng.uniform(-1, 1),
                 'life': 20,
                 'color': (0, 255, 0)
             }

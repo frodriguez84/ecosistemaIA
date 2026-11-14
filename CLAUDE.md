@@ -129,6 +129,9 @@ _(vacío — se llena con el primer feature)_
   arreglarlos: se borran en la limpieza.
 - **Hay `.pyc` commiteados** en `src/**/__pycache__/`, aunque `.gitignore` los excluye. Si aparecen
   modificados en `git status`, no stagearlos.
+- **Después de editar código, revisar `git diff` por líneas que eran solo espacios.** El Edit vacía
+  las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
+  Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002).
 - **Para correr sin ventana hoy hay que editar `config.py`** (`HEADLESS_MODE`, `MAX_GENERATIONS`).
   Esos cambios de prueba no se commitean.
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la

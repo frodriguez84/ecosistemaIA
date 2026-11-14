@@ -21,13 +21,13 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| _(vacío — el primer spec activo va acá)_ | |
+| [Medir antes de tocar](active/MEDIR_ANTES_DE_TOCAR.md) | En ejecución, por sesiones (bitácora al final). Leerlo antes de tocar `main.py`, `experimento.py` o `tests/` |
 
 ## 🔵 Planned (`planned/`)
 
 | Spec | Gate / nota |
 |------|----------------|
-| [Medir antes de tocar](planned/MEDIR_ANTES_DE_TOCAR.md) | Sin gate. Primero de la cola: bloquea la limpieza y los modos guiado/autónomo |
+| _(vacío)_ | |
 
 ## ⚫ Done (`done/`)
 
