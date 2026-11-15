@@ -8,6 +8,7 @@ test tarda lo que tarda una.
 """
 
 import csv
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -124,7 +125,31 @@ def test_el_csv_dice_el_modo_y_el_modo_cambia_la_corrida(corridas):
 
 def test_el_resumen_final_dice_el_tiempo_simulado(corridas):
     # DIAG-15: decía "Tiempo total: 0.0 minutos" (división entera, y solo de la última generación).
-    # Dos generaciones de 960 ticks, a 60 ticks por segundo, son 0,53 minutos simulados
+    # Dos generaciones de 960 ticks, a 60 ticks por segundo, son 0,53 minutos simulados; el boletín
+    # lo dice en su encabezado (spec PANTALLAS_VER_APRENDER, decisión 15)
     for nombre, corrida in corridas.items():
         log = corrida["log"].read_text(encoding="utf-8", errors="replace")
-        assert "Tiempo simulado: 0.5 minutos" in log, f"{nombre}:\n{_cola_del_log(corrida)}"
+        assert " · 2 generaciones · 0,5 min simulados" in log, f"{nombre}:\n{_cola_del_log(corrida)}"
+
+
+# Los pasos del puzzle: el título de su línea de hito y su columna del CSV, en orden
+HITOS = [("¡Primera llave roja!", "agentes_llave_roja"), ("¡Primera puerta abierta!", "agentes_puerta_madera"),
+         ("¡Primera llave dorada!", "agentes_llave_dorada"), ("¡Puerta de hierro abierta!", "agentes_puerta_hierro"),
+         ("¡Cofre abierto!", "agentes_cofre")]
+LINEA_DE_HITO = re.compile(r"^🏆 (¡.+!) Agente (\d+), generación (\d+), segundo (\d+\.\d)$")
+
+
+def test_cada_hito_del_log_coincide_con_la_primera_generacion_del_csv(corridas):
+    # Decisión 5: un hito es la primera vez en la corrida que un agente llega a un paso. Su generación
+    # es la primera fila del CSV con esa columna mayor que 0, y cada paso con agentes tiene su línea
+    for nombre, corrida in corridas.items():
+        log = corrida["log"].read_text(encoding="utf-8", errors="replace")
+        lineas = [LINEA_DE_HITO.match(linea) for linea in log.splitlines()]
+        generacion_del_log = {m.group(1): int(m.group(3)) for m in lineas if m}
+        assert len(generacion_del_log) == len([m for m in lineas if m]), f"{nombre}: un hito repetido"
+        encabezado, *filas = _filas(corrida["csv"])
+        for titulo, columna in HITOS:
+            i = encabezado.index(columna)
+            primera = next((int(fila[encabezado.index("generacion")]) for fila in filas if int(fila[i]) > 0),
+                           None)
+            assert generacion_del_log.get(titulo) == primera, f"{nombre}: {titulo}"

@@ -1,12 +1,14 @@
 """
-Pantalla final: el resumen de la corrida. Sin ventana, por consola; con ventana, un cuadro sobre el
-último cuadro de la simulación, hasta que se aprieta ESC o ENTER.
+Pantalla final: el resumen de la corrida. Por consola, el boletín (spec PANTALLAS_VER_APRENDER,
+decisión 15), con ventana y sin ella; con ventana, además, un cuadro sobre el último cuadro de la
+simulación, hasta que se aprieta ESC o ENTER.
 """
 
 import pygame
 
 from config import SimulationConfig
 from ..agents.advanced_agent import agentes_por_paso
+from ..analytics.boletin import armar_boletin, minutos_simulados, texto_de_consola
 from ..analytics.clustering import BehaviorClusterer
 from .renderer import dibujar_mundo
 
@@ -15,25 +17,25 @@ GRIS = (200, 200, 200)
 GRIS_OSCURO = (150, 150, 150)
 
 
-def minutos_simulados(ticks_totales):
-    """Los ticks de todas las generaciones, a 60 por segundo, en minutos (DIAG-15)."""
-    return ticks_totales / 60 / 60
-
-
 def mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor,
                            screen_width, screen_height, display_screen, sprite_manager,
-                           particle_system, ticks_totales, primera_generacion_cofre, agentes_con_cofre):
+                           particle_system, registro):
     """Muestra el resumen final. Lee SimulationConfig.HEADLESS_MODE de la clase: main.py lo pisa ahí.
 
-    primera_generacion_cofre es None si ningún agente abrió el cofre; agentes_con_cofre suma los de
-    todas las generaciones (abrirlo no termina la corrida, decisión 11).
+    registro es el RegistroDeLaCorrida, con todas las generaciones ya cerradas.
     """
+    imprimir_resumen_final(registro)
     if SimulationConfig.HEADLESS_MODE:
-        imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales,
-                               primera_generacion_cofre, agentes_con_cofre)
         return
 
     learning_monitor.create_learning_report()
+
+    # El cuadro de antes del spec, hasta el bloque B: el cofre y el tiempo simulado salen del registro
+    historia = registro.historia
+    ticks_totales = sum(fila["ticks"] for fila in historia)
+    primera_generacion_cofre = next((fila["generacion"] for fila in historia if fila["agentes_cofre"] > 0),
+                                    None)
+    agentes_con_cofre = sum(fila["agentes_cofre"] for fila in historia)
 
     # Se calcula y se dibuja una sola vez: el mundo con el dibujo del loop, los agentes vivos,
     # las partículas quietas y el cuadro (DIAG-17)
@@ -66,47 +68,9 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
     pygame.quit()
 
 
-def imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales,
-                           primera_generacion_cofre, agentes_con_cofre):
-    """El resumen final por consola, para las corridas sin ventana."""
-    cofre_abierto = primera_generacion_cofre is not None
-    # Recalcular fitness de todos los agentes antes de mostrar estadísticas
-    for agent in agents:
-        agent._calculate_fitness()
-
-    alive_agents = [a for a in agents if a.alive]
-    max_fitness = max(agent.fitness for agent in agents) if agents else 0.0
-
-    # Promedio de las últimas 3 generaciones (o de las que haya); sin historial, el de ahora
-    ultimas = learning_monitor.generation_data[-3:]
-    if ultimas:
-        avg_fitness = sum(g.get('avg_fitness', 0) for g in ultimas) / len(ultimas)
-    else:
-        avg_fitness = sum(agent.fitness for agent in agents) / len(agents) if agents else 0.0
-
-    if cofre_abierto:
-        status_title = "¡MISIÓN COMPLETADA!"
-        status_subtitle = "El cofre ha sido abierto por un agente evolutivo."
-    else:
-        status_title = "Simulación finalizada"
-        status_subtitle = "Se alcanzó el límite de generaciones sin abrir el cofre."
-
-    print(f"\n {status_title}")
-    print(f"Generación: {generation}")
-    print(f"Tiempo simulado: {minutos_simulados(ticks_totales):.1f} minutos")
-    print(f"Agentes vivos: {len(alive_agents)}")
-    print(status_subtitle)
-    print(_texto_del_cofre(primera_generacion_cofre, agentes_con_cofre))
-    print(f"Fitness promedio (últimas 3 gen): {avg_fitness:.1f}")
-    print(f"Fitness máximo: {max_fitness:.1f}")
-
-
-def _texto_del_cofre(primera_generacion_cofre, agentes_con_cofre):
-    """Cuántos agentes abrieron el cofre en la corrida y cuándo pasó la primera vez (decisión 11)."""
-    if primera_generacion_cofre is None:
-        return "Ningún agente abrió el cofre"
-    return (f"Cofre: lo abrieron {agentes_con_cofre} agentes en la corrida; la primera vez, en la "
-            f"generación {primera_generacion_cofre}")
+def imprimir_resumen_final(registro):
+    """El boletín de la corrida por consola (decisión 15): así el log guarda el mejor agente."""
+    print("\n" + texto_de_consola(armar_boletin(registro)))
 
 
 def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, primera_generacion_cofre,

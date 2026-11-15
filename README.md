@@ -80,16 +80,20 @@ EcosistemaEvolutivo/
 │   │   └── genetic_algorithm.py  # Selección, cruce, mutación, evolución
 │   │
 │   ├── analytics/          # Análisis y métricas
+│   │   ├── boletin.py           # Boletín final, formato de números y escala de los gráficos
 │   │   ├── clustering.py        # Clustering de comportamientos (K-Means, PCA)
-│   │   └── learning_monitor.py  # Monitoreo de aprendizaje y mejoras
+│   │   ├── learning_monitor.py  # Monitoreo de aprendizaje y mejoras
+│   │   └── registro.py          # Registro de la corrida: historia, hitos, mejor agente, mapa de calor
 │   │
 │   └── ui/                 # Interfaz de usuario
 │       ├── renderer.py     # Renderizado con pygame (sprites, partículas)
 │       ├── stats.py        # Panel de estadísticas
 │       ├── popup.py        # Popup de resumen generacional
-│       └── pantalla_final.py  # Resumen final: por consola o en un cuadro
+│       ├── fuentes.py      # Fuentes de las pantallas (Pixelify Sans e Inter)
+│       └── pantalla_final.py  # Resumen final: el boletín por consola y un cuadro con ventana
 │
 ├── assets/
+│   ├── fonts/              # Fuentes de las pantallas (licencia OFL, ver LEEME.md)
 │   └── sprites/            # Sprites del juego (agentes, objetos, entorno)
 │
 └── results/                # CSV y logs de las corridas (no se versionan)
@@ -153,6 +157,13 @@ EcosistemaEvolutivo/
   * Detecta mejoras en fitness
   * Detecta cambios en diversidad genética
   * Reportes en consola con emojis
+* **`registro.py`**: Registro de la corrida, en memoria y sin azar (no cambia el CSV):
+
+  * La fila del CSV de cada generación terminada
+  * Los hitos: la primera vez en la corrida que un agente llega a cada paso del puzzle, con su línea en la consola (`🏆 ¡Primera llave roja! Agente 12, generación 2, segundo 8.3`)
+  * El mejor agente de la corrida (el récord de fitness, no el de la última generación)
+  * El mapa de calor de por dónde caminan: celdas de `HEATMAP_CELL_SIZE` (16 px), la generación 1 y la última
+* **`boletin.py`**: El boletín final, que la consola imprime al terminar, con ventana y sin ella: la generación 1 contra el promedio de las últimas 5 (fitness, manzanas, edad y recorrido), hasta qué paso del puzzle llegaron, el cofre una sola vez, el mejor agente y cuánto del mapa recorrieron. Más el formato de los números (`31,2`, `2.220`) y la escala automática de los gráficos
 
 ### 5. `src/ui/`
 
@@ -164,7 +175,8 @@ EcosistemaEvolutivo/
   * Renderizado de agentes, mundo, HUD
 * **`stats.py`**: Panel lateral de estadísticas en tiempo real
 * **`popup.py`**: Popup de resumen al final de cada generación
-* **`pantalla_final.py`**: Resumen final de la corrida: por consola sin ventana; con ventana, un cuadro sobre el último cuadro de la simulación, hasta ESC o ENTER
+* **`fuentes.py`**: Carga las fuentes de `assets/fonts/` (Pixelify Sans para los títulos, Inter para el resto); si falta una, `main.py` con ventana se corta al arrancar
+* **`pantalla_final.py`**: Resumen final de la corrida: el boletín por consola, con ventana y sin ella; con ventana, además, un cuadro sobre el último cuadro de la simulación, hasta ESC o ENTER
 
 ### 6. `config.py`
 
@@ -641,6 +653,14 @@ Abrir el cofre no termina la simulación: se cuenta cuántos agentes lo abrieron
 - **Clustering**: K-Means, PCA, normalización
 - **Aprendizaje por Refuerzo Evolutivo**: Fitness como señal de recompensa
 - **Emergencia**: Comportamientos complejos emergentes de reglas simples
+
+---
+
+## 📄 Licencia
+
+El código es MIT ([LICENSE](LICENSE)). Las fuentes de `assets/fonts/` (Pixelify Sans e Inter) no:
+tienen la SIL Open Font License 1.1, con su texto y su origen en
+[assets/fonts/LEEME.md](assets/fonts/LEEME.md).
 
 ---
 

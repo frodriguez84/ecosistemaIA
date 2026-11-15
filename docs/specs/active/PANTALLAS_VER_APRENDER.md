@@ -1,6 +1,6 @@
 # Spec: Pantallas para ver aprender
 
-**Estado:** 🔵 Planned — en diseño
+**Estado:** 🟢 Activo — Parcial: bloque A (los datos) ✅ 2026-11-15; bloque B (las pantallas) pendiente
 **Prioridad:** Alta — es el ítem 4 del [BACKLOG](../../product/BACKLOG.md). Fer decidió hacerlo antes
 que el puzzle aprendible (ítem 5), para que lo que sigue se disfrute mirando: lo que más le gusta es
 mirar cómo aprenden.
@@ -125,25 +125,26 @@ marcas de hitos en el gráfico (decisión 14).
 
 ## Criterios de done (DoD)
 
-**Bloque A — Los datos**
-- [ ] Los 4 CSV de referencia existen desde antes del primer cambio de código, con su comando en la
+**Bloque A — Los datos** (✅ 2026-11-15, sesión 1)
+- [x] Los 4 CSV de referencia existen desde antes del primer cambio de código, con su comando en la
   bitácora.
-- [ ] El registro guarda la historia (fila del CSV más ticks máximos), los hitos, el mejor agente de la
+- [x] El registro guarda la historia (fila del CSV más ticks máximos), los hitos, el mejor agente de la
   corrida y el mapa de calor como dicen las decisiones 4 a 7, alimentado por un solo camino en
   `main.py`. `primera_generacion_cofre` y `agentes_con_cofre` ya no existen en `main.py`.
-- [ ] Cada hito imprime su línea en la consola (decisión 5); la del cofre de hoy es una de ellas.
-- [ ] `HEATMAP_CELL_SIZE = 16` en `config.py`. El costo de contar está medido de nuevo y anotado en la
+- [x] Cada hito imprime su línea en la consola (decisión 5); la del cofre de hoy es una de ellas.
+- [x] `HEATMAP_CELL_SIZE = 16` en `config.py`. El costo de contar está medido de nuevo y anotado en la
   bitácora (µs por tick contra ms por tick, y memoria), por debajo del 1 % del tick.
-- [ ] El boletín es una función que no dibuja; sin ventana, la consola lo imprime como dice la
+- [x] El boletín es una función que no dibuja; sin ventana, la consola lo imprime como dice la
   decisión 15, con la frase del cofre una sola vez y sin "últimas 3".
-- [ ] Escala automática y formato de números como dicen las decisiones 10 y 8.
-- [ ] `assets/fonts/` tiene Pixelify Sans Bold e Inter Regular, SemiBold y Bold (TTF estáticos), los
+- [x] Escala automática y formato de números como dicen las decisiones 10 y 8.
+- [x] `assets/fonts/` tiene Pixelify Sans Bold e Inter Regular, SemiBold y Bold (TTF estáticos), los
   `OFL.txt` y el `LEEME.md` con origen y versión; el README dice que son OFL.
-- [ ] Los tests de A (decisión 17) verdes, cada uno con su control anotado en la bitácora;
-  `test_reportes.py` y `test_humo.py` al día.
-- [ ] Las 4 corridas dan los 4 CSV de referencia byte a byte; con ventana (2 generaciones, los dos
+- [x] Los tests de A (decisión 17) verdes, cada uno con su control anotado en la bitácora;
+  `test_reportes.py` y `test_humo.py` al día (`test_reportes.py` conserva los de `textos_del_cuadro`
+  hasta el B: ver desvíos de la sesión 1).
+- [x] Las 4 corridas dan los 4 CSV de referencia byte a byte; con ventana (2 generaciones, los dos
   modos), el mismo CSV que sin ventana.
-- [ ] `python -m pytest -q` verde en menos de 90 s.
+- [x] `python -m pytest -q` verde en menos de 90 s.
 
 **Bloque B — Las pantallas**
 - [ ] `grep` no encuentra `popup.py`, `SummaryPopup`, `_datos_del_popup`, `MOUSEBUTTONDOWN`,
@@ -373,5 +374,109 @@ dice qué falta. El cierre entra en la sesión del B si alcanza el contexto; si 
 
 ## Bitácora de ejecución
 
-_(vacía: el spec está en `planned/`)_. La primera sesión mueve el spec a `active/`, actualiza el
-manifiesto y arranca el bloque A por los CSV de referencia (decisión 16), antes de tocar código.
+### CSV de referencia (decisión 16)
+
+Generados el 2026-11-15 con el código del commit `4212fad`, antes del primer cambio de código, con los
+comandos de "Comandos" (semilla 7, 3 generaciones, sin ventana). El control de cada bloque compara contra
+estos SHA-256, así no depende de que el scratchpad de una sesión vieja siga existiendo; si hace falta el
+archivo, se regenera desde `4212fad` con `git worktree add`.
+
+| CSV | SHA-256 |
+|-----|---------|
+| `ref_guiado_evo.csv` | `d40735791309abc8ed764eba2553420eb696b2fdba644c899102768fe769b2dd` |
+| `ref_guiado_sin.csv` | `897b1bfcb029646556c8bb900f5a1a9fc71d015fedc4a901d72e07c130f53379` |
+| `ref_autonomo_evo.csv` | `4b442886c6ca699c1cfeed939e96fbe0d8084ab6ebe4fe463c6a8bef1d47a954` |
+| `ref_autonomo_sin.csv` | `6359234df93d2df64800b825930c4ce7208ee1fe6341a501a4dfe5ffca39c54d` |
+
+```bash
+S=<scratchpad>
+for m in guiado autonomo; do for e in evo sin; do
+  f=""; [ $e = sin ] && f="--sin-evolucion"
+  .venv/Scripts/python.exe main.py --sin-ventana --generaciones 3 --semilla 7 --modo $m $f --csv "$S/nuevo_${m}_${e}.csv"
+done; done
+sha256sum "$S"/nuevo_*.csv   # contra la tabla
+```
+
+### Sesión 1 — 2026-11-15 — Bloque A (los datos)
+
+- **Hecho** (commit `pantallas: bloque A, los datos`): spec a `active/`, manifiesto y BACKLOG al día.
+  CSV de referencia antes de tocar código (tabla de arriba). `src/analytics/registro.py`
+  (`RegistroDeLaCorrida`: historia, hitos, mejor agente, mapa de calor), `src/analytics/boletin.py`
+  (formato, escala, `armar_boletin`, `texto_de_consola`, `linea_de_hito`), `src/ui/fuentes.py`
+  (`verificar` y `fuente(papel, tamaño)`), `HEATMAP_CELL_SIZE = 16` en `config.py`. `main.py`: el registro
+  se alimenta por un solo camino (cuenta después de `tick += 1`, hitos después de que actúan los
+  agentes, `cerrar_generacion` con la misma fila del CSV); salen `primera_generacion_cofre`,
+  `agentes_con_cofre` y también `ticks_totales` (sale del registro); con ventana, `fuentes.verificar()`
+  antes de abrirla. `imprimir_resumen_final(registro)` imprime el boletín, con ventana y sin ella.
+  Fuentes en `assets/fonts/` con `LEEME.md`; README (árbol, `registro`, `boletin`, `fuentes`, sección
+  Licencia) y `CLAUDE.md` (árbol) al día.
+- **Verificación:** las 4 corridas dan los 4 SHA-256 de referencia (dos veces: a mitad del bloque y con
+  el código final). Con ventana (`ventana.py` del scratchpad: envuelve `main.mostrar_pantalla_final`
+  para prender una bandera y `pygame.event.get` para mandar ESC desde ahí; `TARGET_FPS` = 100.000),
+  semilla 7, 2 generaciones: sale con código 0, el CSV es igual al de sin ventana en los dos modos y el
+  log tiene el boletín y la línea del hito. `python -m pytest -q`: 109 verdes en 24 s.
+- **Costo del mapa de calor** (decisión 7, esta máquina): contar 60 agentes, 18,3 µs por tick
+  (`timeit`, mejor de 5); el tick sin ventana, 6,69 ms (semilla 1: 7,8 s una generación, 14,3 s dos).
+  **0,27 % del tick.** Memoria: cada grilla es una lista de 3.000 enteros, 24 KB de punteros (los
+  enteros hasta 256 son compartidos; en una prueba, 45 celdas pasaban de 256): tres grillas, menos de
+  100 KB.
+- **Controles de la decisión 17** (cada uno, con monkeypatch desde `controles.py` del scratchpad, sin
+  tocar el código; los 9 fallan, como tienen que fallar):
+  contar también los muertos → `test_solo_cuentan_los_vivos` falla (2 ≠ 1) · normalizar por los ticks de
+  la corrida → falla (0,33 ≠ 1,0) · registrar el hito cada vez → falla · récord con `>=` → falla (el
+  empate cambia al 4) · una llamada a `random.random()` al contar → falla el test del azar · escala fija
+  de 0 a 100 (la del popup) → falla (39,7 da 100, no 40) · las preguntas de `test_boletin` (una sola
+  frase del cofre, sin "últimas 3") contra la pantalla y la consola de antes, guardadas antes de tocar
+  `pantalla_final.py` → fallan las tres (cuadro: 5 renglones con el cofre; consola: 2, y "últimas 3")
+  · la fuente de pygame en lugar de Inter → falla por la `→` · el test de hitos de `test_humo` contra
+  un log con otra generación y contra uno sin la línea → falla en los dos.
+- **Estados:** DoD del bloque A completo. QA (para `/qa-spec` al cerrar): PANTALLAS-01 (bloque A),
+  02, 03, 04, 05, 06, 07, 08, 09 y 10 cubiertos por tests y corridas; 17 en parte (falta
+  `test_pantallas.py`, del B). Del 11 al 16 y el 18, del B.
+- **Desvíos del spec, y por qué:**
+  - **Las notas de edad y recorrido dicen "sube también porque las generaciones se alargan" solo si
+    se alargan:** si alguna de las últimas K generaciones podía durar más ticks que la 1. Con 4
+    generaciones o menos duran todas 960 ticks, y la frase sería falsa. Fer lo confirmó el 2026-11-15.
+  - **El cuadro final de antes sigue en la ventana hasta el B:** la decisión 2 (sale la pantalla de
+    hoy) es del bloque B (decisión 19). `mostrar_pantalla_final` recibe el registro y saca de ahí lo del
+    cofre y el tiempo para el cuadro viejo; `test_reportes.py` conserva los tests de `textos_del_cuadro`
+    hasta que la función salga en el B (la decisión 17 los sacaba en el A).
+  - **`tests/test_puzzle.py::test_abrir_el_cofre_no_termina_la_corrida` cambió** (no estaba en la
+    decisión 17): miraba los dos argumentos del cofre de `mostrar_pantalla_final`. Su mock ahora hace
+    lo que el cofre real (`etapa = 5`, `world.py:954`) y el test mira la frase del cofre del boletín.
+  - **Fuentes en dos carpetas,** `assets/fonts/pixelify-sans/` y `assets/fonts/inter/`, cada una con su
+    `OFL.txt` (el de Inter es su `LICENSE.txt`, renombrado). Pixelify Sans Bold sale del repo de la
+    autora (Google Fonts solo publica la variable); Inter, de la release v4.1 (`extras/ttf/`).
+  - **A Pixelify Sans le falta la `→`.** Ningún título la lleva (va en los números y las notas, en
+    Inter), así que no hizo falta parar; `test_fuentes.py` lo vigila.
+  - **Textos que el spec no fijaba:** el mejor agente en etapa 0 dice "llegó a: ningún paso del
+    puzzle"; con 2 generaciones la nota es "gen 1 → gen 2"; "1 manzana" y "lo abrió 1 agente" en
+    singular; el boletín por consola arranca con "📋 Corrida terminada".
+  - **`minutos_simulados` pasó a `boletin.py`** (sin pygame); `pantalla_final.py` lo importa de ahí.
+- **A medias o bloqueado:** nada del A. El "PAUSADO" sigue con la fuente de pygame: dibujar con las
+  fuentes nuevas es del B (DoD del B, `grep "font.Font(None"`).
+- **Para verificar en producción:** N/A (no hay producción).
+- **Próxima sesión — Bloque B (las pantallas):**
+  1. Leer la maqueta (`Artifact` action `read` sobre el link del encabezado) para distribución, tamaños y
+     colores; los colores ya están en "Implementación".
+  2. Sacar el popup (decisión 1): `grep -n "popup\|SummaryPopup\|_datos_del_popup\|fitness_history\|MOUSEBUTTONDOWN\|get_movement_skill\|get_food_skill\|get_energy_skill"`
+     en todo el código; las líneas de `main.py` que da el spec ya se corrieron. `src/ui/__init__.py`
+     importa `SummaryPopup`.
+  3. Panel (decisión 9), avisos (11 y 12, con el reloj inyectable), pantalla final (14) leyendo
+     `armar_boletin(registro)` y `registro` (series de la historia, `registro.hitos`, `registro.valores`
+     de `calor_gen1` y `calor_ultima`), y el "PAUSADO", todo con `fuentes.fuente(...)`. Los avisos de
+     hito salen del mismo `for hito in registro.mirar_hitos(...)` de `main.py`.
+  4. Al sacar el cuadro viejo: sale el bloque de `mostrar_pantalla_final` que saca el cofre del
+     registro, `textos_del_cuadro` y compañía, y los tests de `textos_del_cuadro` de `test_reportes.py`
+     (queda el de DIAG-14). En `test_fuentes.py`, `TITULOS` y `TEXTOS_FIJOS` pasan a ser los textos de
+     los módulos nuevos.
+  5. `tests/test_pantallas.py` con `SDL_VIDEODRIVER=dummy`, y su control.
+  6. Verificación con ventana (decisión 18): el patrón de `ventana.py` está en "Verificación", arriba;
+     para las capturas, envolver también `pygame.display.flip`. El scratchpad de esta sesión no lo ve
+     la próxima: se rearma.
+  7. Cierre: las 4 corridas contra los SHA-256 de la tabla, `pytest` en menos de 90 s, docs del DoD
+     del B (README: las líneas del popup, `CLAUDE.md`: `ui/` sin el popup, DIAG-32 ✅), y `/close-spec`
+     si alcanza el contexto.
+  - **Trampas:** Pixelify Sans no tiene la `→` (ningún título puede llevarla). Los títulos de los hitos
+    están en `boletin.TITULOS_DE_HITOS`; los subtítulos de los avisos (decisión 12) todavía no existen.
+    Las notas de edad y recorrido dicen "se alargan" solo si es verdad (desvío confirmado por Fer).

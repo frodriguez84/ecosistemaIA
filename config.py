@@ -57,6 +57,7 @@ class SimulationConfig:
     # Proporciones del panel de estadísticas (20% del ancho)
     STATS_PANEL_RATIO = 0.20     # 20% del ancho total
     GAME_AREA_RATIO = 0.80       # 80% del ancho total
+    HEATMAP_CELL_SIZE = 16       # Lado de cada celda del mapa de calor, en píxeles (60×50 en 960×800)
     
     # Márgenes para el perímetro
     PERIMETER_MARGIN = 40        # Margen del perímetro en píxeles

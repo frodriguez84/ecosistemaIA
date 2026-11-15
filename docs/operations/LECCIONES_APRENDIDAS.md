@@ -5,6 +5,20 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-011 — 2026-11-15 — El scratchpad es de una sola sesión: una referencia para otra sesión no puede vivir ahí
+
+**Qué pasó.** El spec de [Pantallas para ver aprender](../specs/active/PANTALLAS_VER_APRENDER.md)
+(decisión 16) pedía guardar los 4 CSV de referencia "fuera del repo (scratchpad)" y compararlos con
+`cmp` al cerrar cada bloque. Pero cada bloque es una sesión, y el scratchpad de una sesión es una
+carpeta propia que la siguiente no ve (y que una limpieza puede borrar). El bloque B no habría
+encontrado contra qué comparar. Se vio al generar las referencias, en la sesión 1, antes de que
+fallara.
+
+**Regla.** Lo que una sesión deja para que otra lo compare (CSV de control, salidas esperadas) no
+queda solo en el scratchpad: su SHA-256 va a la bitácora del spec, con el commit desde el que se
+regenera. La sesión siguiente corre lo mismo y compara hashes, sin depender del archivo. Aplicada en
+[`CLAUDE.md`](../../CLAUDE.md) § Notas.
+
 ## LEC-010 — 2026-11-15 — Un número de los docs que coincide con `config.py` no está verificado si nadie lee ese parámetro
 
 **Qué pasó.** En el cierre de [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md),

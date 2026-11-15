@@ -20,6 +20,7 @@ sys.path.insert(0, str(RAIZ))
 
 from config import SimulationConfig  # noqa: E402
 from src.agents.advanced_agent import AdvancedAgent  # noqa: E402
+from src.analytics.boletin import armar_boletin  # noqa: E402
 from src.evolution.genetic_algorithm import GeneticAlgorithm  # noqa: E402
 from src.world.world import World  # noqa: E402
 
@@ -235,15 +236,26 @@ def test_abrir_el_cofre_no_termina_la_corrida(monkeypatch):
     for nombre, valor in (("HEADLESS_MODE", True), ("MAX_GENERATIONS", 2), ("BASE_TICKS", 5)):
         monkeypatch.setattr(SimulationConfig, nombre, valor)
     aperturas = iter([True])
-    monkeypatch.setattr(AdvancedAgent, "_try_open_chest", lambda self, world: next(aperturas, False))
-    finales = []
+
+    def abrir_una_vez(self, world):
+        # Como world.check_chest_open: el agente que lo abre llega a la etapa 5
+        if next(aperturas, False):
+            self.etapa = 5
+            return True
+        return False
+
+    monkeypatch.setattr(AdvancedAgent, "_try_open_chest", abrir_una_vez)
+    registros = []
     monkeypatch.setattr(main, "mostrar_pantalla_final",
-                        lambda *args, **kwargs: finales.append(args[-2:]))
+                        lambda *args, **kwargs: registros.append(args[-1]))
     filas = []
     main._simular(7, True, filas.append)
     generacion, ticks = main.COLUMNAS_CSV.index("generacion"), main.COLUMNAS_CSV.index("ticks")
     assert [(fila[generacion], fila[ticks]) for fila in filas] == [(1, 5), (2, 5)]  # ticks completos
-    assert finales == [(1, 1)]  # primera generación con cofre, y agentes que lo abrieron
+    # La primera generación con cofre y cuántos lo abrieron salen del registro, es decir, del CSV
+    # (spec PANTALLAS_VER_APRENDER, decisión 4)
+    assert armar_boletin(registros[0])["cofre"] == (
+        "el cofre se abrió por primera vez en la generación 1; lo abrió 1 agente en la corrida")
 
 
 def test_ningun_agente_arranca_sobre_la_llave_roja_ni_el_hacha(mundo):

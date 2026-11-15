@@ -21,7 +21,10 @@ from src.ui.renderer import SpriteManager, ParticleSystem, dibujar_mundo
 from src.ui.stats import StatsPanel
 from src.ui.popup import SummaryPopup
 from src.ui.pantalla_final import mostrar_pantalla_final
+from src.ui import fuentes
 from src.analytics.learning_monitor import LearningMonitor
+from src.analytics.registro import RegistroDeLaCorrida
+from src.analytics.boletin import linea_de_hito
 
 # Agregar src al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -324,6 +327,7 @@ def _simular(semilla, evolucion, escribir_fila):
     # Inicializar Pygame
     pygame.init()
     if not config.HEADLESS_MODE:
+        fuentes.verificar()  # Si falta una fuente, se corta acá, antes de abrir la ventana
         # Crear ventana de visualización (tamaño deseado)
         display_screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("Ecosistema Evolutivo IA")
@@ -362,6 +366,9 @@ def _simular(semilla, evolucion, escribir_fila):
     
     # Crear mundo (sistema original) con cantidad de comida configurable
     world = World(config.get_game_area_width(), screen_height, config.FOOD_COUNT)  # Usar área de juego dinámica
+
+    # Registro de la corrida: historia, hitos, mejor agente y mapa de calor (spec PANTALLAS_VER_APRENDER)
+    registro = RegistroDeLaCorrida(config.get_game_area_width(), screen_height)
     
     # Crear algoritmo genético con configuración
     ga = GeneticAlgorithm(**config.get_genetic_params())
@@ -392,9 +399,6 @@ def _simular(semilla, evolucion, escribir_fila):
     max_ticks_per_generation = _ticks_de_generacion(config, generation)
     print(f"🎮 Generación {generation} iniciada ⏱️ {max_ticks_per_generation} ticks")
     tick = 0
-    ticks_totales = 0  # Tiempo simulado: los ticks de todas las generaciones (DIAG-15)
-    primera_generacion_cofre = None  # Generación en que un agente abrió el cofre por primera vez
-    agentes_con_cofre = 0  # Agentes que abrieron el cofre, sumando todas las generaciones
     
     # Sistema de comandos
     
@@ -475,13 +479,12 @@ def _simular(semilla, evolucion, escribir_fila):
                     # Intentar golpear puertas
                     agent._try_hit_door(world, tick)
                     
-                    # Intentar abrir cofre. No termina la corrida (decisión 11): se cuenta y se sigue
-                    if agent._try_open_chest(world):
-                        agentes_con_cofre += 1
-                        if primera_generacion_cofre is None:
-                            primera_generacion_cofre = generation
-                            print(f"\n🏆 ¡Cofre abierto por primera vez! Agente {agent.id}, generación "
-                                  f"{generation}, segundo {tick/60:.1f}")
+                    # Intentar abrir cofre. No termina la corrida (decisión 11): lo cuenta el CSV
+                    agent._try_open_chest(world)
+
+            # Hitos: la primera vez en la corrida que un agente llega a cada paso del puzzle
+            for hito in registro.mirar_hitos(agents, generation, tick):
+                print("\n" + linea_de_hito(hito))
         
         # Registrar tumbas para agentes que acaban de morir (sin colisión)
         if not paused:
@@ -498,6 +501,7 @@ def _simular(semilla, evolucion, escribir_fila):
         if not paused:
             world.update()
             tick += 1
+            registro.contar_posiciones(agents)  # Mapa de calor: los vivos al final del tick
         
         # Verificar si todos murieron o se acabó el tiempo
         if len(alive_agents) == 0 or tick >= max_ticks_per_generation:
@@ -507,9 +511,11 @@ def _simular(semilla, evolucion, escribir_fila):
             _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, learning_monitor,
                                         simulation_start_time)
 
-            # Fila del CSV, antes de la pantalla final (que con ventana espera una tecla)
-            escribir_fila(_fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor))
-            ticks_totales += tick  # Al tiempo simulado (DIAG-15)
+            # Fila del CSV, antes de la pantalla final (que con ventana espera una tecla). La misma
+            # fila, por columna, va al registro: las pantallas muestran los números del CSV
+            fila = _fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor)
+            escribir_fila(fila)
+            registro.cerrar_generacion(dict(zip(COLUMNAS_CSV, fila)), max_ticks_per_generation, agents)
 
             # Datos del cuadro de resumen, y el fitness promedio al historial del gráfico
             generation_data = _datos_del_popup(generation, tick, agents, alive_agents, world, learning_monitor)
@@ -535,7 +541,7 @@ def _simular(semilla, evolucion, escribir_fila):
             
             if generation >= max_generations:
                 print("🏁 Límite de generaciones alcanzado. Mostrando resumen final...")
-                mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, ticks_totales, primera_generacion_cofre, agentes_con_cofre)
+                mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, registro)
                 return
 
             # Evolucionar. La línea base (--sin-evolucion) arranca de cero: cerebros al azar, sin herencia

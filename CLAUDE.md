@@ -51,9 +51,10 @@ EcosistemaEvolutivo/
 ├── config.py            ← SimulationConfig: parámetros centralizados (tres no se leen, ver Notas)
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
-├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes y resumen
+├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes, resumen, registro, boletín y fuentes
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
+├── assets/fonts/        ← Pixelify Sans e Inter, TTF estáticos con licencia OFL (origen en su LEEME.md)
 ├── src/
 │   ├── agents/
 │   │   └── advanced_agent.py      ← AdvancedAgent (sensores, decisión, acciones, fitness) + SimpleNeuralNetwork
@@ -64,7 +65,9 @@ EcosistemaEvolutivo/
 │   │   └── obstacles.py           ← obstáculos y sus efectos (agua, árboles, casitas)
 │   ├── analytics/
 │   │   ├── learning_monitor.py    ← métricas por generación, diversidad, reportes por consola
-│   │   └── clustering.py          ← K-Means + PCA sobre comportamientos
+│   │   ├── clustering.py          ← K-Means + PCA sobre comportamientos
+│   │   ├── registro.py            ← registro de la corrida: filas del CSV, hitos, mejor agente, mapa de calor (sin azar)
+│   │   └── boletin.py             ← boletín final (datos y texto de consola), formato de números, escala de gráficos
 │   └── ui/                        ← renderer (sprites, partículas, dibujar_mundo), panel de stats, popup de resumen, pantalla final
 ├── docs/                ← metodología: specs, backlog, QA (índice en docs/README.md)
 └── .claude/             ← skills del proyecto y hook pre-commit
@@ -154,6 +157,8 @@ EcosistemaEvolutivo/
   falsos: `pylint.args` en ese mismo archivo le deja ver los miembros de pygame (DIAG-26).
 - **No hay producción.** En la bitácora de un spec, "Para verificar en producción" es N/A: lo que
   se verifica es una corrida.
+- **El scratchpad es de una sola sesión.** Un CSV de referencia que otra sesión tiene que comparar
+  deja su SHA-256 en la bitácora, con el commit desde el que se regenera (LEC-011).
 - **Un control con ventana que depende de una tecla se verifica en el log:** cada tecla de
   `main.py` deja su `print` (`🔍 Zoom IN`…); si no está, la tecla no llegó y el resultado no dice
   nada. Para hacerlo repetible, el evento se inyecta envolviendo `pygame.event.get` desde un script
