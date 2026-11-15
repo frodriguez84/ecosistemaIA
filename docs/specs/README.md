@@ -27,7 +27,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [Que el puzzle se pueda aprender](planned/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch, medidos en el autónomo contra la línea base | Ítem 5 del BACKLOG. Sin gate; decisiones cerradas con Fer el 2026-11-15 |
 
 ## ⚫ Done (`done/`)
 
