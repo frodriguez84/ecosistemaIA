@@ -27,7 +27,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [Pantallas para ver aprender](planned/PANTALLAS_VER_APRENDER.md) — sin el popup de cada generación: gráfico en vivo en el panel, avisos que no tapan y una pantalla final como boletín, sin cambiar la simulación | Ninguno. Dos bloques: A, los datos; B, las pantallas |
 
 ## ⚫ Done (`done/`)
 
