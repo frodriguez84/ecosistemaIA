@@ -98,9 +98,10 @@ def _ubicar_agentes(world, agents):
 
 
 # Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6;
-# modo, edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
+# modo, edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28; acercarse: spec
+# PUZZLE_APRENDIBLE, decisión 11)
 COLUMNAS_CSV = [
-    "semilla", "evolucion", "modo", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "acercarse", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
@@ -131,9 +132,12 @@ def _leer_argumentos(argv):
     parser.add_argument("--modo", choices=MODOS,
                         help="guiado: la red más la conducción escrita a mano hacia la comida y el puzzle. "
                              "autonomo: solo la red. Pisa MODO de config.py.")
+    parser.add_argument("--acercarse", action="store_true",
+                        help="Prende la recompensa por acercarse al próximo paso del puzzle, en los dos "
+                             "modos. Pisa RECOMPENSA_ACERCARSE de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, "
-                             "results/corrida_s<semilla>_<modo>_<evolucion|sin_evolucion>.csv.")
+                             "results/corrida_s<semilla>_<modo>[_acercarse]_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -150,7 +154,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
     Hace las mismas cuentas que el reporte por consola del final de generación. Los decimales van
     redondeados a 4 para que dos corridas con la misma semilla den el mismo archivo byte a byte.
     Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso. El
-    modo se lee de SimulationConfig, donde main() lo pisa.
+    modo y el switch de la recompensa por acercarse se leen de SimulationConfig, donde main() los pisa.
     """
     fitness = [float(agent.fitness) for agent in agents]
     manzanas = [agent.food_eaten for agent in agents]
@@ -159,6 +163,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
         semilla,
         int(evolucion),
         SimulationConfig.MODO,
+        int(SimulationConfig.RECOMPENSA_ACERCARSE),
         generacion,
         ticks,
         sum(fitness) / len(fitness),
@@ -175,6 +180,14 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
         *agentes_por_paso(agents),
     ]
     return [round(float(valor), 4) if isinstance(valor, float) else valor for valor in fila]
+
+
+def _ruta_csv_por_defecto(semilla, evolucion):
+    """results/corrida_s<semilla>_<modo>[_acercarse]_<evolucion|sin_evolucion>.csv, con el modo y el
+    switch de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11)."""
+    acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
+    return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}_"
+                                   f"{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
 def _ticks_de_generacion(config, generacion):
@@ -250,6 +263,8 @@ def main(argv=None):
         SimulationConfig.MAX_GENERATIONS = args.generaciones
     if args.modo is not None:
         SimulationConfig.MODO = args.modo
+    if args.acercarse:
+        SimulationConfig.RECOMPENSA_ACERCARSE = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
@@ -259,8 +274,7 @@ def main(argv=None):
     evolucion = not args.sin_evolucion
     print(f"🎲 Semilla: {semilla} (modo {modo}, {'con' if evolucion else 'sin'} evolución)")
 
-    ruta_csv = args.csv or os.path.join(
-        "results", f"corrida_s{semilla}_{modo}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+    ruta_csv = args.csv or _ruta_csv_por_defecto(semilla, evolucion)
     if os.path.exists(ruta_csv):
         print(f"⚠️ El CSV ya existe y se va a pisar: {ruta_csv}")
     os.makedirs(os.path.dirname(ruta_csv) or ".", exist_ok=True)

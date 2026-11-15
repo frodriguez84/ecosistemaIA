@@ -75,6 +75,11 @@ class AdvancedAgent:
         self.etapa = 0
         self.tiene_hacha = False
         self.golpes_puerta = {}  # tipo de puerta -> (golpes, tick del último golpe)
+        # Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisión 4): la etapa del paso que se mide,
+        # la distancia a su objetivo en el primer tick de esa etapa (d0) y la más corta que alcanzó
+        self.acercarse_etapa = None
+        self.acercarse_d0 = None
+        self.acercarse_dmin = None
         
         # Estadísticas
         self.food_eaten = 0
@@ -202,6 +207,33 @@ class AdvancedAgent:
         if objeto:
             return (objeto.x + objeto.width // 2, objeto.y + objeto.height // 2)
         return None
+
+    def _medir_acercamiento(self, world):
+        """Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisiones 4, 6 y 7): en el primer tick de
+        una etapa, d0 es la distancia en línea recta al objetivo de la brújula; después, solo cuenta
+        si se acerca más. Sin objetivo en el mapa (etapa 5, o el paso no está) no mide. No usa el azar."""
+        objetivo = self._proximo_paso(world)
+        if objetivo is None:
+            return
+        distancia = math.hypot(objetivo[0] - float(self.x), objetivo[1] - float(self.y))
+        if self.acercarse_etapa != self.etapa:
+            self.acercarse_etapa, self.acercarse_d0, self.acercarse_dmin = self.etapa, distancia, distancia
+        else:
+            self.acercarse_dmin = min(self.acercarse_dmin, distancia)
+
+    def _avance_en_el_paso(self):
+        """Avance en el paso actual, de 0 a 1 (decisión 4). Llaves y cofre: el camino hecho, (d0 − dmín)
+        / d0. Puertas: el camino y los golpes que contaron sobre los necesarios, mitad y mitad. Vale 0
+        si el paso todavía no se midió: el agente recién cambió de etapa, o no hay objetivo."""
+        if self.acercarse_etapa != self.etapa:
+            return 0.0
+        d0, dmin = self.acercarse_d0, self.acercarse_dmin
+        camino = 1.0 if d0 == 0 else (d0 - dmin) / d0
+        if self.etapa in (1, 3):  # una puerta: la de madera o la de hierro
+            tipo, necesarios = (("door", SimulationConfig.DOOR_HITS_TO_OPEN) if self.etapa == 1
+                                else ("door_iron", SimulationConfig.DOOR_IRON_HITS_TO_OPEN))
+            return (camino + self.golpes_puerta.get(tipo, (0, 0))[0] / necesarios) / 2
+        return camino
     
     def decide(self, world, other_agents, sprite_manager):
         """Toma decisiones basadas en percepciones. En el modo autónomo, solo la red; en el guiado,
@@ -508,6 +540,10 @@ class AdvancedAgent:
                 # Actualizar fitness cada 100 movimientos (reducido de 50 para mejor rendimiento)
                 if self.total_moves % 100 == 0:
                     self._calculate_fitness()
+
+        # Recompensa por acercarse: una vez por tick, con la posición después de moverse (decisión 7)
+        if SimulationConfig.RECOMPENSA_ACERCARSE:
+            self._medir_acercamiento(world)
         
         # Verificar efectos de zonas especiales (SOLO UNA VEZ por tick, no dos)
         self._check_zone_effects(world)
@@ -743,6 +779,11 @@ class AdvancedAgent:
         
         # Sumar las recompensas por cortar árboles y casitas (DIAG-08)
         total_fitness += self.cut_rewards
+
+        # Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisión 5): los pasos que dio más el avance
+        # en el actual. Todos nacen en la etapa 0: los pasos que dio son su etapa
+        if SimulationConfig.RECOMPENSA_ACERCARSE:
+            total_fitness += SimulationConfig.FITNESS_ACERCARSE * (self.etapa + self._avance_en_el_paso())
         
         # Restar penalizaciones acumuladas del entorno, con tope (DIAG-11)
         total_fitness -= min(self.fitness_env_penalty, SimulationConfig.WATER_PENALTY_MAX)

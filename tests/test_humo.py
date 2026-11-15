@@ -3,8 +3,9 @@ Test de humo: corre main.py como lo correría una persona, con sus flags reales.
 
 Cuida lo que el spec MEDIR_ANTES_DE_TOCAR necesita que siga andando: que la corrida sin ventana
 termine, que deje el CSV con las columnas acordadas y que la misma semilla dé el mismo archivo. En
-los dos modos (spec MODO_GUIADO_Y_AUTONOMO, decisión 31). Las seis corridas se lanzan juntas, así el
-test tarda lo que tarda una.
+los dos modos (spec MODO_GUIADO_Y_AUTONOMO, decisión 31), y en el autónomo con la recompensa por
+acercarse (spec PUZZLE_APRENDIBLE, decisión 16). Las nueve corridas se lanzan juntas, así el test
+tarda lo que tarda una.
 """
 
 import csv
@@ -20,10 +21,10 @@ SEMILLA = 7
 GENERACIONES = 2
 TIMEOUT_S = 180
 
-# Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO), escrita acá a
-# propósito (no importada de main.py): si cambia, el test avisa
+# Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO, y acercarse, de
+# PUZZLE_APRENDIBLE), escrita acá a propósito (no importada de main.py): si cambia, el test avisa
 COLUMNAS = [
-    "semilla", "evolucion", "modo", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "acercarse", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
@@ -38,12 +39,15 @@ CORRIDAS = {
     "autonomo_evolucion_1": ["--modo", "autonomo"],
     "autonomo_evolucion_2": ["--modo", "autonomo"],
     "autonomo_sin_evolucion": ["--modo", "autonomo", "--sin-evolucion"],
+    "autonomo_acercarse_evolucion_1": ["--modo", "autonomo", "--acercarse"],
+    "autonomo_acercarse_evolucion_2": ["--modo", "autonomo", "--acercarse"],
+    "autonomo_acercarse_sin_evolucion": ["--modo", "autonomo", "--acercarse", "--sin-evolucion"],
 }
 
 
 @pytest.fixture(scope="module")
 def corridas(tmp_path_factory):
-    """Lanza las seis corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
+    """Lanza las nueve corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
     carpeta = tmp_path_factory.mktemp("humo")
     lanzadas = {}
     for nombre, extra in CORRIDAS.items():
@@ -93,13 +97,13 @@ def test_el_csv_tiene_las_columnas_y_una_fila_por_generacion(corridas):
         assert {fila[COLUMNAS.index("semilla")] for fila in filas} == {str(SEMILLA)}, nombre
 
 
-@pytest.mark.parametrize("prefijo", ["", "autonomo_"])
+@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_"])
 def test_la_misma_semilla_da_el_mismo_csv(corridas, prefijo):
     uno, dos = corridas[f"{prefijo}evolucion_1"]["csv"], corridas[f"{prefijo}evolucion_2"]["csv"]
     assert uno.read_bytes() == dos.read_bytes()
 
 
-@pytest.mark.parametrize("prefijo", ["", "autonomo_"])
+@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_"])
 def test_sin_evolucion_arranca_igual_que_con_evolucion(corridas, prefijo):
     con = _filas(corridas[f"{prefijo}evolucion_1"]["csv"])[1]
     sin = _filas(corridas[f"{prefijo}sin_evolucion"]["csv"])[1]
@@ -121,6 +125,25 @@ def test_el_csv_dice_el_modo_y_el_modo_cambia_la_corrida(corridas):
     guiado, autonomo = filas["evolucion_1"][0], filas["autonomo_evolucion_1"][0]
     j = COLUMNAS.index("fitness_prom")
     assert guiado[j] != autonomo[j]
+
+
+def test_acercarse_va_en_el_csv_y_no_cambia_la_linea_base(corridas):
+    # Spec PUZZLE_APRENDIBLE, decisiones 11 y 16. Sin evolución el fitness no elige a nadie, y en el
+    # autónomo no guía: con el switch y sin él, la corrida es la misma salvo el fitness y acercarse
+    i = COLUMNAS.index("acercarse")
+    for nombre, corrida in corridas.items():
+        esperado = "1" if "_acercarse_" in nombre else "0"
+        assert {fila[i] for fila in _filas(corrida["csv"])[1:]} == {esperado}, nombre
+    sin = _filas(corridas["autonomo_sin_evolucion"]["csv"])[1:]
+    con = _filas(corridas["autonomo_acercarse_sin_evolucion"]["csv"])[1:]
+    assert len(sin) == len(con) == GENERACIONES
+    otras = [j for j, columna in enumerate(COLUMNAS)
+             if not columna.startswith("fitness_") and columna != "acercarse"]
+    for fila_sin, fila_con in zip(sin, con):
+        assert [fila_sin[j] for j in otras] == [fila_con[j] for j in otras]
+    # El término está: el fitness promedio sube en cada generación
+    j = COLUMNAS.index("fitness_prom")
+    assert all(float(fila_con[j]) > float(fila_sin[j]) for fila_sin, fila_con in zip(sin, con))
 
 
 def test_el_resumen_final_dice_el_tiempo_simulado(corridas):

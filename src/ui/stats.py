@@ -8,7 +8,7 @@ import pygame
 
 from config import SimulationConfig
 from ..agents.advanced_agent import PASOS_DEL_PUZZLE, agentes_por_paso
-from ..analytics.boletin import NOMBRES_DE_MODOS, numero
+from ..analytics.boletin import nombre_del_modo, numero
 from ..analytics.registro import COLUMNAS_DE_PASOS
 from . import fuentes
 from .avisos import SPRITES_DE_HITOS
@@ -45,12 +45,12 @@ ALTO_MANZANAS = 80
 
 def datos_de_la_generacion(generation, agents, world, tick):
     """Los renglones de datos: (rótulo, valor). M, las generaciones de la corrida, sale de la clase
-    SimulationConfig, donde main.py pisa --generaciones; el modo, igual."""
+    SimulationConfig, donde main.py pisa --generaciones; el modo y el switch de acercarse, igual."""
     segundos = tick // 60
     vivos = len([agent for agent in agents if agent.alive])
     return [
         ("Generación", f"{generation} de {SimulationConfig.MAX_GENERATIONS}"),
-        ("Modo", NOMBRES_DE_MODOS.get(SimulationConfig.MODO, SimulationConfig.MODO)),
+        ("Modo", nombre_del_modo(SimulationConfig.MODO, SimulationConfig.RECOMPENSA_ACERCARSE)),
         ("Tiempo", f"{segundos // 60:02d}:{segundos % 60:02d}"),
         ("Vivos", str(vivos)),
         ("Muertos", str(len(agents) - vivos)),

@@ -55,6 +55,13 @@ def veces(valor):
     return f"×{numero(valor, 1)}"
 
 
+def nombre_del_modo(modo, acercarse):
+    """El modo, y la recompensa por acercarse si está prendida: "autónomo + acercarse" (spec
+    PUZZLE_APRENDIBLE, decisión 11). Lo usan el panel y el encabezado del boletín."""
+    nombre = NOMBRES_DE_MODOS.get(modo, modo)
+    return f"{nombre} + acercarse" if acercarse else nombre
+
+
 def minutos_simulados(ticks_totales):
     """Los ticks de todas las generaciones, a 60 por segundo, en minutos (DIAG-15)."""
     return ticks_totales / 60 / 60
@@ -144,7 +151,7 @@ def armar_boletin(registro):
 
     minutos = minutos_simulados(sum(fila["ticks"] for fila in historia))
     subtitulo = " · ".join([
-        f"Modo {NOMBRES_DE_MODOS.get(primera['modo'], primera['modo'])}",
+        f"Modo {nombre_del_modo(primera['modo'], primera['acercarse'])}",
         "con evolución" if evolucion else "sin evolución (línea base)",
         f"semilla {primera['semilla']}",
         f"{generaciones} generación" if generaciones == 1 else f"{generaciones} generaciones",

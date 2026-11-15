@@ -96,14 +96,17 @@ class SimulationConfig:
     NOVELTY_CELL_SIZE = 12           # tamaño de celda para novedad
 
     # === FITNESS ===
-    # Fitness = supervivencia + comida + exploración + anti-círculo + puzzle + cortes - agua,
-    # entre 0 y 100, con un tope que crece con el tiempo vivido
+    # Fitness = supervivencia + comida + exploración + anti-círculo + puzzle + cortes - agua
+    # (+ acercarse, si está prendida), entre 0 y 100, con un tope que crece con el tiempo vivido
     FITNESS_FOOD = 10.0              # × raíz de las manzanas comidas
     FITNESS_EXPLORATION = 10.0       # × log(1 + distancia recorrida / 350)
     FITNESS_EXPLORATION_MAX = 15.0   # Tope del término de exploración
     FITNESS_SURVIVAL = 0.010         # × ticks vividos
     FITNESS_SURVIVAL_MAX = 10.0      # Tope del término de supervivencia
     FITNESS_ANTI_CIRCLE = 18.0       # × puntaje anti-círculo (pesos de arriba)
+    # Recompensa por acercarse al próximo paso del puzzle, en los dos modos (--acercarse la prende)
+    RECOMPENSA_ACERCARSE = False
+    FITNESS_ACERCARSE = 10.0         # × (pasos que dio + avance en el paso actual, de 0 a 1)
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas

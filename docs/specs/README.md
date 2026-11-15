@@ -21,13 +21,13 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| _(vacío)_ | |
+| [Que el puzzle se pueda aprender](active/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch, medidos en el autónomo contra la línea base | Antes de tocar el fitness, `config.py`, `main.py` o `experimento.py`. En ejecución desde el 2026-11-15: bloque A (la recompensa), después el B (el currículo); el estado, en su Bitácora de ejecución |
 
 ## 🔵 Planned (`planned/`)
 
 | Spec | Gate / nota |
 |------|----------------|
-| [Que el puzzle se pueda aprender](planned/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch, medidos en el autónomo contra la línea base | Ítem 5 del BACKLOG. Sin gate; decisiones cerradas con Fer el 2026-11-15 |
+| _(vacío)_ | |
 
 ## ⚫ Done (`done/`)
 
