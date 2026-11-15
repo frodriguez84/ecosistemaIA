@@ -5,6 +5,53 @@ diseño queda en el spec, en [`../specs/done/`](../specs/done/). El más nuevo a
 
 ---
 
+## Modo guiado y modo autónomo {#modo-guiado-y-autonomo}
+
+**Spec:** [MODO_GUIADO_Y_AUTONOMO](../specs/done/MODO_GUIADO_Y_AUTONOMO.md) · cerrado el 2026-11-15,
+en cinco sesiones (autoría, los bloques A, B y C, y el cierre).
+
+**Qué hace:** dos modos con un switch (`MODO` en `config.py`, `--modo`) que difieren solo en la
+conducción escrita a mano. En el autónomo, `decide()` es la salida de la red recortada a [0, 1] y no
+consume azar. Mundo, puzzle, sensores, golpear y fitness son los mismos en los dos. El puzzle pasa a
+ser de cada agente y de cada generación: la red lo ve con una brújula y lo acciona golpeando.
+`config.py` manda en energía, consumo, comida, visión, radio, agua, costo de golpear y pesos del
+fitness. `experimento.py` compara cada modo contra su línea base sin evolución, y los modos entre sí.
+
+**Alcance:**
+- Bloque A, las reglas mandan: `AGENT_ENERGY`, `AGENT_ENERGY_CONSUMPTION` (0,10), `AGENT_ENERGY_GAIN_FOOD`
+  (8), `VISION_RANGE`, `AGENT_RADIUS` (6), `TREE_CUT_REWARD`, `WATER_ENERGY_LOSS`, `WATER_PENALTY_MAX` y
+  los `FITNESS_*` se leen de `config.py`. Arreglados DIAG-08 (el acumulador `cut_rewards`), DIAG-09 (sin
+  contadores de obstáculos), DIAG-10 (sensor 7 en [0, 1)), DIAG-11 (tope del agua) y DIAG-13. Una sola
+  ubicación de agentes por generación, después de `reset_food()` (`_ubicar_agentes` y `_lugar_libre`,
+  en `main.py`); el genético ya no ubica. Ids por contador de corrida. `edad_prom` en el CSV.
+- Bloque B, el puzzle por agente: etapa (0 a 5) y hacha de cada agente; una puerta es pared para cada
+  uno hasta que él la abre; las llaves y el hacha se agarran por contacto y quedan en el mapa;
+  puertas, cofre, árboles y casitas piden golpear (quinta salida, `HIT_ENERGY_COST`). Todo vuelve a 0
+  en cada generación, y abrir el cofre no termina la corrida. 11 entradas (la etapa y la brújula al
+  próximo paso) y 5 salidas. La guía apunta al próximo paso del agente. Columnas `agentes_*` en el
+  CSV; consola, popup, panel y pantalla final cuentan agentes por paso.
+- Bloque C, el switch: `MODO` y `--modo`; la columna `modo` y la ruta
+  `results/corrida_s<semilla>_<modo>_<evolucion|sin_evolucion>.csv`; `experimento.py --modos`, con
+  grupos modo × evolución y tres comparaciones K de N (`comparar_evolucion`, `comparar_modos`). La
+  pantalla final con "LA CORRIDA" y la línea de LEC-001, sin `→`; `popup.py` sin el 50; el panel
+  muestra el modo.
+- Tests: `test_reglas.py`, `test_puzzle.py` y `test_modos.py`, nuevos, y `test_humo.py`,
+  `test_resumen.py` y `test_reportes.py` al día: 53 en ~23 s.
+- No cambia el algoritmo genético ni el mapa (salvo que la llave roja y el hacha se sortean en cada
+  generación).
+
+**Resultado** (5 semillas × 30 generaciones, los dos modos, con evolución y sin ella): sin guía, la
+evolución aprende a comer y a caminar (5 de 5 semillas contra su línea base); la guía suma ~0,4
+manzanas por agente encima del aprendizaje, no lo reemplaza; el puzzle no se aprende más allá de la
+llave roja, que sube porque caminan más. Detalle en
+[AnalisisQA § experimento de cierre](../qa/AnalisisQA.md#experimento-modos-cierre).
+
+**QA:** [AnalisisQA § QA /qa-spec — Modo guiado y modo autónomo](../qa/AnalisisQA.md#qa-modo-guiado-y-autonomo),
+APROBADO 29/29 (la primera pasada dio BLOQUEADO por dos números del README; se arregló en la sesión).
+Resuelve DIAG-01 a DIAG-05, DIAG-08 a DIAG-13, DIAG-28 y DIAG-29.
+
+---
+
 ## Limpieza sin cambiar comportamiento {#limpieza-sin-cambiar-comportamiento}
 
 **Spec:** [LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO](../specs/done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) ·

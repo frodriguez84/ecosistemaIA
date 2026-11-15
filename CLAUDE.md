@@ -48,7 +48,7 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 ```
 EcosistemaEvolutivo/
 ├── main.py              ← punto de entrada: flags, semilla, CSV; loop de simulación y render
-├── config.py            ← SimulationConfig: parámetros centralizados (varios se ignoran, ver Notas)
+├── config.py            ← SimulationConfig: parámetros centralizados (tres no se leen, ver Notas)
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
 ├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes y resumen
@@ -89,7 +89,7 @@ EcosistemaEvolutivo/
   conducción escrita a mano de `decide()` y `act()`: en el autónomo, `decide()` es la salida de la red
   recortada a [0, 1] y no consume azar. Mundo, puzzle, sensores, golpear, fitness y valores de
   `config.py` son los mismos. Guiado contra autónomo mide la guía; cada modo contra su línea base sin
-  evolución mide el aprendizaje (spec [Modo guiado y modo autónomo](docs/specs/active/MODO_GUIADO_Y_AUTONOMO.md)).
+  evolución mide el aprendizaje (spec [Modo guiado y modo autónomo](docs/specs/done/MODO_GUIADO_Y_AUTONOMO.md)).
 - **El puzzle es de cada agente:** etapa de 0 a 5 y hacha propias; una puerta es pared para cada uno
   hasta que él la abre; las llaves y el hacha se agarran por contacto y quedan en el mapa; puertas,
   cofre y árboles piden golpear (quinta salida, cuesta `HIT_ENERGY_COST`). Todo vuelve a 0 en cada
@@ -125,10 +125,15 @@ EcosistemaEvolutivo/
 
 - **Ante la duda, manda el código.** El README se puso al día en el bloque C del spec de los modos
   (agente, puzzle, fitness, agua, energía y modos, con los números de `config.py`); las secciones
-  de clustering, monitor y UI no se revisaron número por número.
+  de clustering, monitor y UI no se revisaron número por número. Un número de los docs se compara
+  con lo que usa el código: un valor de `config.py` que nadie lee no verifica nada (LEC-010).
 - **`config.py` manda** en energía, consumo, comida, visión, radio, agua, costo de golpear y pesos
   del fitness. Quedan en el código, a propósito: los umbrales de la guía (30, 65, 40%), el radio de
-  comer (20 px) y los cooldowns de golpear.
+  comer (20 px) y los cooldowns de golpear (el de entre golpes a una puerta es `DOOR_HIT_COOLDOWN`).
+  Tres parámetros de `config.py` no los lee nadie: `TREE_HITS_TO_CUT` (dice 2; el árbol pide 3, fijo
+  en `src/world/world.py:29`), `STATS_UPDATE_FREQUENCY` y `PARTICLE_UPDATE_FREQUENCY`; y
+  `PERIMETER_MARGIN` y `BASE_SPRITE_SIZE` solo se imprimen al arrancar (en
+  [mejoras futuras](docs/product/mejoras_futuras.md)).
 - **Después de editar código, revisar `git diff` por líneas que eran solo espacios.** El Edit vacía
   las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
   Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales

@@ -5,6 +5,24 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-010 — 2026-11-15 — Un número de los docs que coincide con `config.py` no está verificado si nadie lee ese parámetro
+
+**Qué pasó.** En el cierre de [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md),
+el checker de docs de `/qa-spec` encontró que el README decía que el árbol pide 2 golpes. El 2 es el
+`TREE_HITS_TO_CUT` de `config.py`, pero nadie lo lee: `world.py:29` pide 3. El DoD pedía que cada
+número del README coincidiera "con `config.py` o con el código", y la sesión 3 lo había dado por
+bueno contra `config.py`. Lo mismo con la fortaleza chica: el README decía 4x5, como el comentario
+de `config.py`, y los muros son de 5x5. Al arreglarlo, el inventario de qué parámetros no lee nadie
+se equivocó dos veces: primero dejó afuera `config.py` y no vio que `get_genetic_params()` lee los
+del genético (dio 14 en lugar de 3); después no siguió a `print_config()`, que imprime dos más. Los
+dos errores los encontraron checkers nuevos.
+
+**Regla.** Un número de la documentación se compara con lo que usa el programa. Si sale de
+`config.py`, primero se confirma que el código lee ese parámetro: el nombre en `main.py`, `src/` y en
+los métodos de `config.py`, siguiendo quién llama a esos métodos. Un valor de `config.py` que nadie
+lee no verifica nada. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas, que además lista los
+parámetros que no mandan.
+
 ## LEC-009 — 2026-11-15 — `git show HEAD:archivo` da el archivo en LF aunque en disco sea CRLF
 
 **Qué pasó.** En el bloque C de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),

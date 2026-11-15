@@ -21,7 +21,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Modo guiado y modo autónomo](active/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | Bloques A, B y C ✅; falta el cierre (`/close-spec`): leer la última entrada de la bitácora |
+| _(vacío)_ | |
 
 ## 🔵 Planned (`planned/`)
 
@@ -33,5 +33,6 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Resumen en SPECS_ARCHIVO |
 |------|---------------------------|
+| [Modo guiado y modo autónomo](done/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | [§ Modo guiado y modo autónomo](../archive/SPECS_ARCHIVO.md#modo-guiado-y-autonomo) |
 | [Limpieza sin cambiar comportamiento](done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) — código muerto, dependencias, `.pyc`, duplicación y reportes, con el mismo CSV byte a byte | [§ Limpieza sin cambiar comportamiento](../archive/SPECS_ARCHIVO.md#limpieza-sin-cambiar-comportamiento) |
 | [Medir antes de tocar](done/MEDIR_ANTES_DE_TOCAR.md) — flags, semilla, CSV por generación, `experimento.py`, tests | [§ Medir antes de tocar](../archive/SPECS_ARCHIVO.md#medir-antes-de-tocar) |

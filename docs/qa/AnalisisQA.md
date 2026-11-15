@@ -687,3 +687,85 @@ verificación en paralelo). Carpeta `results/experimento_20261115-112804`.
 **En corto:** sin guía, la evolución aprende a comer (5 de 5 semillas contra la línea base); la guía
 suma ~0,4 manzanas por agente encima del aprendizaje, no lo reemplaza; el puzzle no se aprende más
 allá de la llave roja, que sube porque caminan más.
+
+---
+
+<a id="qa-modo-guiado-y-autonomo"></a>
+## QA /qa-spec — Modo guiado y modo autónomo (2026-11-15)
+**Veredicto:** APROBADO (la primera pasada dio BLOQUEADO por MODOS-29; se arregló en la sesión y se
+re-verificó)
+**Verificación técnica:** sintaxis ✅ (`compileall` de `main.py`, `config.py`, `src`, `experimento.py`
+y `tests`) · tests 53/53 en 22,8 s · build N/A (Python, sin build)
+**Método:** cuatro checkers independientes (Explore/haiku, solo lectura) contra el DoD y el QA manual
+de `docs/specs/active/MODO_GUIADO_Y_AUTONOMO.md`: bloque A (MODOS-01 a 09), bloque B (11 a 17),
+bloque C (20, 21 y 23 a 26) y docs (06, 26 y 29). Los checkers no ejecutaban nada: lo que pide
+corridas se volvió a correr en la sesión desde `05078e5`, con el árbol limpio, y los experimentos
+registrados se leyeron de este archivo y de `results/`. Cada `archivo:línea` de la tabla se imprimió
+antes de copiarlo (LEC-006). **Primera pasada: BLOQUEADO** por MODOS-29: el README decía que el
+árbol pide 2 golpes, que es el `TREE_HITS_TO_CUT` de `config.py`; pero nadie lo lee y el código pide
+3. Además, `CLAUDE.md:51` remitía a § Notas por los parámetros que se ignoran, y § Notas ya no los
+nombraba. Se arregló en la sesión, en el README y en `CLAUDE.md`, sin tocar código. Dos checkers
+nuevos re-verificaron MODOS-29: el primero encontró que la fortaleza chica del README era 4x5 (es
+5x5) y que dos de los parámetros "que no se leen" se imprimen al arrancar; se corrigió, y el segundo
+dio todo PASS. Los IDs `MODOS-NN` son los del QA manual del spec.
+
+| ID | Criterio | Resultado | Evidencia / Gap |
+|----|----------|-----------|-----------------|
+| MODOS-QA-01 | Config manda | ✅ | `advanced_agent.py:46` (`AGENT_RADIUS`), `:50-51` (`AGENT_ENERGY`), `:66` (`VISION_RANGE`), `:408` (consumo), `:586` (ganancia, con tope en el máximo). `test_reglas.py:54`, `:62` y `:86` pisan los valores con otros distintos de los fijos de antes (0,37; 70 y 13; 11 y 222). Verde (MODOS-01) |
+| MODOS-QA-02 | Números fijos | ✅ | `grep` en `src/` sin `self.energy -= 0.05`, `self.energy + 30`, `self.radius = 8`, `self.vision_range = 150`, `self.fitness += 10`, `penalty_max` ni `*_multiplier`; `obstacles.py:44` lee `WATER_ENERGY_LOSS`. Los `FITNESS_*` se leen en `advanced_agent.py:719-736` (MODOS-02) |
+| MODOS-QA-03 | DIAG-08 | ✅ | Acumulador `cut_rewards` (`advanced_agent.py:98`): suma `TREE_CUT_REWARD` y `HUT_CUT_REWARD` (`:610`, `:618`), y `_calculate_fitness` lo suma (`:745`). `test_reglas.py:106`; falló contra el código de antes (bitácora, sesión 1) (MODOS-03) |
+| MODOS-QA-04 | DIAG-09 | ✅ | No quedan `obstacles_avoided`, `obstacle_avoidance_count`, `total_obstacle_encounters`, `get_obstacle_skill` ni `obstacle_avoiders` en el código; `test_reglas.py:128-131` lo prueba. Valían 0: el fitness no cambió por sacarlos (bitácora, sesión 1) (MODOS-04) |
+| MODOS-QA-05 | DIAG-10 | ✅ | `advanced_agent.py:160`: `(ángulo mod 2π) / 2π`; `test_reglas.py:134`, con muchas vueltas en los dos sentidos (MODOS-05) |
+| MODOS-QA-06 | DIAG-11 | ✅ | `advanced_agent.py:748` topea en `WATER_PENALTY_MAX`; `test_reglas.py:145`. El README no dice "sin límite" y da el tope en `README.md:248` (MODOS-06) |
+| MODOS-QA-07 | DIAG-13 | ✅ | La exploración extra está en el `else` del `if self.fitness > 30` (`advanced_agent.py:218`, `:300-310`), después del `return` del autónomo (`:212-214`). `test_reglas.py:155` (fitness 50 y 20) (MODOS-07) |
+| MODOS-QA-08 | Ubicación (DIAG-29) | ✅ | `_ubicar_agentes` (`main.py:75`), con su criterio `_lugar_libre` (`:38`, que solo llama ella), después de crear el mundo (`:371`) y de `reset_food()` (`:548-549`); las funciones viejas no existen. En vivo, en esta sesión: un script envolvió `_ubicar_agentes` en una corrida de 5 generaciones (semilla 3), con 0 de 60 agentes en fortaleza, obstáculo, perímetro o estanque en las 5 ubicaciones, en el orden ubicar y después `reset_food` → ubicar. Su control: el centro de un obstáculo, del estanque y de cada fortaleza da adentro (MODOS-08) |
+| MODOS-QA-09 | Id | ✅ | Contador de clase (`advanced_agent.py:29-39`), reiniciado al empezar `_simular` (`main.py:311`), sin azar; la pantalla final muestra `top_agent.id` (`pantalla_final.py:177`). `test_reglas.py:168`: dos corridas con la misma semilla dan ids 1 a 60 en la generación 1 (MODOS-09) |
+| MODOS-QA-10 | Experimento A | ✅ | [Registrado](#experimento-modos-a), con su lectura contra el de cinco semillas; la parada de la decisión 22, evaluada en la bitácora (sesión 1: no se dispara) (MODOS-10) |
+| MODOS-QA-11 | Puzzle por agente | ✅ | La puerta es pared según la etapa de cada agente (`advanced_agent.py:545`, `:549`); el golpe que la completa sube la etapa de quien golpea (`world.py:930-936`), con golpes y cooldown por agente (`obstacles.py:256-259`), y la recompensa va a su acumulador. `test_puzzle.py:68` (MODOS-11) |
+| MODOS-QA-12 | Golpear | ✅ | Golpear (`hit` > 0,5) cuesta `HIT_ENERGY_COST` (`advanced_agent.py:412-414`); puerta, cofre y corte piden golpear (`:601-602`, `:638-639`, `:658-659`). `test_puzzle.py:90` y `:155` (MODOS-12) |
+| MODOS-QA-13 | Reinicio por generación | ✅ | Agente nuevo en etapa 0 y sin hacha (`advanced_agent.py:75-76`), también las élites; `reset_food` cierra puertas y cofre y sortea hacha y llave roja después de regenerar el mapa (`world.py:430-443`). `test_puzzle.py:182` y `:219` (MODOS-13) |
+| MODOS-QA-14 | Cofre | ✅ | Abrirlo se cuenta y la corrida sigue (`main.py:478-484`); el CSV se escribe solo al cerrar cada generación (`:511`). `test_puzzle.py:231` (MODOS-14) |
+| MODOS-QA-15 | Brújula | ✅ | `_proximo_paso` por etapa (`advanced_agent.py:192-204`); con etapa 5, 0 y 1 (`:178-180`). `test_puzzle.py:165` (MODOS-15) |
+| MODOS-QA-16 | Guía adaptada | ✅ | Umbrales 65 y probabilidad 0,4 (`advanced_agent.py:315-320`), apuntando a `_proximo_paso` (`:323`): puertas con etapa 1 o 3 (`:326-327`; al alinearse, 0,6 y golpear 0,9, `:338-340`), llaves y cofre con etapa 0, 2 o 4 (`:350-351`; 0,7 y golpear 0,9, `:362-364`). El checker comparó los valores contra `cc9126b`: iguales. `test_puzzle.py:263` (MODOS-16) |
+| MODOS-QA-17 | Pantallas del puzzle | ✅ | Consola (`main.py:226-228`), popup (`popup.py:126-133`), panel (`stats.py:77-84`) y pantalla final (`pantalla_final.py:138-143`) cuentan agentes por paso (MODOS-17) |
+| MODOS-QA-18 | Con ventana, bloque B | ✅ | Lo visual (puertas abiertas, llave y hacha en el mapa) se miró con ventana en la sesión 2; `renderer.py` y `world.py` no cambiaron desde `e8cb600`. Mismo CSV que sin ventana: vuelto a correr en esta sesión, en los dos modos (MODOS-QA-22) (MODOS-18) |
+| MODOS-QA-19 | Experimento B | ✅ | [Registrado](#experimento-modos-b), con su lectura contra el A (MODOS-19) |
+| MODOS-QA-20 | `--modo` | ✅ | `MODO = "guiado"` (`config.py:15`); `--modo` con la ayuda en español (`main.py:126-128`). `test_modos.py:106` (MODOS-20) |
+| MODOS-QA-21 | Sin guía | ✅ | En autónomo, `decide()` devuelve la red recortada antes de toda la guía (`advanced_agent.py:212-214`); en `act()`, el reflejo y el ruido corren solo en el guiado (`:428-429`). `test_modos.py:66`, `:78` (el estado de `random` y de `np.random`, igual después de 50 ticks) y `:90` (MODOS-21) |
+| MODOS-QA-22 | Reproducible por modo | ✅ | En esta sesión, semilla 7 y 2 generaciones, en los dos modos: dos corridas sin ventana, el mismo CSV; con ventana (ESC inyectado en la pantalla final, que el log muestra: LEC-004), el mismo; la generación 1, igual con y sin evolución, con su control (la 2 difiere) (MODOS-22) |
+| MODOS-QA-23 | CSV final | ✅ | `COLUMNAS_CSV` en el orden de la decisión 28 (`main.py:99-105`); la ruta con el modo (`:287-288`) (MODOS-23) |
+| MODOS-QA-24 | `experimento.py` por modo | ✅ | Semillas × modos × {con, sin} (`experimento.py:311-312`); `resumir_corrida` (`:54`), `resumir_grupo` (`:90`), `comparar_evolucion` (`:125`) y `comparar_modos` (`:137-144`). En esta sesión, `--semillas 1 2 --generaciones 10` (`results/experimento_20261115-120912`): 8 CSV, 8 logs y `resumen.md`; tres corridas y las cinco comparaciones K de N, recalculadas con un script que no usa `experimento.py`, coinciden (MODOS-24) |
+| MODOS-QA-25 | Pantalla final | ✅ | "LA CORRIDA" con la línea de LEC-001 y `->` (`pantalla_final.py:154-159`); el cofre por agentes y la primera generación (`:161-166`). `test_reportes.py:106` (MODOS-25) |
+| MODOS-QA-26 | Sueltos | ✅ | `popup.py:95` sin el 50; el README sin `logs/` ni `checkpoints/` (MODOS-26) |
+| MODOS-QA-27 | Experimento de cierre | ✅ | [Registrado](#experimento-modos-cierre), con la respuesta a las tres preguntas; su tabla y sus comparaciones son, línea por línea, las de `results/experimento_20261115-112804/resumen.md`. Corrió antes del commit `05078e5`: las 8 corridas de MODOS-QA-24, hechas desde ese commit, son byte a byte sus 10 primeras generaciones en las semillas 1 y 2 (MODOS-27) |
+| MODOS-QA-28 | `python -m pytest -q` | ✅ | 53 passed en 22,8 s (MODOS-28) |
+| MODOS-QA-29 | Docs | ✅ | Después del arreglo de esta sesión. README: modos, flags, 11 sensores, 5 salidas, puzzle, golpear, fitness, agua y energía, cada número contra lo que usa el código (40 revisados); sin "aprendizaje puro", `logs/` ni `checkpoints/`. `CLAUDE.md`: § Notas (sin las tres diferencias; qué manda `config.py` y qué no), § Lógica de negocio crítica y el árbol. DIAG-01 a DIAG-05, DIAG-08 a DIAG-13, DIAG-28 y DIAG-29 ✅ en este archivo (MODOS-29) |
+
+**Observaciones que no cambian el veredicto:**
+- **La primera pasada de MODOS-29.** `README.md:331` decía "Golpes requeridos: 2" para el árbol:
+  coincidía con el `TREE_HITS_TO_CUT` de `config.py`, pero nadie lo lee y `world.py:29` pide 3. El
+  DoD pedía que cada número coincidiera "con `config.py` o con el código", y la sesión 3 lo dio por
+  bueno contra `config.py` (LEC-010). `CLAUDE.md:51` decía "varios se ignoran, ver Notas", y § Notas
+  ya no los nombraba. Sigue siendo cierto para tres parámetros (`TREE_HITS_TO_CUT`,
+  `STATS_UPDATE_FREQUENCY` y `PARTICLE_UPDATE_FREQUENCY`); `PERIMETER_MARGIN` y `BASE_SPRITE_SIZE`
+  solo se imprimen. Ninguno estaba en las decisiones 15 y 16: van a
+  [mejoras futuras](../product/mejoras_futuras.md). La fortaleza chica: el README decía 4x5 (`:123` y
+  `:280`), como los comentarios de `config.py:111` y de `world.py`, y los muros son de 5x5.
+- **Comparación 3:** el spec la titula "autónomo contra guiado" sin decir qué lado se cuenta;
+  `comparar_modos` cuenta en cuántas semillas el guiado tuvo más (`experimento.py:138`), que es
+  "cuánto pone la guía", lo que la decisión 29 dice que mide. El checker la dio PARCIAL por analogía
+  con las comparaciones 1 y 2.
+- **Decisión 11 en el popup:** muestra cuántos agentes de la generación abrieron el cofre, no la
+  primera generación de la corrida; el resumen final de la consola, la pantalla final y el resumen de
+  `experimento.py` sí la dicen. No es parte del DoD ni del QA manual.
+- **Cooldown compartido:** `_try_hit_door` (`advanced_agent.py:642`) mira el mismo
+  `last_tree_hit_tick` (120 ticks) que el corte, que se pone al cortar y al abrir una puerta. Ya
+  estaba antes del bloque B (`cc9126b`); entre golpes a una misma puerta manda `DOOR_HIT_COOLDOWN`.
+- `advanced_agent.py:418-423` (si se piden los dos giros, gana el más fuerte) corre en los dos modos:
+  es del cuerpo común (decisión 4), no de la guía.
+- **Borde numérico del sensor 7:** con un ángulo negativo del orden de −1e-20, `%` da 2π en punto
+  flotante y el sensor sale 1,0. Es improbable y el test no lo cubre.
+- **Fuera de las secciones del DoD:** el README dice "Mutación: Gaussiana (30% tasa)"
+  (`README.md:252`), y `genetic_algorithm.py:113-114` la sube a 50% cuando la diversidad del fitness
+  baja de 0,15. Los pesos del anti-círculo se leen con `getattr` y un valor por defecto distinto del
+  de `config.py` (`advanced_agent.py:732-734`): hoy no pesa, porque `config.py` los define.

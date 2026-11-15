@@ -120,7 +120,7 @@ EcosistemaEvolutivo/
 * **`world.py`**: Clase `World` que genera y gestiona:
 
   * **Generación procedural**: Pastos, árboles, muros, agua, estanques, perímetro
-  * **Sistema de fortalezas**: Fortaleza pequeña (4x5 tiles) y grande (6x6 tiles) con muros y puertas
+  * **Sistema de fortalezas**: Fortaleza pequeña (5x5 tiles) y grande (6x6 tiles) con muros y puertas
   * **Sistema de puzzle**: Llave roja, puerta de madera, llave dorada, puerta de hierro y cofre; el avance es de cada agente y se reinicia en cada generación
   * **Recursos**: Comida (manzanas), árboles que pueden cortarse, huts destructibles
   * **Estanque móvil**: Estanque que se regenera dinámicamente
@@ -277,7 +277,7 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 
 ### Elementos del Puzzle
 
-1. **Fortalezas**: Dos (pequeña 4x5, grande 6x6) con muros y una puerta cada una
+1. **Fortalezas**: Dos (pequeña 5x5, grande 6x6) con muros y una puerta cada una
 2. **Llaves** (por contacto; quedan en el mapa para los demás):
    * **Llave roja**: En un lugar nuevo en cada generación, desde la generación 1 (`RED_KEY_SPAWN_GEN`). Recompensa: 10 (`RED_KEY_REWARD`)
    * **Llave dorada**: Dentro de la fortaleza pequeña. Recompensa: 25 (`GOLD_KEY_REWARD`)
@@ -328,7 +328,7 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 
 * **Activación**: Cuando quedan ≤30 manzanas en el mundo (`TREE_CUTTING_THRESHOLD`)
 * **Mecánica**: Un agente con hacha propia (la agarra por contacto; queda en el mapa para los demás) corta golpeando (acción `hit` > 0,5)
-* **Golpes requeridos**: 2
+* **Golpes requeridos**: 3 (fijo en el código: el `TREE_HITS_TO_CUT` de `config.py` no se lee)
 * **Recompensas**:
   * Fitness: +15 (`TREE_CUT_REWARD`)
   * Comida: +20 manzanas generadas
