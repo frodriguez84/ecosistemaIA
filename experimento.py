@@ -1,12 +1,14 @@
 """
-Experimento: con evolución contra sin evolución, en varias semillas.
+Experimento: modo guiado y modo autónomo, con evolución y sin ella, en varias semillas.
 
-Corre main.py sin ventana para cada semilla, una vez con evolución y otra con la línea base
-(--sin-evolucion), varias a la vez. Cada corrida deja su CSV y su log en
+Corre main.py sin ventana para cada semilla y cada modo, una vez con evolución y otra con la línea
+base (--sin-evolucion), varias a la vez. Cada corrida deja su CSV y su log en
 results/experimento_<AAAAMMDD-HHMMSS>/. Al final arma resumen.md: tablas Markdown para pegar tal
-cual en docs/qa/AnalisisQA.md (spec MEDIR_ANTES_DE_TOCAR, decisiones 12 a 14).
+cual en docs/qa/AnalisisQA.md (spec MEDIR_ANTES_DE_TOCAR, decisiones 12 a 14; los modos y las
+comparaciones entre ellos: spec MODO_GUIADO_Y_AUTONOMO, decisión 29).
 
-Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--paralelo K]
+Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--modos guiado autonomo]
+                           [--paralelo K]
 
 El resumen usa solo la librería estándar (decisión 18).
 """
@@ -30,6 +32,9 @@ MINIMO_GENERACIONES = 2 * VENTANA
 # Cuántos agentes de la generación llegaron al menos a cada paso del puzzle, en orden
 COLUMNAS_PUZZLE = ["agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
                    "agentes_puerta_hierro", "agentes_cofre"]
+# Los de main.py (decisión 1), escritos acá: importar main.py cargaría pygame
+MODOS = ("guiado", "autonomo")
+NOMBRES_DE_MODOS = {"guiado": "Guiado", "autonomo": "Autónomo"}
 
 # Los números del resumen por corrida que se promedian entre semillas (decisiones 13 y 14;
 # supervivencia y puzzle: spec MODO_GUIADO_Y_AUTONOMO, decisión 29)
@@ -62,6 +67,7 @@ def resumir_corrida(ruta_csv):
     con_cofre = [int(fila["generacion"]) for fila in filas if int(fila["agentes_cofre"]) > 0]
     resumen = {
         "semilla": int(ultima["semilla"]),
+        "modo": ultima["modo"],
         "evolucion": ultima["evolucion"] == "1",
         "generaciones": len(filas),
         "etapa_maxima": max(_etapa(fila) for fila in filas),
@@ -81,8 +87,9 @@ def resumir_corrida(ruta_csv):
     return resumen
 
 
-def resumir_modo(corridas):
+def resumir_grupo(corridas):
     """Promedio, desvío muestral y cantidad, entre semillas, de cada número de CLAVES (decisión 14).
+    Un grupo son las corridas de un modo, con evolución o sin ella.
 
     Los None no cuentan: una corrida fuera de las ventanas no entra en los promedios de fitness y
     manzanas, y generacion_cofre se promedia solo entre las que abrieron el cofre.
@@ -98,27 +105,51 @@ def resumir_modo(corridas):
     return resumen
 
 
-def comparar_por_semilla(corridas):
-    """En cuántas semillas la evolución subió más que la línea base (decisión 14).
-
-    Devuelve {"fitness": (K, N), "manzanas": (K, N)}. N son las semillas con las dos corridas
-    dentro de las ventanas. Un empate no cuenta como que la evolución subió más.
-    """
+def _pares(corridas, grupo_a, grupo_b):
+    """Por cada semilla que tiene las dos corridas, el par (corrida de grupo_a, corrida de grupo_b).
+    Cada grupo es un (modo, evolucion)."""
     por_semilla = {}
     for corrida in corridas:
-        por_semilla.setdefault(corrida["semilla"], {})[corrida["evolucion"]] = corrida
-    comparacion = {}
-    for nombre in ("fitness", "manzanas"):
-        clave = f"{nombre}_dif"
-        pares = [(par[True][clave], par[False][clave]) for par in por_semilla.values()
-                 if True in par and False in par
-                 and par[True][clave] is not None and par[False][clave] is not None]
-        comparacion[nombre] = (sum(con > sin for con, sin in pares), len(pares))
-    return comparacion
+        por_semilla.setdefault(corrida["semilla"], {})[(corrida["modo"], corrida["evolucion"])] = corrida
+    return [(par[grupo_a], par[grupo_b]) for par in por_semilla.values()
+            if grupo_a in par and grupo_b in par]
 
 
-def _modo(evolucion):
+def _contar(pares, clave):
+    """(K, N): en cuántos pares la primera corrida tiene más que la segunda en esa clave. N son los
+    pares con los dos valores (fuera de las ventanas, un valor es None). Un empate no cuenta."""
+    valores = [(a[clave], b[clave]) for a, b in pares if a[clave] is not None and b[clave] is not None]
+    return (sum(x > y for x, y in valores), len(valores))
+
+
+def comparar_evolucion(corridas, modo):
+    """En cuántas semillas, en ese modo, la evolución superó a la línea base (decisión 29,
+    comparaciones 1 y 2): subió más en fitness y en manzanas por agente (la diferencia entre las
+    últimas 5 y las 5 primeras), y tuvo más agentes con llave roja en las últimas 5.
+
+    Devuelve {"fitness": (K, N), "manzanas": (K, N), "llave_roja": (K, N)}.
+    """
+    pares = _pares(corridas, (modo, True), (modo, False))
+    return {"fitness": _contar(pares, "fitness_dif"), "manzanas": _contar(pares, "manzanas_dif"),
+            "llave_roja": _contar(pares, "llave_roja")}
+
+
+def comparar_modos(corridas, evolucion):
+    """En cuántas semillas el guiado tuvo más que el autónomo en las últimas 5, con evolución o sin
+    ella (decisión 29, comparación 3): manzanas por agente y agentes con llave roja.
+
+    Devuelve {"manzanas": (K, N), "llave_roja": (K, N)}.
+    """
+    pares = _pares(corridas, ("guiado", evolucion), ("autonomo", evolucion))
+    return {"manzanas": _contar(pares, "manzanas_final"), "llave_roja": _contar(pares, "llave_roja")}
+
+
+def _evolucion(evolucion):
     return "Con evolución" if evolucion else "Sin evolución"
+
+
+def _k_de_n(conteo):
+    return f"{conteo[0]} de {conteo[1]}"
 
 
 def _numero(valor, decimales=2):
@@ -146,46 +177,70 @@ def _ruta_md(ruta):
     return ruta.as_posix()
 
 
-def resumen_markdown(corridas, fallidas, comando):
-    """Arma el resumen en Markdown: por modo, la comparación pareada, por corrida y las que fallaron."""
-    lineas = [f"`{comando}`", "",
-              "**Por modo** (promedio ± desvío muestral entre semillas):", "",
-              _fila_md(["Modo", "Corridas", "Fitness prom., gens 1-5", "Fitness prom., últimas 5",
-                        "Diferencia", "Manzanas por agente, gens 1-5", "Manzanas por agente, últimas 5",
-                        "Diferencia", "Edad prom. (ticks), últimas 5",
-                        "Agentes con llave roja, últimas 5", "Etapa máxima (0-5)", "Cofre abierto"]),
-              _fila_md(["---"] * 12)]
-    for evolucion in (True, False):
-        del_modo = [corrida for corrida in corridas if corrida["evolucion"] == evolucion]
-        if not del_modo:
-            continue
-        modo = resumir_modo(del_modo)
-        cofre = f"{modo['generacion_cofre']['n']} de {len(del_modo)}"
-        if modo["generacion_cofre"]["n"]:
-            cofre += f" (gen. {_promedio_desvio(modo['generacion_cofre'], 1)})"
-        lineas.append(_fila_md(
-            [_modo(evolucion), str(len(del_modo))]
-            + [_promedio_desvio(modo[clave]) for clave in CLAVES[:6]]
-            + [_promedio_desvio(modo["supervivencia"], 0), _promedio_desvio(modo["llave_roja"]),
-               _promedio_desvio(modo["etapa_maxima"], 1), cofre]))
+def _orden(corrida):
+    """Por semilla, el guiado antes que el autónomo y con evolución antes que sin."""
+    return (corrida["semilla"], MODOS.index(corrida["modo"]), not corrida["evolucion"])
 
-    comparacion = comparar_por_semilla(corridas)
-    fitness_k, fitness_n = comparacion["fitness"]
-    manzanas_k, manzanas_n = comparacion["manzanas"]
+
+def _comparaciones(corridas):
+    """Los renglones de las comparaciones pareadas de la decisión 29, de los modos que corrieron."""
+    modos = [modo for modo in MODOS if any(corrida["modo"] == modo for corrida in corridas)]
+    lineas = []
+    for modo in sorted(modos, key=lambda m: m != "autonomo"):  # el autónomo primero: la pregunta 1
+        comparacion = comparar_evolucion(corridas, modo)
+        lineas.append(f"- **{NOMBRES_DE_MODOS[modo]}, con evolución contra sin:** la evolución subió más "
+                      f"en fitness en {_k_de_n(comparacion['fitness'])} semillas, en manzanas por "
+                      f"agente en {_k_de_n(comparacion['manzanas'])}, y tuvo más agentes con llave "
+                      f"roja en las últimas 5 en {_k_de_n(comparacion['llave_roja'])}.")
+    if len(modos) == 2:
+        con, sin = comparar_modos(corridas, True), comparar_modos(corridas, False)
+        lineas.append(f"- **Guiado contra autónomo, en las últimas 5:** con evolución, el guiado tuvo "
+                      f"más manzanas por agente en {_k_de_n(con['manzanas'])} semillas y más agentes "
+                      f"con llave roja en {_k_de_n(con['llave_roja'])}; sin evolución, más manzanas "
+                      f"en {_k_de_n(sin['manzanas'])} y más agentes con llave roja en "
+                      f"{_k_de_n(sin['llave_roja'])}.")
+    return lineas
+
+
+def resumen_markdown(corridas, fallidas, comando):
+    """Arma el resumen en Markdown: por grupo (modo × evolución), las comparaciones pareadas, por
+    corrida y las que fallaron."""
+    lineas = [f"`{comando}`", "",
+              "**Por grupo** (promedio ± desvío muestral entre semillas):", "",
+              _fila_md(["Modo", "Evolución", "Corridas", "Fitness prom., gens 1-5",
+                        "Fitness prom., últimas 5", "Diferencia", "Manzanas por agente, gens 1-5",
+                        "Manzanas por agente, últimas 5", "Diferencia", "Edad prom. (ticks), últimas 5",
+                        "Agentes con llave roja, últimas 5", "Etapa máxima (0-5)", "Cofre abierto"]),
+              _fila_md(["---"] * 13)]
+    for modo in MODOS:
+        for evolucion in (True, False):
+            del_grupo = [corrida for corrida in corridas
+                         if corrida["modo"] == modo and corrida["evolucion"] == evolucion]
+            if not del_grupo:
+                continue
+            grupo = resumir_grupo(del_grupo)
+            cofre = f"{grupo['generacion_cofre']['n']} de {len(del_grupo)}"
+            if grupo["generacion_cofre"]["n"]:
+                cofre += f" (gen. {_promedio_desvio(grupo['generacion_cofre'], 1)})"
+            lineas.append(_fila_md(
+                [modo, _evolucion(evolucion), str(len(del_grupo))]
+                + [_promedio_desvio(grupo[clave]) for clave in CLAVES[:6]]
+                + [_promedio_desvio(grupo["supervivencia"], 0), _promedio_desvio(grupo["llave_roja"]),
+                   _promedio_desvio(grupo["etapa_maxima"], 1), cofre]))
+
+    lineas += ["", "**Comparaciones pareadas por semilla** (un empate no cuenta como más):", ""]
+    lineas += _comparaciones(corridas)
     lineas += ["",
-               f"**Comparación pareada por semilla:** la evolución subió más que la línea base en "
-               f"{fitness_k} de {fitness_n} semillas en fitness, y en {manzanas_k} de {manzanas_n} "
-               f"en manzanas por agente.",
-               "",
                "**Por corrida:**", "",
-               _fila_md(["Semilla", "Modo", "Generaciones", "Fitness prom., gens 1-5",
+               _fila_md(["Semilla", "Modo", "Evolución", "Generaciones", "Fitness prom., gens 1-5",
                          "Fitness prom., últimas 5", "Diferencia", "Manzanas por agente, gens 1-5",
                          "Manzanas por agente, últimas 5", "Diferencia", "Edad prom., últimas 5",
                          "Agentes con llave roja, últimas 5", "Etapa máxima", "Cofre en la gen."]),
-               _fila_md(["---"] * 13)]
-    for corrida in sorted(corridas, key=lambda c: (c["semilla"], not c["evolucion"])):
+               _fila_md(["---"] * 14)]
+    for corrida in sorted(corridas, key=_orden):
         lineas.append(_fila_md(
-            [str(corrida["semilla"]), _modo(corrida["evolucion"]), str(corrida["generaciones"])]
+            [str(corrida["semilla"]), corrida["modo"], _evolucion(corrida["evolucion"]),
+             str(corrida["generaciones"])]
             + [_numero(corrida[clave]) for clave in CLAVES[:6]]
             + [_numero(corrida["supervivencia"], 0), _numero(corrida["llave_roja"]),
                str(corrida["etapa_maxima"]),
@@ -193,8 +248,8 @@ def resumen_markdown(corridas, fallidas, comando):
 
     if fallidas:
         lineas += ["", "**Corridas que fallaron** (fuera del resumen):", ""]
-        lineas += [f"- Semilla {f['semilla']}, {_modo(f['evolucion']).lower()}: salió con código "
-                   f"{f['codigo']}. Log: `{_ruta_md(f['log'])}`" for f in fallidas]
+        lineas += [f"- Semilla {f['semilla']}, {f['modo']}, {_evolucion(f['evolucion']).lower()}: "
+                   f"salió con código {f['codigo']}. Log: `{_ruta_md(f['log'])}`" for f in fallidas]
     return "\n".join(lineas) + "\n"
 
 
@@ -202,8 +257,8 @@ def resumen_markdown(corridas, fallidas, comando):
 
 def _leer_argumentos(argv):
     parser = argparse.ArgumentParser(
-        description="Corre main.py con evolución y sin evolución en varias semillas, en paralelo, "
-                    "y resume la comparación en resumen.md.",
+        description="Corre main.py en cada modo, con evolución y sin evolución, en varias semillas, "
+                    "en paralelo, y resume las comparaciones en resumen.md.",
         add_help=False,
     )
     parser.add_argument("-h", "--help", action="help", help="Muestra esta ayuda y sale.")
@@ -211,6 +266,9 @@ def _leer_argumentos(argv):
                         help="Semillas a correr, cada una con evolución y sin evolución. Por defecto, 1 a 5.")
     parser.add_argument("--generaciones", type=int, default=20, metavar="N",
                         help=f"Generaciones por corrida. Por defecto 20; el mínimo es {MINIMO_GENERACIONES}.")
+    parser.add_argument("--modos", nargs="+", choices=MODOS, default=list(MODOS), metavar="MODO",
+                        help="Modos a correr (guiado, autonomo), cada uno con evolución y sin evolución. "
+                             "Por defecto, los dos.")
     parser.add_argument("--paralelo", type=int, default=max(1, (os.cpu_count() or 2) - 1), metavar="K",
                         help="Corridas a la vez. Por defecto, los núcleos menos uno.")
     args = parser.parse_args(argv)
@@ -222,23 +280,24 @@ def _leer_argumentos(argv):
     if any(not 0 <= semilla < 2**32 for semilla in args.semillas):
         parser.error("cada semilla tiene que estar entre 0 y 4294967295")
     args.semillas = list(dict.fromkeys(args.semillas))  # una semilla repetida pisaría su propio CSV
+    args.modos = list(dict.fromkeys(args.modos))
     return args
 
 
-def _correr(semilla, evolucion, generaciones, carpeta):
+def _correr(semilla, modo, evolucion, generaciones, carpeta):
     """Corre main.py sin ventana, con la salida a un log, y devuelve cómo terminó."""
-    nombre = f"corrida_s{semilla}_{'evolucion' if evolucion else 'sin_evolucion'}"
+    nombre = f"corrida_s{semilla}_{modo}_{'evolucion' if evolucion else 'sin_evolucion'}"
     ruta_csv, ruta_log = carpeta / f"{nombre}.csv", carpeta / f"{nombre}.log"
     # -u: el log se escribe a medida que corre, y una corrida cortada no pierde la cola
     comando = [sys.executable, "-u", "main.py", "--sin-ventana", "--generaciones", str(generaciones),
-               "--semilla", str(semilla), "--csv", str(ruta_csv)]
+               "--semilla", str(semilla), "--modo", modo, "--csv", str(ruta_csv)]
     if not evolucion:
         comando.append("--sin-evolucion")
     inicio = time.monotonic()
     # cwd en la raíz: main.py carga los sprites con una ruta relativa
     with open(ruta_log, "wb") as log:
         codigo = subprocess.run(comando, cwd=RAIZ, stdout=log, stderr=subprocess.STDOUT).returncode
-    return {"semilla": semilla, "evolucion": evolucion, "codigo": codigo,
+    return {"semilla": semilla, "modo": modo, "evolucion": evolucion, "codigo": codigo,
             "csv": ruta_csv, "log": ruta_log, "segundos": time.monotonic() - inicio}
 
 
@@ -249,28 +308,29 @@ def main(argv=None):
 
     carpeta = RAIZ / "results" / f"experimento_{datetime.now():%Y%m%d-%H%M%S}"
     carpeta.mkdir(parents=True)
-    tareas = [(semilla, evolucion) for semilla in args.semillas for evolucion in (True, False)]
-    print(f"🧪 {len(tareas)} corridas ({len(args.semillas)} semillas × 2 modos) de "
-          f"{args.generaciones} generaciones, {args.paralelo} a la vez")
+    tareas = [(semilla, modo, evolucion) for semilla in args.semillas for modo in args.modos
+              for evolucion in (True, False)]
+    print(f"🧪 {len(tareas)} corridas ({len(args.semillas)} semillas × {len(args.modos)} modos × con y "
+          f"sin evolución) de {args.generaciones} generaciones, {args.paralelo} a la vez")
     print(f"📁 {_ruta_md(carpeta)}")
 
     resultados = []
     with ThreadPoolExecutor(max_workers=args.paralelo) as pool:
-        futuros = [pool.submit(_correr, semilla, evolucion, args.generaciones, carpeta)
-                   for semilla, evolucion in tareas]
+        futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta)
+                   for semilla, modo, evolucion in tareas]
         for futuro in as_completed(futuros):
             resultado = futuro.result()
             resultados.append(resultado)
             estado = "✅" if resultado["codigo"] == 0 else f"❌ código {resultado['codigo']},"
-            print(f"{estado} semilla {resultado['semilla']} {_modo(resultado['evolucion']).lower()} "
+            print(f"{estado} semilla {resultado['semilla']} {resultado['modo']} "
+                  f"{_evolucion(resultado['evolucion']).lower()} "
                   f"({len(resultados)} de {len(tareas)}, {resultado['segundos']:.0f} s)", flush=True)
 
     corridas = [resumir_corrida(r["csv"]) for r in resultados if r["codigo"] == 0]
-    fallidas = sorted((r for r in resultados if r["codigo"] != 0),
-                      key=lambda r: (r["semilla"], not r["evolucion"]))
+    fallidas = sorted((r for r in resultados if r["codigo"] != 0), key=_orden)
     comando = (f"python experimento.py --semillas {' '.join(map(str, args.semillas))} "
-               f"--generaciones {args.generaciones}")
-    texto = (f"# Experimento: con evolución contra sin evolución\n\n"
+               f"--generaciones {args.generaciones} --modos {' '.join(args.modos)}")
+    texto = (f"# Experimento: modos guiado y autónomo, con evolución y sin ella\n\n"
              f"{datetime.now():%Y-%m-%d} · carpeta `{_ruta_md(carpeta)}`\n\n"
              + resumen_markdown(corridas, fallidas, comando))
     (carpeta / "resumen.md").write_text(texto, encoding="utf-8")

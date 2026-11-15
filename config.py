@@ -10,6 +10,9 @@ class SimulationConfig:
     TARGET_FPS = 60
     MAX_GENERATIONS = 50    # Extendido para ver tendencias a largo plazo
     HEADLESS_MODE = False             # True = sin render (rápido), False = con render (visual)
+    # "guiado": decide() suma la conducción escrita a mano hacia la comida y el puzzle.
+    # "autonomo": decide() es solo la salida de la red. Lo demás es igual en los dos (--modo lo pisa)
+    MODO = "guiado"
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo

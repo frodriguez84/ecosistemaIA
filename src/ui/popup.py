@@ -92,7 +92,7 @@ class SummaryPopup:
         fitness_stats = [
             f"Promedio: {self.generation_data.get('avg_fitness', 0):.1f}",
             f"Máximo: {self.generation_data.get('max_fitness', 0):.1f}",
-            f"Vivos: {self.generation_data.get('alive_count', 0)}/{self.generation_data.get('total_agents', 50)}"
+            f"Vivos: {self.generation_data.get('alive_count', 0)}/{self.generation_data['total_agents']}"
         ]
         
         for stat in fitness_stats:

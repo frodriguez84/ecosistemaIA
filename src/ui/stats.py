@@ -4,7 +4,11 @@ Panel de estadísticas en tiempo real.
 
 import pygame
 
+from config import SimulationConfig
 from ..agents.advanced_agent import PASOS_DEL_PUZZLE, agentes_por_paso
+
+# Cómo se muestra cada valor de MODO (la fuente de pygame tiene la tilde)
+NOMBRES_DE_MODOS = {"guiado": "guiado", "autonomo": "autónomo"}
 
 
 class StatsPanel:
@@ -60,9 +64,10 @@ class StatsPanel:
         seconds = total_seconds % 60
         time_str = f"{minutes:02d}:{seconds:02d}"
         
-        # Solo 5 datos básicos
+        # Datos básicos, con el modo de la corrida (lo pisa --modo en la clase)
         stats = [
             f"Generación: {generation}",
+            f"Modo: {NOMBRES_DE_MODOS.get(SimulationConfig.MODO, SimulationConfig.MODO)}",
             f"Tiempo: {time_str}",
             f"Vivos: {len(alive_agents)}",
             f"Muertos: {len(dead_agents)}",
@@ -77,9 +82,9 @@ class StatsPanel:
             if cantidad:
                 stats.append(f"* {nombre}: {cantidad}")
         
-        # Dibujar estadísticas (22 px por renglón: entran los 11 en los 300 px del panel)
+        # Dibujar estadísticas (20 px por renglón: entran los 12 en los 300 px del panel)
         y_offset = 50
         for stat in stats:
             text = self.font.render(stat, True, (200, 200, 200))
             screen.blit(text, (self.x + 10, self.y + y_offset))
-            y_offset += 22
+            y_offset += 20

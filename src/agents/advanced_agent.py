@@ -204,10 +204,16 @@ class AdvancedAgent:
         return None
     
     def decide(self, world, other_agents, sprite_manager):
-        """Toma decisiones basadas en percepciones."""
+        """Toma decisiones basadas en percepciones. En el modo autónomo, solo la red; en el guiado,
+        la red más la conducción escrita a mano (spec MODO_GUIADO_Y_AUTONOMO, decisión 3)."""
         perceptions = self.perceive(world, other_agents)
         decisions = self.brain.forward(perceptions)
         
+        if SimulationConfig.MODO == "autonomo":
+            # Sin guía (decisión 5): la salida de la red recortada a [0, 1], sin consumir azar
+            return {accion: max(0, min(1, valor)) for accion, valor in decisions.items()}
+        
+        # De acá al final, la guía del modo guiado (decisión 3).
         # Aplicar lógica adicional para comportamiento inteligente (sistema mejorado)
         if self.fitness > 30:  # Agentes con fitness medio-alto
             # Verificar si hay poca comida y puede cortar árboles
@@ -417,8 +423,10 @@ class AdvancedAgent:
                 decisions['turn_left'] = 0.0
         
         # ===== PENALIZACIÓN REACTIVA POR GIRO CONSTANTE =====
-        # Detectar giro constante en los últimos 20 ticks usando recent_angles
-        if len(self.recent_angles) >= 20:
+        # Detectar giro constante en los últimos 20 ticks usando recent_angles. Es guía: solo en el
+        # modo guiado (decisión 3)
+        guiado = SimulationConfig.MODO != "autonomo"
+        if guiado and len(self.recent_angles) >= 20:
             # Calcular variación total de ángulo en los últimos 20 ticks
             angles_list = list(self.recent_angles)
             angle_changes = []
@@ -444,8 +452,9 @@ class AdvancedAgent:
         # Limitar giro excesivo para evitar círculos
         if abs(turn_amount) > 0.08:  # Si está girando mucho
             turn_amount *= 0.6  # Reducir giro
-            # Agregar pequeña aleatoriedad para romper patrones
-            turn_amount += random.uniform(-0.02, 0.02)
+            # Agregar pequeña aleatoriedad para romper patrones (guía: solo en el modo guiado)
+            if guiado:
+                turn_amount += random.uniform(-0.02, 0.02)
         
         self.angle += turn_amount
         

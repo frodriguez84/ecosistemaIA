@@ -5,6 +5,21 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-009 — 2026-11-15 — `git show HEAD:archivo` da el archivo en LF aunque en disco sea CRLF
+
+**Qué pasó.** En el bloque C de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),
+un script de control comparaba cada archivo editado contra `git show HEAD:<archivo>` para encontrar
+líneas que solo cambiaron en blancos (LEC-002) y para ver si el final de línea había cambiado.
+Marcó todas las líneas de `main.py`, `config.py` y el agente, y dijo que habían pasado de LF a CRLF.
+No habían cambiado: con `core.autocrlf`, Git guarda los archivos en LF y los pone en CRLF al
+sacarlos al disco, y `git show` devuelve lo guardado. Se vio porque el archivo en disco era CRLF
+puro, igual que antes de editarlo.
+
+**Regla.** Para comparar un archivo en disco con su versión de HEAD, se sacan los CR de los dos
+lados antes de comparar líneas; el final de línea esperado se toma de la lista de archivos CRLF del
+spec o de `CLAUDE.md`, no del blob de Git. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas,
+junto a la de LEC-003.
+
 ## LEC-008 — 2026-11-15 — Lo que se agarra por contacto no puede estar donde arranca un agente
 
 **Qué pasó.** En el bloque B de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),

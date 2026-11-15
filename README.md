@@ -13,8 +13,8 @@ El proyecto está desarrollado en **Python 3.11+** y mantiene una **arquitectura
 
 * *Separation of Concerns*
 * *Single Responsibility Principle*
-* *Aprendizaje puro* - Sin guía codificada, los agentes aprenden 100% mediante su red neuronal
-* Soporte para logging estructurado, reproducibilidad y ejecución por fases
+* *Dos modos para comparar* - **guiado** (la red más una conducción escrita a mano hacia la comida y el puzzle) y **autónomo** (solo la red)
+* *Reproducibilidad* - La misma semilla da el mismo CSV byte a byte
 
 ---
 
@@ -22,7 +22,7 @@ El proyecto está desarrollado en **Python 3.11+** y mantiene una **arquitectura
 
 Crear un **ecosistema digital autoevolutivo** donde criaturas simuladas:
 
-1. **Perciben su entorno** - Sensores de distancia, energía, comida, obstáculos, objetos del puzzle
+1. **Perciben su entorno** - 11 sensores: energía, comida, obstáculos, posición, rumbo, su etapa del puzzle y una brújula a su próximo paso
 2. **Toman decisiones mediante red neuronal** - 5 acciones: avanzar, girar izquierda/derecha, comer, golpear
 3. **Son evaluadas por su desempeño** - Fitness basado en supervivencia, comida, exploración, eficiencia y puzzle
 4. **Se reproducen mediante algoritmo genético** - Selección (meeting pool + elitismo), cruce, mutación
@@ -61,9 +61,12 @@ El resultado es visual, con una interfaz completa que muestra:
 
 ```
 EcosistemaEvolutivo/
-├── main.py                  # Punto de entrada principal
+├── main.py                  # Punto de entrada: flags, semilla, CSV y loop de simulación
 ├── config.py               # Configuración centralizada (SimulationConfig)
+├── experimento.py          # Los dos modos, con evolución y sin ella, en varias semillas
 ├── requirements.txt        # Dependencias del proyecto
+│
+├── tests/                  # Tests (pytest)
 │
 ├── src/
 │   ├── agents/             # Sistema de agentes
@@ -89,9 +92,7 @@ EcosistemaEvolutivo/
 ├── assets/
 │   └── sprites/            # Sprites del juego (agentes, objetos, entorno)
 │
-├── logs/                   # Logs de métricas y runtime
-├── checkpoints/            # Checkpoints de generaciones (opcional)
-└── results/                # Resultados y reportes (opcional)
+└── results/                # CSV y logs de las corridas (no se versionan)
 ```
 
 ---
@@ -102,11 +103,12 @@ EcosistemaEvolutivo/
 
 * **`advanced_agent.py`**: Clase `AdvancedAgent` con:
 
-  * **Sensores**: 12 percepciones (distancia a comida, obstáculos, objetos del puzzle, energía, dirección)
-  * **Red neuronal**: MLP con 2 capas ocultas [24, 18] y 5 salidas (avanzar, girar L/R, comer, golpear)
-  * **Sistema de fitness**: Supervivencia + comida + exploración + evitar obstáculos + anti-círculo + puzzle
-  * **Acciones**: Movimiento, alimentación, corte de árboles, interacción con puzzle
-  * **Aprendizaje puro**: **100% autónomo** - Sin guía codificada, todo basado en decisiones de la red neuronal
+  * **Sensores**: 11 percepciones (energía, comida, obstáculos, posición, rumbo, etapa del puzzle y brújula al próximo paso)
+  * **Red neuronal**: MLP con 2 capas ocultas [24, 16] y 5 salidas (avanzar, girar L/R, comer, golpear)
+  * **Sistema de fitness**: Supervivencia + comida + exploración + anti-círculo + puzzle + cortes − agua, con los pesos en `config.py`
+  * **Acciones**: Movimiento, alimentación y golpear (puertas, cofre, árboles y casitas)
+  * **Puzzle propio**: cada agente tiene su etapa del puzzle y su hacha
+  * **Dos modos** (`MODO` en `config.py`, `--modo`): en el **autónomo** decide solo la red; en el **guiado**, la red más una conducción escrita a mano (ver Notas Técnicas)
 * **`SimpleNeuralNetwork`** (en `advanced_agent.py`):
 
   * Red neuronal MLP propia, con numpy (sin PyTorch)
@@ -119,7 +121,7 @@ EcosistemaEvolutivo/
 
   * **Generación procedural**: Pastos, árboles, muros, agua, estanques, perímetro
   * **Sistema de fortalezas**: Fortaleza pequeña (4x5 tiles) y grande (6x6 tiles) con muros y puertas
-  * **Sistema de puzzle**: Llaves rojas/doradas, puertas (wood/iron), cofre
+  * **Sistema de puzzle**: Llave roja, puerta de madera, llave dorada, puerta de hierro y cofre; el avance es de cada agente y se reinicia en cada generación
   * **Recursos**: Comida (manzanas), árboles que pueden cortarse, huts destructibles
   * **Estanque móvil**: Estanque que se regenera dinámicamente
 * **`obstacles.py`**:
@@ -133,7 +135,7 @@ EcosistemaEvolutivo/
 * **`genetic_algorithm.py`**: Algoritmo genético completo:
   * **Selección**: Meeting pool (fracción superior por ranking) + elitismo opcional
   * **Cruce**: Uniforme entre genomas (pesos de red neuronal)
-  * **Mutación**: Gaussiana con tasa configurable (20%)
+  * **Mutación**: Gaussiana con tasa configurable (30%)
   * **Evolución**: Genera nueva población manteniendo mejores individuos
 
 ### 4. `src/analytics/`
@@ -168,6 +170,9 @@ EcosistemaEvolutivo/
 
 * **`SimulationConfig`**: Clase con todos los parámetros centralizados:
   * Población, generaciones máximas
+  * Modo (`MODO`: `"guiado"` o `"autonomo"`)
+  * Agente y energía (consumo, comida, radio, visión, costo de golpear)
+  * Pesos del fitness
   * Parámetros del algoritmo genético
   * Arquitectura de red neuronal
   * Sistema de puzzle (recompensas, umbrales)
@@ -184,24 +189,24 @@ EcosistemaEvolutivo/
 1. **Carga configuración** desde `config.py` (SimulationConfig)
 2. **Genera mundo procedural**:
    * Pastos, árboles, muros, agua, estanques
-   * Fortalezas con puertas
-   * Llaves, cofre (spawn según generación)
+   * Fortalezas con puertas, llave dorada y cofre
+   * Llave roja y hacha, en un lugar nuevo en cada generación
    * Perímetro del mapa
-3. **Inicializa población** con redes neuronales aleatorias
+3. **Inicializa población** con redes neuronales aleatorias, ubicada con el mapa ya listo
 
 ### Loop de Simulación (por generación)
 
-1. **Cada tick (600-2000 ticks/generación, adaptativo)**:
+1. **Cada tick (960 ticks por generación al principio, 180 más cada 4 generaciones)**:
 
-   * **Percepción**: Cada agente percibe su entorno (10 sensores)
-   * **Decisión**: Red neuronal procesa percepciones → 5 acciones
+   * **Percepción**: Cada agente percibe su entorno (11 sensores)
+   * **Decisión**: Red neuronal procesa percepciones → 5 acciones (en el modo guiado, más la guía escrita a mano)
    * **Acción**: Agente ejecuta acciones (mover, girar, comer, golpear)
-   * **Efectos del entorno**: Agua reduce energía/fitness, estanques restauran energía
-   * **Interacciones**: Cortar árboles/huts, recoger llaves, abrir puertas, abrir cofre
+   * **Efectos del entorno**: El agua resta energía, frena y penaliza el fitness; las pociones devuelven la energía
+   * **Interacciones**: Recoger llaves y hacha por contacto; golpear puertas, cofre, árboles y huts
    * **Muerte**: Si energía ≤ 0, agente muere
 2. **Al finalizar la generación**:
 
-   * **Cálculo de fitness**: Supervivencia + comida + exploración + obstáculos + anti-círculo + puzzle
+   * **Cálculo de fitness**: Supervivencia + comida + exploración + anti-círculo + puzzle + cortes − agua
    * **Ranking**: Ordenar agentes por fitness
    * **Clustering** (cada 3 generaciones): Análisis de comportamientos emergentes
    * **Algoritmo genético**:
@@ -210,11 +215,10 @@ EcosistemaEvolutivo/
      * Mutación gaussiana
      * Nueva población
    * **Resumen**: Popup con estadísticas de la generación
-   * **Reinicio**: Nuevo mundo, nueva población evolucionada
+   * **Reinicio**: Nuevo mapa, puzzle reiniciado, nueva población (evolucionada, o al azar en la línea base)
 3. **Condición de fin**:
 
-   * Alcanzar `MAX_GENERATIONS` O
-   * Abrir el cofre (objetivo principal)
+   * Alcanzar `MAX_GENERATIONS`. Abrir el cofre no termina la corrida: se cuenta cuántos agentes lo abrieron
 
 ---
 
@@ -224,28 +228,29 @@ EcosistemaEvolutivo/
 
 * **Tipo**: MLP (Multi-Layer Perceptron)
 * **Arquitectura**:
-  * Input: 10 sensores (distancia comida, obstáculos, puzzle, energía, dirección)
-  * Hidden: 2 capas [24, 18] neuronas
-  * Output: 5 acciones (move_forward, turn_left, turn_right, eat, hit)
+  * Input: 11 sensores
+  * Hidden: 2 capas [24, 16] neuronas
+  * Output: 5 acciones (move_forward, turn_left, turn_right, eat, hit). Avanzar, comer y golpear se activan por encima de 0,5; el giro es (derecha − izquierda) × 0,12
 * **Activación**: `tanh` (todas las capas)
 * **Pesos**: Mutables por algoritmo genético
-* **Aprendizaje**: **100% puro** - Sin guía codificada, decisiones completamente autónomas
+* **Sensores**, en orden: 1 energía; 2 distancia y 3 dirección a la manzana más cercana; 4 distancia al obstáculo más cercano; 5 x; 6 y; 7 rumbo; 8 etapa del puzzle / 5; 9 dirección al próximo paso del puzzle; 10 manzanas disponibles; 11 distancia al próximo paso del puzzle. Las distancias se miden contra el rango de visión (150 px, `VISION_RANGE`)
+* **Quién decide**: en el modo autónomo, solo la red; en el guiado, la red más la guía escrita a mano (ver Notas Técnicas)
 
 ### Algoritmo Genético
 
-* **Población**: 60 agentes (configurable)
-* **Fitness**: Combinación de:
-  * Supervivencia (edad) - Cap: 23
-  * Comida (sqrt) - Multiplicador: 12.0
-  * Exploración (log) - Multiplicador: 12.0, Cap: 15.0
-  * Evitar obstáculos - Multiplicador: 0.20
-  * Anti-círculo (movimiento eficiente) - Multiplicador: 10.0
-  * Puzzle (llaves, puertas, cofre) - Recompensas acumuladas
-  * Penalizaciones (agua) - Sin límite, proporcional al tiempo
-* **Selección**: Meeting pool (90% superior) + elitismo opcional
-* **Cruce**: Uniforme (90% tasa)
-* **Mutación**: Gaussiana (20% tasa)
-* **Elitismo**: 0 (se puede configurar)
+* **Población**: 60 agentes (`POPULATION_SIZE`)
+* **Fitness**, de 0 a 100, con los pesos en `config.py`:
+  * Supervivencia: 0,010 × ticks vividos (`FITNESS_SURVIVAL`), con tope de 10 (`FITNESS_SURVIVAL_MAX`)
+  * Comida: 10 × raíz de las manzanas comidas (`FITNESS_FOOD`)
+  * Exploración: 10 × log(1 + distancia / 350) (`FITNESS_EXPLORATION`), con tope de 15 (`FITNESS_EXPLORATION_MAX`)
+  * Anti-círculo (rectitud, giros suaves, lugares nuevos): 18 × su puntaje (`FITNESS_ANTI_CIRCLE`), si recorrió más de 100 px
+  * Puzzle y cortes: la recompensa de cada paso, para el agente que lo dio (ver Sistema de Puzzle y Sistema de Corte)
+  * Agua: se resta la penalización acumulada, con tope de 10 (`WATER_PENALTY_MAX`)
+  * Tope por tiempo vivido: de 50 al nacer a 100 desde los 960 ticks (`BASE_TICKS`)
+* **Selección**: Meeting pool (60% superior por ranking) + élite de 1
+* **Cruce**: Uniforme (95% tasa)
+* **Mutación**: Gaussiana (30% tasa)
+* **Inmigración**: 3 agentes nuevos al azar cada 6 generaciones
 
 ### Clustering (Análisis No Supervisado)
 
@@ -268,50 +273,52 @@ EcosistemaEvolutivo/
 
 ## 🎮 Sistema de Puzzle
 
-El ecosistema incluye un sistema complejo de puzzle que los agentes deben aprender a resolver:
+Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada generación.
 
 ### Elementos del Puzzle
 
-1. **Fortalezas**: Dos tipos (pequeña 4x5, grande 6x6) con muros y puertas
-2. **Llaves**:
-   * **Red Key**: Aparece desde gen 5 (configurable), recompensa: 2 fitness
-   * **Gold Key**: Dentro de fortaleza grande, recompensa: 10 fitness
-3. **Puertas**:
-   * **Wood Door**: Requiere 3 golpes, recompensa: 10 fitness
-   * **Iron Door**: Requiere 3 golpes, recompensa: 20 fitness
-4. **Cofre**: Objetivo final, recompensa: 85 fitness (alto para garantizar fitness 60+ al completar)
+1. **Fortalezas**: Dos (pequeña 4x5, grande 6x6) con muros y una puerta cada una
+2. **Llaves** (por contacto; quedan en el mapa para los demás):
+   * **Llave roja**: En un lugar nuevo en cada generación, desde la generación 1 (`RED_KEY_SPAWN_GEN`). Recompensa: 10 (`RED_KEY_REWARD`)
+   * **Llave dorada**: Dentro de la fortaleza pequeña. Recompensa: 25 (`GOLD_KEY_REWARD`)
+3. **Puertas** (golpeando, a menos de 25 px de su centro, con una espera entre golpe y golpe):
+   * **Puerta de madera** (fortaleza pequeña): 2 golpes (`DOOR_HITS_TO_OPEN`). Recompensa: 12 (`DOOR_OPEN_REWARD`)
+   * **Puerta de hierro** (fortaleza grande): 3 golpes (`DOOR_IRON_HITS_TO_OPEN`). Recompensa: 35 (`DOOR_IRON_OPEN_REWARD`)
+4. **Cofre** (golpeando, en contacto; dentro de la fortaleza grande): Recompensa: 50 (`CHEST_REWARD`)
 
 ### Flujo del Puzzle
 
-1. **Gen 1-4**: Agentes aprenden tareas básicas (comer, sobrevivir, explorar)
-2. **Gen 5+**: Aparecen llaves rojas en el mundo
-3. **Aprendizaje emergente**: Los agentes aprenden a:
-   * Recoger llave roja
-   * Golpear puerta de madera (acción `hit` > 0.5)
-   * Entrar a fortaleza pequeña
-   * Recoger llave dorada
-   * Golpear puerta de hierro
-   * Entrar a fortaleza grande
-   * Abrir cofre
-4. **Fin del juego**: Al abrir el cofre, la simulación termina
+1. **Etapa del agente**, de 0 a 5: llave roja → puerta de madera → llave dorada → puerta de hierro → cofre. Cada paso pide el anterior.
+2. **Una puerta es pared para cada agente hasta que él la abre**: abrirla no la abre para los demás. Con ventana, se dibuja abierta si algún agente de la generación la abrió.
+3. **Golpear** es la quinta salida de la red (> 0,5). Cuesta 0,05 de energía por tick (`HIT_ENERGY_COST`), golpee algo o no.
+4. **Brújula**: los sensores 9 y 11 apuntan al próximo paso del agente; con el cofre abierto dan 0 y 1.
+5. **Reinicio**: cada generación arranca con todos los agentes en la etapa 0 y sin hacha, las puertas y el cofre cerrados, y la llave roja y el hacha en lugares nuevos.
+6. **Abrir el cofre no termina la corrida**: la consola, el popup, la pantalla final y el CSV dicen cuántos agentes llegaron a cada paso.
 
 ### Mecánica de Aprendizaje
 
-* **Sin guía codificada**: Los agentes descubren el puzzle mediante prueba y error
-* **Recompensas**: Fitness positivo por cada acción exitosa del puzzle
-* **Penalizaciones**: Agua penaliza fitness si pasan mucho tiempo en ella
-* **Red neuronal**: Debe aprender a usar la acción `hit` cuando está cerca de puertas/árboles
+* **En el modo autónomo, sin guía**: la red tiene que descubrir el puzzle por prueba y error, con la brújula y golpear
+* **En el modo guiado**: con fitness > 65, en el 40% de los ticks la guía lo empuja hacia su próximo paso y aprieta golpear al alinearse
+* **Recompensas**: Fitness por cada paso, para el agente que lo dio
+
+---
+
+## 🔋 Energía
+
+* Cada agente arranca con 100 (`AGENT_ENERGY`, que también es el máximo) y gasta 0,10 por tick (`AGENT_ENERGY_CONSUMPTION`): sin comer, le alcanza para 1.000 ticks
+* Comer suma 8 (`AGENT_ENERGY_GAIN_FOOD`), sin pasar del máximo. Se come con la salida `eat` > 0,5, a menos de 20 px de una manzana
+* Golpear cuesta 0,05 por tick (`HIT_ENERGY_COST`); el agua, 0,05 más; una poción devuelve la energía al máximo
+* Con energía 0, el agente muere. Las generaciones duran 960 ticks al principio y 180 más cada 4: desde la 5, el que no come no llega al final
 
 ---
 
 ## 🌊 Sistema de Agua
 
 * **Efectos cuando un agente está en agua**:
-  * **Energía**: Pierde 0.05 adicional por tick (además del consumo normal 0.05)
-  * **Velocidad**: Reducida a 50% (SPEED_REDUCTION = 0.5)
-  * **Fitness**: Penalización de 5 puntos por tick (sin límite máximo)
+  * **Energía**: Pierde 0,05 adicional por tick (`WATER_ENERGY_LOSS`), además del consumo normal (0,10)
+  * **Velocidad**: Reducida al 80%
+  * **Fitness**: Penalización de 5 puntos por tick (`WATER_FITNESS_PENALTY`), con tope de 10 (`WATER_PENALTY_MAX`)
 * **Propósito**: Incentivar a los agentes a evitar el agua
-* **Aprendizaje**: Los agentes evolucionan para minimizar tiempo en agua
 
 ---
 
@@ -319,20 +326,20 @@ El ecosistema incluye un sistema complejo de puzzle que los agentes deben aprend
 
 ### Árboles
 
-* **Activación**: Cuando quedan ≤30 manzanas en el mundo
-* **Mecánica**: Agente con hacha puede cortar árbol (acción `hit` > 0.5)
+* **Activación**: Cuando quedan ≤30 manzanas en el mundo (`TREE_CUTTING_THRESHOLD`)
+* **Mecánica**: Un agente con hacha propia (la agarra por contacto; queda en el mapa para los demás) corta golpeando (acción `hit` > 0,5)
 * **Golpes requeridos**: 2
 * **Recompensas**:
-  * Fitness: +7
+  * Fitness: +15 (`TREE_CUT_REWARD`)
   * Comida: +20 manzanas generadas
 
 ### Huts (Casitas)
 
 * **Activación**: Cuando quedan ≤20 manzanas en el mundo
-* **Mecánica**: Agente con hacha puede destruir hut (acción `hit` > 0.5)
+* **Mecánica**: Un agente con hacha propia destruye la hut golpeando (acción `hit` > 0,5)
 * **Golpes requeridos**: 4
 * **Recompensas**:
-  * Fitness: +15
+  * Fitness: +15 (`HUT_CUT_REWARD`)
   * Comida: +30 manzanas generadas
 
 ---
@@ -346,29 +353,43 @@ class SimulationConfig:
     # === SIMULACIÓN ===
     POPULATION_SIZE = 60
     MAX_GENERATIONS = 50
-    HEADLESS_MODE = True  # False para visualización
+    HEADLESS_MODE = False  # True = sin ventana
+    MODO = "guiado"        # "guiado" o "autonomo"
   
     # === ALGORITMO GENÉTICO ===
-    MUTATION_RATE = 0.20
-    CROSSOVER_RATE = 0.90
-    MEETING_POOL_FRACTION = 0.90
+    MUTATION_RATE = 0.30
+    CROSSOVER_RATE = 0.95
+    MEETING_POOL_FRACTION = 0.60
   
     # === RED NEURONAL ===
-    INPUT_SIZE = 10
-    HIDDEN_SIZE = [24, 18]
+    INPUT_SIZE = 11
+    HIDDEN_SIZE = [24, 16]
     OUTPUT_SIZE = 5  # move_forward, turn_left, turn_right, eat, hit
   
-    # === SISTEMA DE PUZZLE ===
-    RED_KEY_SPAWN_GEN = 5
-    RED_KEY_REWARD = 2
-    GOLD_KEY_REWARD = 10
-    DOOR_OPEN_REWARD = 10
-    DOOR_IRON_OPEN_REWARD = 20
-    CHEST_REWARD = 85
+    # === AGENTE ===
+    AGENT_ENERGY = 100.0
+    AGENT_ENERGY_CONSUMPTION = 0.10
+    AGENT_ENERGY_GAIN_FOOD = 8
+    HIT_ENERGY_COST = 0.05
   
     # === SISTEMA DE AGUA ===
     WATER_FITNESS_PENALTY = 5
+    WATER_PENALTY_MAX = 10
     WATER_ENERGY_LOSS = 0.05
+
+    # === FITNESS ===
+    FITNESS_FOOD = 10.0
+    FITNESS_EXPLORATION = 10.0
+    FITNESS_SURVIVAL = 0.010
+    FITNESS_ANTI_CIRCLE = 18.0
+
+    # === SISTEMA DE PUZZLE ===
+    RED_KEY_SPAWN_GEN = 1
+    RED_KEY_REWARD = 10
+    GOLD_KEY_REWARD = 25
+    DOOR_OPEN_REWARD = 12
+    DOOR_IRON_OPEN_REWARD = 35
+    CHEST_REWARD = 50
   
     # ... más parámetros
 ```
@@ -378,10 +399,11 @@ class SimulationConfig:
 * **`POPULATION_SIZE`**: Tamaño de la población (60)
 * **`MAX_GENERATIONS`**: Generaciones máximas (50)
 * **`HEADLESS_MODE`**: `True` = sin render (rápido), `False` = con visualización
-* **`MUTATION_RATE`**: Tasa de mutación (0.20 = 20%)
-* **`BASE_TICKS`**: Ticks iniciales por generación (600)
-* **`TICKS_INCREMENT_AMOUNT`**: Incremento de ticks (200)
-* **`TICKS_INCREMENT_FREQUENCY`**: Cada cuántas generaciones incrementar (2)
+* **`MODO`**: `"guiado"` o `"autonomo"` (ver Notas Técnicas)
+* **`MUTATION_RATE`**: Tasa de mutación (0.30 = 30%)
+* **`BASE_TICKS`**: Ticks iniciales por generación (960)
+* **`TICKS_INCREMENT_AMOUNT`**: Incremento de ticks (180)
+* **`TICKS_INCREMENT_FREQUENCY`**: Cada cuántas generaciones incrementar (4)
 
 ---
 
@@ -408,15 +430,15 @@ python main.py
 
 ### Modo de Ejecución
 
-El sistema puede ejecutarse en dos modos:
+Se puede correr con ventana o sin ella (aparte del modo guiado o autónomo):
 
-* **Modo visual** (por defecto, `HEADLESS_MODE = False`):
+* **Con ventana** (por defecto, `HEADLESS_MODE = False`):
 
   * Renderizado completo con pygame
   * Panel de estadísticas en tiempo real
   * Popups de resumen generacional
   * Más lento pero visualmente informativo
-* **Modo headless** (`--sin-ventana`, o `HEADLESS_MODE = True`):
+* **Sin ventana** (`--sin-ventana`, o `HEADLESS_MODE = True`):
 
   * Sin renderizado visual
   * Solo output por consola
@@ -434,6 +456,9 @@ python main.py --sin-ventana --generaciones 20 --semilla 7
 
 # Línea base: cada generación arranca con cerebros al azar, sin heredar nada
 python main.py --sin-ventana --generaciones 20 --semilla 7 --sin-evolucion
+
+# Modo autónomo: decide solo la red, sin la guía escrita a mano
+python main.py --sin-ventana --generaciones 20 --semilla 7 --modo autonomo
 ```
 
 Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
@@ -444,26 +469,30 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--generaciones N` | Cantidad de generaciones. Pisa `MAX_GENERATIONS`. |
 | `--semilla S` | Semilla del azar. Sin ella se sortea una y se imprime al arrancar. |
 | `--sin-evolucion` | Línea base: cada generación arranca con cerebros al azar y no hereda nada. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<evolucion\|sin_evolucion>.csv`. |
+| `--modo guiado\|autonomo` | `guiado`: la red más la conducción escrita a mano; `autonomo`: solo la red. Pisa `MODO`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>_<evolucion\|sin_evolucion>.csv`. |
 
-Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: fitness, manzanas,
-vivos, distancia, diversidad y estado del puzzle. **La misma semilla da el mismo CSV byte a byte.**
+Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, fitness,
+manzanas, vivos, edad, distancia, diversidad y cuántos agentes llegaron a cada paso del puzzle. **La
+misma semilla da el mismo CSV byte a byte.**
 
-### Experimento: con evolución contra sin evolución
+### Experimento: los dos modos, con evolución y sin ella
 
 ```bash
-# Semillas 1 a 5, 20 generaciones, tantas corridas a la vez como núcleos menos uno
+# Semillas 1 a 5, 20 generaciones, los dos modos, tantas corridas a la vez como núcleos menos uno
 python experimento.py
 
-# Más chico
-python experimento.py --semillas 1 2 --generaciones 10 --paralelo 2
+# Más chico: un solo modo
+python experimento.py --semillas 1 2 --generaciones 10 --modos autonomo --paralelo 2
 ```
 
-Corre cada semilla con evolución y sin evolución (línea base) y deja en
-`results/experimento_<AAAAMMDD-HHMMSS>/` el CSV y el log de cada corrida, más un `resumen.md`:
-fitness y manzanas por agente en las primeras y las últimas 5 generaciones, la etapa del puzzle, y
-en cuántas semillas la evolución subió más que la línea base. El completo tarda unos 9 minutos
-en una máquina de 12 núcleos.
+Corre cada semilla en cada modo, con evolución y sin evolución (línea base), y deja en
+`results/experimento_<AAAAMMDD-HHMMSS>/` el CSV y el log de cada corrida, más un `resumen.md`. Por
+grupo (modo × evolución): fitness y manzanas por agente en las primeras y las últimas 5
+generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
+comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
+guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
+minutos en una máquina de 12 núcleos.
 
 ### Tests
 
@@ -471,8 +500,9 @@ en una máquina de 12 núcleos.
 python -m pytest -q
 ```
 
-Un test de humo corre `main.py` con sus flags reales (y verifica que la misma semilla dé el mismo
-CSV), y otro verifica las cuentas del resumen del experimento.
+Un test de humo corre `main.py` con sus flags reales, en los dos modos (y verifica que la misma
+semilla dé el mismo CSV). Los demás prueban que las reglas de `config.py` mandan, el puzzle por
+agente, el switch de modos, los reportes y las cuentas del resumen del experimento.
 
 ---
 
@@ -488,13 +518,7 @@ Cada corrida genera:
   * Supervivientes, comida total, distancia recorrida
   * Análisis de clustering (cada 3 generaciones)
   * Monitoreo de aprendizaje (mejoras detectadas)
-* **Logs estructurados** (opcional):
-
-  * `logs/metrics/` - Métricas por generación
-  * `logs/runtime/` - Logs de runtime
-* **Checkpoints** (opcional):
-
-  * `checkpoints/` - Estados de generaciones
+* **CSV de la corrida** en `results/`, con una fila por generación
 
 ### Análisis de Comportamiento
 
@@ -504,13 +528,11 @@ El sistema incluye análisis automático:
 2. **Monitoreo de aprendizaje**: Detecta mejoras en comida y fitness
 3. **Diversidad genética**: Monitorea convergencia prematura
 
-### Resultados Esperados
+### Resultados
 
-* **Evolución natural**: Fitness promedio aumenta gradualmente
-* **Comportamientos emergentes**: Agentes aprenden a comer, explorar, resolver puzzle
-* **Diversidad**: Múltiples estrategias coexisten
-* **Resolución del puzzle**: Agentes eventualmente abren el cofre (fitness 60+)
-* **Adaptación**: Evitan agua, cortan árboles cuando hay poca comida
+Los experimentos, con su lectura, están en [`docs/qa/AnalisisQA.md`](docs/qa/AnalisisQA.md). Lo
+que se mide es cada modo contra su línea base sin evolución, con la misma semilla y en varias
+semillas: que el fitness suba con las generaciones no alcanza, porque la línea base también sube.
 
 ---
 
@@ -518,7 +540,7 @@ El sistema incluye análisis automático:
 
 ### ✅ Módulos Completados
 
-- **`src/agents/`** - Sistema de agentes con red neuronal y aprendizaje puro
+- **`src/agents/`** - Sistema de agentes con red neuronal, en modo guiado o autónomo
 - **`src/world/`** - Mundo procedural con puzzle y recursos
 - **`src/evolution/`** - Algoritmo genético completo (selección, cruce, mutación)
 - **`src/analytics/`** - Métricas, clustering y monitoreo de aprendizaje
@@ -526,11 +548,11 @@ El sistema incluye análisis automático:
 
 ### 🔧 Características Implementadas
 
-- **Aprendizaje puro**: 100% autónomo, sin guía codificada
+- **Dos modos**: guiado (la red más una guía escrita a mano) y autónomo (solo la red)
 - **Red neuronal MLP**: 2 capas ocultas, 5 salidas (incluye acción `hit`)
-- **Sistema de puzzle**: Fortalezas, llaves, puertas, cofre
+- **Sistema de puzzle**: Fortalezas, llaves, puertas, cofre; el avance es de cada agente
 - **Sistema de corte**: Árboles y huts destructibles
-- **Sistema de agua**: Penalizaciones proporcionales
+- **Sistema de agua**: Penalización con tope
 - **Algoritmo genético**: Meeting pool, cruce uniforme, mutación gaussiana
 - **Clustering**: K-Means con PCA para identificar estrategias
 - **Tiempo adaptativo**: Ticks por generación aumentan progresivamente
@@ -552,8 +574,8 @@ El sistema incluye análisis automático:
 El código sigue estos principios:
 
 - **Arquitectura Modular**: Separación clara de responsabilidades
-- **Aprendizaje Puro**: Sin guía codificada, agentes aprenden 100% autónomamente
-- **Configuración Centralizada**: Todo en `config.py` (SimulationConfig)
+- **Dos modos comparables**: El switch cambia solo la guía escrita a mano; todo lo demás es igual
+- **Configuración Centralizada**: Los parámetros en `config.py` (SimulationConfig); los umbrales de la guía quedan en el código
 - **Reproducibilidad**: `--semilla S` siembra todo el azar; la misma semilla da el mismo CSV byte a byte
 - **Performance**: Optimizado para simulaciones largas
 - **Extensibilidad**: Fácil agregar nuevos elementos (obstáculos, recompensas, etc.)
@@ -564,7 +586,7 @@ El código sigue estos principios:
 
 > **El proyecto `Ecosistema Evolutivo IA` está completamente implementado y funcional.**
 
-✅ **Todos los módulos están implementados**✅ **Arquitectura modular y extensible**✅ **Sistema de configuración centralizado**✅ **Interfaz visual completa**✅ **Análisis y métricas**✅ **Aprendizaje puro sin guía codificada**✅ **Sistema de puzzle complejo**✅ **Clustering de comportamientos emergentes**
+✅ **Todos los módulos están implementados**✅ **Arquitectura modular y extensible**✅ **Sistema de configuración centralizado**✅ **Interfaz visual completa**✅ **Análisis y métricas**✅ **Modo guiado y modo autónomo**✅ **Sistema de puzzle complejo**✅ **Clustering de comportamientos emergentes**
 
 > **El sistema está listo para ejecutar simulaciones y experimentos.**
 
@@ -572,24 +594,28 @@ El código sigue estos principios:
 
 ## 📝 Notas Técnicas
 
-### Aprendizaje Puro
+### Modo guiado y modo autónomo
 
-* Los agentes **NO reciben guía codificada** hacia comida, árboles o puzzle
-* Todas las decisiones son tomadas por la red neuronal basándose en percepciones
-* El fitness recompensa comportamientos exitosos, pero no "dirige" el comportamiento
-* Única excepción: Limitación física de giro excesivo para evitar círculos infinitos
+* **Autónomo** (`--modo autonomo`): `decide()` devuelve la salida de la red recortada a [0, 1], sin nada más y sin consumir azar
+* **Guiado** (`--modo guiado`, el de por defecto): la red más una conducción escrita a mano, que **no es aprendizaje**:
+  * Con fitness > 30, lleva al agente hacia la manzana más cercana (o hacia un árbol, si tiene hacha y queda menos del 60% de la comida) y aprieta comer o golpear al alinearse
+  * Con fitness ≤ 30, cada 100 ticks le cambia el rumbo al azar
+  * Con fitness > 65, en el 40% de los ticks, lo empuja hacia su próximo paso del puzzle y aprieta golpear al alinearse
+  * Siempre: ruido de ±0,02 en las salidas, un rumbo al azar en el 2% de los ticks, un reflejo que recorta los giros cuando gira sin parar y ruido al girar
+* **Lo demás es igual en los dos**: mundo, puzzle, sensores, golpear, fitness y los valores de `config.py`. El giro (× 0,12, reducido × 0,6 si pasa de 0,08) es del cuerpo, común a los dos. Así, guiado contra autónomo mide la guía, y cada modo contra su línea base sin evolución mide el aprendizaje
 
 ### Sistema de Fitness
 
 * **Sin dependencia de generación**: El fitness no aumenta artificialmente con las generaciones
 * **Basado en rendimiento real**: Supervivencia, comida, exploración, eficiencia, puzzle
-* **Penalizaciones proporcionales**: Agua penaliza según tiempo transcurrido (sin límite)
+* **Pesos en `config.py`**: `FITNESS_*`, con la forma de la fórmula fija (raíz, logaritmo, topes)
+* **Agua**: La penalización se acumula por tick, con tope de 10 (`WATER_PENALTY_MAX`)
 * **Recompensas del puzzle**: Acumuladas durante la generación, sumadas al fitness final
 
 ### Sistema Adaptativo de Tiempo
 
-* **BASE_TICKS**: 600 ticks iniciales
-* **Incremento**: +200 ticks cada 2 generaciones
+* **BASE_TICKS**: 960 ticks iniciales
+* **Incremento**: +180 ticks cada 4 generaciones
 * **Propósito**: Permitir más tiempo para tareas complejas en generaciones avanzadas
 * **Efecto**: Fitness puede aumentar naturalmente con más tiempo disponible
 
@@ -599,12 +625,12 @@ El código sigue estos principios:
 
 El objetivo principal del ecosistema es que los agentes aprendan a resolver el puzzle:
 
-1. **Aprendizaje básico** (Gen 1-4): Comer, sobrevivir, explorar
-2. **Descubrimiento del puzzle** (Gen 5+): Aparecen llaves, agentes empiezan a interactuar
-3. **Resolución completa**: Agentes aprenden secuencia completa (llave → puerta → cofre)
-4. **Fitness final**: Cuando abren el cofre, fitness promedio debe ser ≥60
+1. **Comer y sobrevivir**: La energía alcanza para 1.000 ticks sin comer; desde la generación 5, el que no come no llega al final
+2. **El puzzle**: La llave roja está desde la generación 1, y cada agente avanza su propia etapa
+3. **Resolución completa**: llave roja → puerta de madera → llave dorada → puerta de hierro → cofre
+4. **Medición**: `experimento.py` dice en cuántas semillas cada modo supera a su línea base
 
-La simulación termina cuando el cofre es abierto, independientemente de la generación.
+Abrir el cofre no termina la simulación: se cuenta cuántos agentes lo abrieron y en qué generación pasó la primera vez.
 
 ---
 

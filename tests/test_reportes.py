@@ -52,10 +52,13 @@ def _etapa(i, cofre_abierto):
     return 2 if i < 4 else 1 if i < 10 else 0
 
 
-def _renglones_del_cuadro(cofre_abierto):
+def _renglones_del_cuadro(cofre_abierto, id_del_top=None):
     """Todos los textos del cuadro final de una corrida de 2 generaciones (1.920 ticks). Con cofre,
-    se abrió por primera vez en la generación 2."""
+    se abrió por primera vez en la generación 2. id_del_top cambia el id del agente de más fitness
+    (el 6: fitness 16)."""
     agentes = [_agente(i, etapa=_etapa(i, cofre_abierto)) for i in range(60)]
+    if id_del_top is not None:
+        agentes[6].id = id_del_top
     monitor = LearningMonitor()
     for generacion in (1, 2):
         monitor.record_generation(generacion, agentes, world=None)
@@ -98,3 +101,24 @@ def test_los_pasos_clave_cuentan_agentes_no_el_estado_del_mundo(cofre_abierto, r
 def test_el_cuadro_muestra_el_tiempo_simulado():
     # DIAG-15: el mismo número que el resumen por consola. Está en el encabezado y en la línea de tiempo
     assert _renglones_del_cuadro(cofre_abierto=False).count("Tiempo simulado: 0.5 min") == 2
+
+
+def test_la_corrida_remite_a_la_linea_base_y_la_pantalla_no_usa_la_flecha():
+    # Decisión 25 (MODOS-25): "¿APRENDIERON?" comparaba contra la generación 1, que no prueba nada
+    # (LEC-001); y la fuente de pygame dibuja el "→" como un cuadrado. Fitness promedio 12,9 y 1,5
+    # manzanas por agente, iguales en las dos generaciones
+    renglones = _renglones_del_cuadro(cofre_abierto=False)
+    assert "¿APRENDIERON?" not in renglones
+    i = renglones.index("LA CORRIDA")
+    assert renglones[i + 1:i + 4] == [
+        "Fitness prom.: gen 1 12.9 -> últimas 2 12.9",
+        "Manzanas por agente: gen 1 1.5 -> últimas 2 1.5",
+        "Si aprendieron se mide contra la línea base: python experimento.py"]
+    assert not any("→" in renglon for renglon in renglones)
+
+
+def test_el_top_agente_muestra_el_id_entero():
+    # Decisión 24: el id es el contador de la corrida; antes se recortaba a los últimos 4 dígitos
+    renglones = _renglones_del_cuadro(cofre_abierto=False, id_del_top=12345)
+    i = renglones.index("TOP AGENTE")
+    assert renglones[i + 1].startswith("Agente #12345: ")

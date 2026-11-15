@@ -1,6 +1,6 @@
 # Spec: Modo guiado y modo autónomo
 
-**Estado:** 🟢 Activo — Parcial: bloque A ✅ (2026-11-14), bloque B ✅ (2026-11-15); bloque C pendiente
+**Estado:** 🟢 Activo — bloques A ✅ (2026-11-14), B ✅ y C ✅ (2026-11-15); falta el cierre (`/close-spec`)
 **Prioridad:** Alta — es el rumbo del proyecto: que los agentes aprendan de verdad y medir ese
 aprendizaje. Hoy no se sabe si aprenden a comer (puede ser la guía escrita a mano), y el puzzle no lo
 pueden aprender: no lo ven ni lo pueden accionar.
@@ -187,21 +187,21 @@ para jugar con ellos después.
   hacha quedan en el mapa.
 - [x] Experimento B corrido (5 × 20, guiado) y registrado en `AnalisisQA.md`, con su lectura contra el A.
 
-**Bloque C — El switch**
-- [ ] `MODO` en `config.py` (por defecto `"guiado"`) y `--modo guiado|autonomo` en `main.py`, que aparece
+**Bloque C — El switch** (✅ 2026-11-15, sesión 3)
+- [x] `MODO` en `config.py` (por defecto `"guiado"`) y `--modo guiado|autonomo` en `main.py`, que aparece
   en `--help` en español.
-- [ ] En autónomo no corre nada de la guía (decisión 3), y `tests/test_modos.py` prueba la decisión 5.
-- [ ] El CSV tiene `modo`, con las columnas en el orden de la decisión 28, y la ruta por defecto incluye
+- [x] En autónomo no corre nada de la guía (decisión 3), y `tests/test_modos.py` prueba la decisión 5.
+- [x] El CSV tiene `modo`, con las columnas en el orden de la decisión 28, y la ruta por defecto incluye
   el modo. En los dos modos, la misma semilla da el mismo CSV, con ventana el mismo que sin ventana, y la
   generación 1 es igual con y sin evolución.
-- [ ] `experimento.py --modos ...` corre semillas × modos × {con, sin} y el resumen trae lo de la
+- [x] `experimento.py --modos ...` corre semillas × modos × {con, sin} y el resumen trae lo de la
   decisión 29, con las tres comparaciones; `tests/test_resumen.py` lo cubre.
-- [ ] La pantalla final sigue la decisión 25 (sin `→`, id por contador, "LA CORRIDA", textos del cofre);
+- [x] La pantalla final sigue la decisión 25 (sin `→`, id por contador, "LA CORRIDA", textos del cofre);
   `test_reportes.py` al día. `popup.py` sin el 50 por defecto.
-- [ ] Experimento de cierre corrido (5 semillas × 30 generaciones × 2 modos × 2) y registrado en
+- [x] Experimento de cierre corrido (5 semillas × 30 generaciones × 2 modos × 2) y registrado en
   `AnalisisQA.md`, con su lectura: qué responde a cada una de las tres preguntas del Objetivo.
-- [ ] `python -m pytest -q` verde en menos de 90 s.
-- [ ] Docs al día: README (modos, flags, 11 sensores, 5 salidas, puzzle por agente, golpear, fitness con
+- [x] `python -m pytest -q` verde en menos de 90 s.
+- [x] Docs al día: README (modos, flags, 11 sensores, 5 salidas, puzzle por agente, golpear, fitness con
   sus pesos en `config.py`, agua con tope, energía; sin "aprendizaje puro" para el modo guiado; sin `logs/`
   ni `checkpoints/`), y cada número de esas secciones coincide con `config.py` o con el código.
   `CLAUDE.md`: § Notas (las tres diferencias del README y "`config.py` no manda en todo" dejan de ser
@@ -533,3 +533,58 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
   - **Trampa:** el experimento de cierre (5 semillas × 30 generaciones × 2 modos × 2) son 20 corridas;
     con 11 a la vez van en dos tandas. Las generaciones 21 a 30 duran entre 1.860 y 2.220 ticks:
     estimado, ~20 min. Lanzarlo con `run_in_background`.
+
+### Sesión 3 — 2026-11-15 — Bloque C
+- **Hecho:** primero `tests/test_modos.py`, contra el código de antes: los 4 tests fallaron, 3 por
+  su aserción (la guía cambia la salida de `decide()` y el rumbo, consume azar y el reflejo recorta
+  el giro) y 1 por `AttributeError` (no existía `MODO`). Después: `MODO = "guiado"` en `config.py` y
+  `--modo` en `main.py`, pisado en la clase; en `decide()`, el autónomo devuelve la salida recortada
+  antes de toda la guía, y en `act()` el reflejo y el ruido al girar corren solo en el guiado; la
+  columna `modo` y la ruta con el modo; `test_humo.py` con tres corridas autónomas;
+  `experimento.py --modos`, con grupos modo × evolución, `comparar_evolucion` y `comparar_modos`
+  (`resumir_modo` pasó a `resumir_grupo`, y `comparar_por_semilla` salió); la pantalla final
+  (decisión 25) y `popup.py` (decisión 26); README, `CLAUDE.md`, y DIAG-01, DIAG-11 y DIAG-28 ✅.
+  Experimento de cierre registrado en
+  [AnalisisQA § experimento de cierre](../../qa/AnalisisQA.md#experimento-modos-cierre). LEC-009.
+  Commit: `modos: el switch guiado/autónomo y el experimento de cierre (bloque C)`.
+- **Estados:** DoD del bloque C completo: los tres bloques ✅, falta el cierre del spec.
+  `python -m pytest -q`: 53 passed en 24 s; los tests nuevos o cambiados fallan contra `e8cb600`
+  (19, corridos en un worktree aparte). Determinismo: semilla 7, 2 generaciones, en los dos modos,
+  el mismo CSV dos veces sin ventana y una con ventana (ESC inyectado en la pantalla final, LEC-004).
+  **El guiado no cambió:** las 20 primeras generaciones del guiado en el experimento de cierre son,
+  byte a byte, las del experimento B (10 de 10 corridas, sin la columna `modo`). MODOS-24:
+  `--semillas 1 2 --generaciones 10` dejó 8 CSV, 8 logs y el resumen; tres corridas recalculadas a
+  mano y las comparaciones K de N coinciden. Experimento de cierre: 16,5 min (20 corridas, 11 a la
+  vez).
+- **Respuesta a las tres preguntas del Objetivo** (detalle en la lectura): 1) el autónomo aprende a
+  comer y a caminar (5 de 5 semillas contra su línea base); 2) la guía suma ~0,4 manzanas por agente
+  encima del aprendizaje, no lo reemplaza; 3) el puzzle no se aprende más allá de la llave roja, que
+  sube porque caminan más (por distancia recorrida, la evolución no la encuentra más que la línea
+  base).
+- **Desvíos del spec, y por qué:**
+  - **El panel muestra el modo**, pedido por Fer en la sesión: renglón "Modo: guiado|autónomo" en
+    `stats.py`, y los renglones pasan a 20 px para que entren 12 en los 300 px del panel. Mirado en
+    una captura del panel con los 12 renglones; con ventana, el CSV sigue igual que sin ventana.
+  - Tests de más: en `test_humo.py`, que el CSV dice el modo y que el autónomo da otra corrida que el
+    guiado con la misma semilla; en `test_resumen.py`, que con un solo modo no se comparan los modos;
+    en `test_modos.py`, que en autónomo el giro no tiene reflejo ni ruido (decisión 3).
+  - "LA CORRIDA" compara la generación 1 contra las últimas 3 (como el fitness de la consola) y sale
+    el "SI/NO" de antes: era el juicio contra la generación 1 que LEC-001 descarta.
+  - `main.py` valida el `MODO` de `config.py`: si no es `guiado` ni `autonomo`, error de argumentos
+    (`config.py` se edita a mano para jugar).
+  - README: además de las secciones del DoD, se corrigieron los números viejos de las secciones que
+    se tocaron (algoritmo genético: 30% de mutación, 95% de cruce, pool del 60%, élite 1; tiempo: 960
+    ticks y 180 más cada 4) y "Resultados esperados", que prometía el cofre.
+- **A medias o bloqueado:** nada del bloque C.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión:** cierre del spec, con `/close-spec docs/specs/active/MODO_GUIADO_Y_AUTONOMO.md`.
+  - **Primer paso:** `git status -sb` limpio y `python -m pytest -q` verde. Después `/close-spec`, que
+    corre `/qa-spec` (MODOS-01 a MODOS-29) con un checker y, si da APROBADO, sigue el checklist.
+  - **Trampa:** los checkers no pueden correr `main.py` ni el experimento (LEC-006). Lo que pide
+    corridas (MODOS-18, MODOS-22, MODOS-24, MODOS-27) sale de esta bitácora y de `AnalisisQA.md`, o
+    se vuelve a correr en la sesión; cada `archivo:línea` que citen se imprime antes de copiarlo.
+  - **Trampa:** los scripts de esta sesión (inyectar ESC con ventana, el control de blancos y CRLF,
+    las capturas) quedaron en el scratchpad y no siguen: si hace falta volver a mirar con ventana, se
+    rearma el de LEC-004.
+  - **Al cerrar:** el ítem 3 del BACKLOG pasa a ✅ y se borra el punto de la memoria del proyecto que
+    apunta a este spec.

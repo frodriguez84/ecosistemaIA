@@ -118,8 +118,6 @@ def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, prime
     """
     cofre_abierto = primera_generacion_cofre is not None
     datos = learning_monitor.generation_data
-    fitness_values = [a.fitness for a in agents]
-    avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
     minutos = minutos_simulados(ticks_totales)
 
     if cofre_abierto:
@@ -145,29 +143,19 @@ def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, prime
         (f"Puerta hierro: {hierro}   Cofre: {cofre}", GRIS),
     ]))
 
-    # 3) ¿Aprendieron? Compara contra la generación 1, no contra la línea base: queda para el ítem 3
-    if len(datos) > 1:
-        initial_avg_fitness = datos[0].get('avg_fitness', 0)
-        # Promedio de las últimas 3 generaciones para evitar fluctuaciones
-        last_gens = datos[-3:]
-        final_avg_fitness = sum(g.get('avg_fitness', 0) for g in last_gens) / len(last_gens)
-        # Mejora significativa: al menos 5 puntos Y al menos 10% de mejora relativa
-        improvement_threshold = max(5.0, initial_avg_fitness * 0.10)
-        improved_flag = "SI" if final_avg_fitness - initial_avg_fitness > improvement_threshold else "NO"
-        # Explorar más: distancia promedio de la generación 1 contra las últimas 3 (al menos 5% más)
-        first_avg_dist = datos[0].get('avg_distance', 0)
-        last_avg_dist = sum(g.get('avg_distance', 0) for g in last_gens) / len(last_gens)
-        explored_more_flag = "SI" if last_avg_dist > first_avg_dist * 1.05 else "NO"
-    else:
-        # Una generación o ninguna: el fitness de ahora contra el de la generación 1, umbral de 5 puntos
-        fitness_delta = avg_fitness - datos[0].get('avg_fitness', avg_fitness) if datos else 0.0
-        improved_flag = "SI" if fitness_delta > 5.0 else "NO"
-        explored_more_flag = "N/A"
-        initial_avg_fitness = final_avg_fitness = avg_fitness
-    secciones.append(("¿APRENDIERON?", [
-        (f"Mejoraron con el tiempo: {improved_flag}", GRIS),
-        (f"Antes vs ahora (fitness prom): {initial_avg_fitness:.1f} → {final_avg_fitness:.1f}", GRIS),
-        (f"Exploraron más: {explored_more_flag}", GRIS),
+    # 3) La corrida: la generación 1 contra las últimas 3 (o las que haya; main.py registra cada
+    # generación antes de llegar acá). Si aprendieron no se ve acá: la línea base sin evolución sube
+    # también (LEC-001, decisión 25)
+    ultimas = datos[-3:]
+    fitness_inicio, manzanas_inicio = datos[0].get('avg_fitness', 0), datos[0].get('avg_food', 0)
+    fitness_final = sum(g.get('avg_fitness', 0) for g in ultimas) / len(ultimas)
+    manzanas_final = sum(g.get('avg_food', 0) for g in ultimas) / len(ultimas)
+    # La fuente de pygame no tiene el glifo de la flecha: en pantalla va "->"
+    secciones.append(("LA CORRIDA", [
+        (f"Fitness prom.: gen 1 {fitness_inicio:.1f} -> últimas {len(ultimas)} {fitness_final:.1f}", GRIS),
+        (f"Manzanas por agente: gen 1 {manzanas_inicio:.1f} -> últimas {len(ultimas)} "
+         f"{manzanas_final:.1f}", GRIS),
+        ("Si aprendieron se mide contra la línea base: python experimento.py", GRIS),
     ]))
 
     # 4) Línea de tiempo. Abrir el cofre no termina la corrida (decisión 11): la primera vez y cuántos
@@ -180,15 +168,13 @@ def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, prime
         (f"Tiempo simulado: {minutos:.1f} min", GRIS),
     ]))
 
-    # 5) Top agente (ID corto)
+    # 5) Top agente, con el id por contador de la corrida (decisión 24): entero, sin recortar
     renglones_top = []
     top_agent = max(agents, key=lambda a: a.fitness) if agents else None
     if top_agent:
-        raw_id = str(top_agent.id)
-        short_id = f"#{raw_id[-4:]}" if len(raw_id) > 4 else f"#{raw_id}"
         top_km = top_agent.distance_traveled / 100 / 1000  # px -> m -> km (1px=1cm)
         top_fitness_capped = min(100.0, getattr(top_agent, 'fitness', 0.0))
-        renglones_top.append((f"Agente {short_id}: fitness {top_fitness_capped:.1f}, comida "
+        renglones_top.append((f"Agente #{top_agent.id}: fitness {top_fitness_capped:.1f}, comida "
                               f"{top_agent.food_eaten} manzanas, recorrio {top_km:.2f} km", GRIS))
     secciones.append(("TOP AGENTE", renglones_top))
 

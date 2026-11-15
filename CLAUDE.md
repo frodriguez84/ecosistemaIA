@@ -49,9 +49,9 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 EcosistemaEvolutivo/
 ├── main.py              ← punto de entrada: flags, semilla, CSV; loop de simulación y render
 ├── config.py            ← SimulationConfig: parámetros centralizados (varios se ignoran, ver Notas)
-├── experimento.py       ← con evolución contra sin evolución, en varias semillas → resumen.md
+├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
-├── tests/               ← pytest: humo de main.py y cuentas del resumen de experimento.py
+├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes y resumen
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── src/
@@ -85,12 +85,17 @@ EcosistemaEvolutivo/
 
 ## Lógica de negocio crítica
 
-<!-- TODO — SE LLENA CON EL PRIMER FEATURE REAL, NO AHORA.
-     Acá va la lógica que un agente DEBE conocer y que no es obvia del código: reglas de
-     negocio, límites por plan, invariantes del dominio, funciones puras centrales. Cada
-     entrada trazable a un spec en docs/specs/. Vacío hasta que exista el primer feature. -->
-
-_(vacío — se llena con el primer feature)_
+- **Dos modos** (`MODO` en `config.py`, `--modo`; por defecto `"guiado"`). Difieren **solo** en la
+  conducción escrita a mano de `decide()` y `act()`: en el autónomo, `decide()` es la salida de la red
+  recortada a [0, 1] y no consume azar. Mundo, puzzle, sensores, golpear, fitness y valores de
+  `config.py` son los mismos. Guiado contra autónomo mide la guía; cada modo contra su línea base sin
+  evolución mide el aprendizaje (spec [Modo guiado y modo autónomo](docs/specs/active/MODO_GUIADO_Y_AUTONOMO.md)).
+- **El puzzle es de cada agente:** etapa de 0 a 5 y hacha propias; una puerta es pared para cada uno
+  hasta que él la abre; las llaves y el hacha se agarran por contacto y quedan en el mapa; puertas,
+  cofre y árboles piden golpear (quinta salida, cuesta `HIT_ENERGY_COST`). Todo vuelve a 0 en cada
+  generación, y abrir el cofre no termina la corrida.
+- **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso del
+  agente.
 
 ---
 
@@ -99,7 +104,7 @@ _(vacío — se llena con el primer feature)_
 - **Español** en comentarios, docstrings, mensajes de consola y textos de pantalla (así está todo
   el código).
 - **Los parámetros van en `config.py`** (`SimulationConfig`), no como números sueltos en el
-  código. Hoy no se cumple del todo (ver Notas).
+  código. Quedan en el código, a propósito, los umbrales de la guía (ver Notas).
 - **Sin formateador ni linter configurados.** No correr black, ruff ni similares con
   `--fix`/`--write` (regla global): reformatearían archivos enteros.
 - **Tests con pytest,** en `tests/`: `python -m pytest -q` (el gate pre-commit los corre). Una
@@ -118,26 +123,25 @@ _(vacío — se llena con el primer feature)_
 <!-- Se gana con el uso: cada nota sale de algo que pasó. Las de abajo salen del diagnóstico
      inicial del 2026-11-14 (docs/qa/AnalisisQA.md#diagnostico-inicial). -->
 
-- **El README describe más de lo que hace el código.** Ante la duda, manda el código. Diferencias
-  conocidas (detalle en [docs/qa/AnalisisQA.md](docs/qa/AnalisisQA.md#diagnostico-inicial)):
-  - `decide()` lleva a mano a los agentes con fitness alto hacia comida, puertas y llaves: no es
-    "aprendizaje puro".
-  - La red tiene 4 salidas, no 5: no existe la acción "golpear". Llaves, puertas y árboles se
-    activan por cercanía.
-  - El estado del puzzle (llaves, puertas, hacha) es del mundo, no de un agente, y persiste entre
-    generaciones.
-- **`config.py` no manda en todo:** el consumo de energía, la energía por comida, el rango de
-  visión, el radio del agente y la recompensa por árbol están fijos en el código.
+- **Ante la duda, manda el código.** El README se puso al día en el bloque C del spec de los modos
+  (agente, puzzle, fitness, agua, energía y modos, con los números de `config.py`); las secciones
+  de clustering, monitor y UI no se revisaron número por número.
+- **`config.py` manda** en energía, consumo, comida, visión, radio, agua, costo de golpear y pesos
+  del fitness. Quedan en el código, a propósito: los umbrales de la guía (30, 65, 40%), el radio de
+  comer (20 px) y los cooldowns de golpear.
 - **Después de editar código, revisar `git diff` por líneas que eran solo espacios.** El Edit vacía
   las líneas en blanco con espacios que van en el texto nuevo, y muchos archivos (CRLF) las tienen.
   Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales
-  de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003).
+  de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003);
+  y `git show HEAD:archivo` da el blob en LF (`core.autocrlf`): para comparar contra HEAD, sin los
+  CR de los dos lados (LEC-009).
   En un archivo CRLF, nunca `sed -i`: lo deja entero en LF y `git diff` no lo muestra (LEC-005).
   Un script de edición escrito con Write pierde los espacios de sus líneas en blanco: que compare
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
-  --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base). El experimento con
-  evolución contra sin evolución en varias semillas es `python experimento.py`.
+  --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base y `--modo autonomo`, el modo
+  sin guía). El experimento con los dos modos, con evolución y sin ella, en varias semillas es
+  `python experimento.py` (`--modos` elige los modos).
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select

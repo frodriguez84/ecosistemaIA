@@ -59,6 +59,15 @@ estado en el BACKLOG.
 > - DIAG-04: cada agente tiene su etapa y su hacha, y arranca en la etapa 0 y sin hacha. La puerta es
 >   pared para cada uno hasta que él la abre, y la recompensa es del que dio el paso. En cada
 >   generación se cierran puertas y cofre, y la llave roja y el hacha se sortean en un lugar nuevo.
+>
+> ✅ DIAG-01 y DIAG-28 (2026-11-15, spec *Aprendizaje*, bloque C). La conducción escrita a mano queda
+> como es, pero solo en el modo guiado (`MODO = "guiado"`, el de por defecto), y el README la describe
+> como guía, no como aprendizaje. En el modo autónomo (`--modo autonomo`), `decide()` es la salida de
+> la red recortada a [0, 1], y `decide()` + `act()` no consumen azar: no corren las ramas de comida y
+> árboles, el temporizador de exploración, las dos ramas del puzzle, el ruido de las salidas, el rumbo
+> al azar del 2%, el reflejo que recorta los giros ni el ruido al girar. `tests/test_modos.py` lo
+> prueba, y sus 4 tests fallaron con el código de antes. Cuánto pone la guía lo mide el
+> [experimento de cierre](#experimento-modos-cierre).
 
 ### Bugs
 
@@ -137,8 +146,8 @@ estado en el BACKLOG.
 >   × 7 generaciones (1.260 ubicaciones), ningún agente arrancó en una fortaleza, sobre un obstáculo
 >   o en el estanque del mapa de su generación. Al verificarlo apareció DIAG-30.
 >
-> DIAG-11, a medias (bloque A): el tope de la penalización por agua es `WATER_PENALTY_MAX` (10), con
-> su test. Falta el README, que sigue diciendo "sin límite": va en el bloque C.
+> ✅ DIAG-11 (bloque A el código, 2026-11-14; bloque C el README, 2026-11-15): el tope de la
+> penalización por agua es `WATER_PENALTY_MAX` (10), con su test, y el README dice que tiene tope.
 
 ### Limpieza y deuda
 
@@ -579,3 +588,102 @@ agentes arrancando a veces sobre la llave roja o el hacha (LEC-008). Mismas conc
 fitness y en manzanas, etapa máxima 1 en todas. Los agentes con llave roja de las generaciones 1 a 5
 eran 2,8 con evolución y 2,0 sin ella: la suerte de arrancar encima ponía entre medio agente y uno
 por generación.
+
+<a id="experimento-modos-cierre"></a>
+
+## Modo guiado y modo autónomo — experimento de cierre (2026-11-15, MODOS-27)
+
+**Qué cambió** (bloque C del [spec](../specs/active/MODO_GUIADO_Y_AUTONOMO.md)): el switch. Con
+`--modo autonomo`, `decide()` es solo la salida de la red y no corre nada de la guía (DIAG-01,
+DIAG-28); con `--modo guiado` (el de por defecto) todo sigue como en el bloque B. **El guiado no
+cambió:** sus 20 primeras generaciones son, byte a byte, las del [experimento del bloque
+B](#experimento-modos-b) en las 10 corridas (sin la columna `modo`).
+
+**Cómo se corrió:** 20 corridas, 11 a la vez, en 12 núcleos: 16,5 min (a ratos con corridas de
+verificación en paralelo). Carpeta `results/experimento_20261115-112804`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 30 --modos guiado autonomo`
+
+**Por grupo** (promedio ± desvío muestral entre semillas):
+
+| Modo | Evolución | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| guiado | Con evolución | 5 | 23.87 ± 0.80 | 36.74 ± 0.89 | 12.87 ± 0.44 | 0.67 ± 0.05 | 1.19 ± 0.04 | 0.52 ± 0.04 | 998 ± 34 | 5.20 ± 1.21 | 1.2 ± 0.4 | 0 de 5 |
+| guiado | Sin evolución | 5 | 20.81 ± 1.02 | 21.28 ± 0.97 | 0.48 ± 1.10 | 0.54 ± 0.06 | 0.60 ± 0.02 | 0.06 ± 0.05 | 906 ± 11 | 1.68 ± 0.66 | 1.4 ± 0.5 | 0 de 5 |
+| autonomo | Con evolución | 5 | 17.49 ± 0.27 | 31.39 ± 2.32 | 13.90 ± 2.38 | 0.24 ± 0.03 | 0.83 ± 0.14 | 0.58 ± 0.12 | 990 ± 36 | 3.16 ± 1.37 | 1.2 ± 0.4 | 0 de 5 |
+| autonomo | Sin evolución | 5 | 16.37 ± 0.36 | 16.58 ± 0.87 | 0.21 ± 0.73 | 0.21 ± 0.05 | 0.20 ± 0.07 | -0.00 ± 0.04 | 884 ± 9 | 0.72 ± 0.36 | 1.2 ± 0.4 | 0 de 5 |
+
+**Comparaciones pareadas por semilla** (un empate no cuenta como más):
+
+- **Autónomo, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5.
+- **Guiado, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5.
+- **Guiado contra autónomo, en las últimas 5:** con evolución, el guiado tuvo más manzanas por agente en 5 de 5 semillas y más agentes con llave roja en 4 de 5; sin evolución, más manzanas en 5 de 5 y más agentes con llave roja en 5 de 5.
+
+**Por corrida:**
+
+| Semilla | Modo | Evolución | Generaciones | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom., últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima | Cofre en la gen. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | guiado | Con evolución | 30 | 24.71 | 37.84 | 13.13 | 0.73 | 1.23 | 0.50 | 1028 | 5.60 | 1 | — |
+| 1 | guiado | Sin evolución | 30 | 21.57 | 22.59 | 1.02 | 0.58 | 0.61 | 0.03 | 918 | 1.20 | 1 | — |
+| 1 | autonomo | Con evolución | 30 | 17.48 | 33.62 | 16.13 | 0.26 | 0.94 | 0.68 | 1045 | 3.00 | 1 | — |
+| 1 | autonomo | Sin evolución | 30 | 16.55 | 17.15 | 0.59 | 0.22 | 0.26 | 0.04 | 883 | 0.60 | 1 | — |
+| 2 | guiado | Con evolución | 30 | 23.34 | 36.61 | 13.27 | 0.65 | 1.20 | 0.56 | 984 | 6.00 | 2 | — |
+| 2 | guiado | Sin evolución | 30 | 20.07 | 20.52 | 0.44 | 0.51 | 0.61 | 0.10 | 907 | 1.20 | 2 | — |
+| 2 | autonomo | Con evolución | 30 | 17.45 | 28.73 | 11.28 | 0.24 | 0.77 | 0.53 | 949 | 1.00 | 1 | — |
+| 2 | autonomo | Sin evolución | 30 | 16.00 | 15.03 | -0.97 | 0.16 | 0.10 | -0.06 | 886 | 0.40 | 1 | — |
+| 3 | guiado | Con evolución | 30 | 24.01 | 37.13 | 13.12 | 0.64 | 1.12 | 0.49 | 1025 | 6.40 | 1 | — |
+| 3 | guiado | Sin evolución | 30 | 22.15 | 21.37 | -0.79 | 0.62 | 0.61 | -0.01 | 909 | 1.60 | 1 | — |
+| 3 | autonomo | Con evolución | 30 | 17.10 | 33.16 | 16.06 | 0.27 | 0.93 | 0.66 | 998 | 4.00 | 1 | — |
+| 3 | autonomo | Sin evolución | 30 | 16.74 | 16.88 | 0.13 | 0.19 | 0.18 | -0.02 | 891 | 1.20 | 1 | — |
+| 4 | guiado | Con evolución | 30 | 24.49 | 36.70 | 12.21 | 0.73 | 1.21 | 0.49 | 1007 | 4.60 | 1 | — |
+| 4 | guiado | Sin evolución | 30 | 20.49 | 20.19 | -0.30 | 0.52 | 0.59 | 0.07 | 907 | 1.60 | 1 | — |
+| 4 | autonomo | Con evolución | 30 | 17.85 | 32.37 | 14.51 | 0.25 | 0.90 | 0.66 | 989 | 3.20 | 1 | — |
+| 4 | autonomo | Sin evolución | 30 | 16.58 | 16.92 | 0.34 | 0.29 | 0.27 | -0.02 | 890 | 0.40 | 1 | — |
+| 5 | guiado | Con evolución | 30 | 22.78 | 35.40 | 12.62 | 0.62 | 1.18 | 0.56 | 945 | 3.40 | 1 | — |
+| 5 | guiado | Sin evolución | 30 | 19.75 | 21.75 | 2.00 | 0.46 | 0.57 | 0.11 | 888 | 2.80 | 2 | — |
+| 5 | autonomo | Con evolución | 30 | 17.57 | 29.06 | 11.49 | 0.20 | 0.60 | 0.40 | 968 | 4.60 | 2 | — |
+| 5 | autonomo | Sin evolución | 30 | 15.95 | 16.91 | 0.96 | 0.17 | 0.21 | 0.04 | 868 | 1.00 | 2 | — |
+
+**Lectura: las tres preguntas del Objetivo.**
+
+1. **¿El modo autónomo aprende? Sí: a comer y a caminar.** Contra su línea base subió más en
+   fitness y en manzanas por agente en 5 de 5 semillas. Las manzanas por agente pasan de 0,24 en las
+   generaciones 1 a 5 a 0,83 en las últimas 5 (×3,4); sin evolución, de 0,21 a 0,20. La peor semilla
+   con evolución (+11,3 de fitness) sube más que la mejor sin ella (+1,0). La distancia recorrida
+   pasa de ~205 a ~1.090 px por agente (×5,3); sin evolución, ~190 las dos. Sin ninguna conducción
+   escrita a mano, la red aprende a avanzar y a comer.
+2. **¿La guía es la que hace comer? En parte: pone un piso, y la evolución suma encima lo mismo en
+   los dos modos.** Sin evolución, la guía sola triplica lo que comen los cerebros al azar (0,60
+   contra 0,20 manzanas por agente en las últimas 5; el guiado tiene más en 5 de 5). Con evolución,
+   el guiado sigue comiendo más (1,19 contra 0,83, 5 de 5), pero lo que suma la evolución es
+   parecido: +0,52 en el guiado y +0,58 en el autónomo. La diferencia entre los modos es de ~0,4
+   manzanas por agente al principio (0,67 contra 0,24) y al final (1,19 contra 0,83): eso es lo que
+   pone la guía; el resto es aprendizaje, en los dos. Es lo que el experimento de cinco semillas no
+   podía separar (DIAG-01).
+3. **¿Alguno aprende el puzzle? Solo el primer paso, y por caminar más.** Con evolución hay más
+   agentes con llave roja en las últimas 5 que en la línea base en 5 de 5 semillas, en los dos modos
+   (guiado 5,2 contra 1,7; autónomo 3,2 contra 0,7). Pero por distancia recorrida no la encuentran
+   más: en las últimas 5, el autónomo con evolución tiene 2,9 agentes con llave roja por cada 1.000
+   px de recorrido promedio, contra 3,8 de su línea base; el guiado, 4,0 contra 4,3. No hay señal de
+   que usen la brújula. Más allá de la llave roja, casi nada: la puerta de madera se abrió en 6 de
+   las 600 generaciones, siempre un agente solo (guiado con evolución, semilla 2, generación 29;
+   guiado sin evolución, semilla 2, generaciones 9 y 11, y semilla 5, generación 18; autónomo,
+   semilla 5, generación 1, que es la misma con evolución y sin ella). Nadie llegó a la llave
+   dorada; el cofre no se abrió.
+
+**Además:**
+- **En las generaciones largas no sobrevive nadie.** En las últimas 5 (2.040 a 2.220 ticks) no queda
+  ningún agente vivo al final, en ningún grupo; la edad promedio está entre 870 y 1.050 ticks. Desde
+  la generación 5, las generaciones que terminan porque murieron todos son de 11 a 16 de 26 en el
+  guiado con evolución y de 18 a 22 en el autónomo sin evolución (la mayoría). La parada de la
+  decisión 22 era del bloque A; acá queda como dato para cuando se juegue con la energía.
+- **Contra el B, el guiado sigue subiendo con más generaciones:** el fitness de las últimas 5 pasa de
+  34,8 (generaciones 16 a 20) a 36,7 (26 a 30), y las manzanas por agente de 1,11 a 1,19.
+- **La población converge igual en los dos modos:** diversidad en la generación 30 entre 0,057 y
+  0,103 con evolución; la línea base, 0,23.
+- **Árboles cortados:** 16 en el guiado con evolución (entre las 5 corridas), 1 en el autónomo con
+  evolución, ninguno sin evolución.
+
+**En corto:** sin guía, la evolución aprende a comer (5 de 5 semillas contra la línea base); la guía
+suma ~0,4 manzanas por agente encima del aprendizaje, no lo reemplaza; el puzzle no se aprende más
+allá de la llave roja, que sube porque caminan más.

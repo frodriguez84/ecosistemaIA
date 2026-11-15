@@ -95,14 +95,17 @@ def _ubicar_agentes(world, agents):
 
 
 # Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6;
-# edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
+# modo, edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
 COLUMNAS_CSV = [
-    "semilla", "evolucion", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
     "agentes_puerta_hierro", "agentes_cofre",
 ]
+
+# Los valores de MODO en config.py y de --modo (decisión 1)
+MODOS = ("guiado", "autonomo")
 
 
 def _leer_argumentos(argv):
@@ -120,9 +123,15 @@ def _leer_argumentos(argv):
                         help="Semilla del azar, para repetir una corrida. Sin ella se sortea una y se imprime.")
     parser.add_argument("--sin-evolucion", action="store_true",
                         help="Línea base: cada generación arranca con cerebros al azar y no hereda nada.")
+    parser.add_argument("--modo", choices=MODOS,
+                        help="guiado: la red más la conducción escrita a mano hacia la comida y el puzzle. "
+                             "autonomo: solo la red. Pisa MODO de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
-                        help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<evolucion|sin_evolucion>.csv.")
+                        help="Dónde escribir el CSV. Por defecto, "
+                             "results/corrida_s<semilla>_<modo>_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
+    if args.modo is None and SimulationConfig.MODO not in MODOS:
+        parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
     if args.generaciones is not None and args.generaciones < 1:
         parser.error("--generaciones tiene que ser 1 o más")
     if args.semilla is not None and not 0 <= args.semilla < 2**32:
@@ -135,7 +144,8 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
     Hace las mismas cuentas que el reporte por consola del final de generación. Los decimales van
     redondeados a 4 para que dos corridas con la misma semilla den el mismo archivo byte a byte.
-    Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso.
+    Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso. El
+    modo se lee de SimulationConfig, donde main() lo pisa.
     """
     fitness = [float(agent.fitness) for agent in agents]
     manzanas = [agent.food_eaten for agent in agents]
@@ -143,6 +153,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
     fila = [
         semilla,
         int(evolucion),
+        SimulationConfig.MODO,
         generacion,
         ticks,
         sum(fitness) / len(fitness),
@@ -262,16 +273,19 @@ def main(argv=None):
         SimulationConfig.HEADLESS_MODE = True
     if args.generaciones is not None:
         SimulationConfig.MAX_GENERATIONS = args.generaciones
+    if args.modo is not None:
+        SimulationConfig.MODO = args.modo
+    modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
     semilla = args.semilla if args.semilla is not None else random.SystemRandom().randrange(1_000_000)
     random.seed(semilla)
     np.random.seed(semilla)
     evolucion = not args.sin_evolucion
-    print(f"🎲 Semilla: {semilla} ({'con' if evolucion else 'sin'} evolución)")
+    print(f"🎲 Semilla: {semilla} (modo {modo}, {'con' if evolucion else 'sin'} evolución)")
 
     ruta_csv = args.csv or os.path.join(
-        "results", f"corrida_s{semilla}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+        "results", f"corrida_s{semilla}_{modo}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
     if os.path.exists(ruta_csv):
         print(f"⚠️ El CSV ya existe y se va a pisar: {ruta_csv}")
     os.makedirs(os.path.dirname(ruta_csv) or ".", exist_ok=True)

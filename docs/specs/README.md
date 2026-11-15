@@ -21,7 +21,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Modo guiado y modo autónomo](active/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | En ejecución por bloques (A reglas, B puzzle, C switch): leer la última entrada de la bitácora antes de tocar el agente, el mundo, `main.py` o `experimento.py` |
+| [Modo guiado y modo autónomo](active/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | Bloques A, B y C ✅; falta el cierre (`/close-spec`): leer la última entrada de la bitácora |
 
 ## 🔵 Planned (`planned/`)
 

@@ -2,8 +2,9 @@
 Test de humo: corre main.py como lo correría una persona, con sus flags reales.
 
 Cuida lo que el spec MEDIR_ANTES_DE_TOCAR necesita que siga andando: que la corrida sin ventana
-termine, que deje el CSV con las columnas acordadas y que la misma semilla dé el mismo archivo.
-Las tres corridas se lanzan juntas, así el test tarda lo que tarda una.
+termine, que deje el CSV con las columnas acordadas y que la misma semilla dé el mismo archivo. En
+los dos modos (spec MODO_GUIADO_Y_AUTONOMO, decisión 31). Las seis corridas se lanzan juntas, así el
+test tarda lo que tarda una.
 """
 
 import csv
@@ -18,27 +19,30 @@ SEMILLA = 7
 GENERACIONES = 2
 TIMEOUT_S = 180
 
-# Decisión 6 del spec (con edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO), escrita acá a
+# Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO), escrita acá a
 # propósito (no importada de main.py): si cambia, el test avisa
 COLUMNAS = [
-    "semilla", "evolucion", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
     "agentes_puerta_hierro", "agentes_cofre",
 ]
 
-# Nombre de la corrida → flags extra
+# Nombre de la corrida → flags extra. Las del guiado van sin --modo: es el modo por defecto
 CORRIDAS = {
     "evolucion_1": [],
     "evolucion_2": [],
     "sin_evolucion": ["--sin-evolucion"],
+    "autonomo_evolucion_1": ["--modo", "autonomo"],
+    "autonomo_evolucion_2": ["--modo", "autonomo"],
+    "autonomo_sin_evolucion": ["--modo", "autonomo", "--sin-evolucion"],
 }
 
 
 @pytest.fixture(scope="module")
 def corridas(tmp_path_factory):
-    """Lanza las tres corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
+    """Lanza las seis corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
     carpeta = tmp_path_factory.mktemp("humo")
     lanzadas = {}
     for nombre, extra in CORRIDAS.items():
@@ -88,18 +92,34 @@ def test_el_csv_tiene_las_columnas_y_una_fila_por_generacion(corridas):
         assert {fila[COLUMNAS.index("semilla")] for fila in filas} == {str(SEMILLA)}, nombre
 
 
-def test_la_misma_semilla_da_el_mismo_csv(corridas):
-    assert corridas["evolucion_1"]["csv"].read_bytes() == corridas["evolucion_2"]["csv"].read_bytes()
+@pytest.mark.parametrize("prefijo", ["", "autonomo_"])
+def test_la_misma_semilla_da_el_mismo_csv(corridas, prefijo):
+    uno, dos = corridas[f"{prefijo}evolucion_1"]["csv"], corridas[f"{prefijo}evolucion_2"]["csv"]
+    assert uno.read_bytes() == dos.read_bytes()
 
 
-def test_sin_evolucion_arranca_igual_que_con_evolucion(corridas):
-    con = _filas(corridas["evolucion_1"]["csv"])[1]
-    sin = _filas(corridas["sin_evolucion"]["csv"])[1]
+@pytest.mark.parametrize("prefijo", ["", "autonomo_"])
+def test_sin_evolucion_arranca_igual_que_con_evolucion(corridas, prefijo):
+    con = _filas(corridas[f"{prefijo}evolucion_1"]["csv"])[1]
+    sin = _filas(corridas[f"{prefijo}sin_evolucion"]["csv"])[1]
     i = COLUMNAS.index("evolucion")
     assert (con[i], sin[i]) == ("1", "0")
-    # Con la misma semilla, la generación 1 es la misma en los dos modos: lo distinto empieza
-    # cuando se arma la generación 2
+    # Con la misma semilla, la generación 1 es la misma con evolución y sin ella: lo distinto
+    # empieza cuando se arma la generación 2
     assert con[:i] + con[i + 1:] == sin[:i] + sin[i + 1:]
+
+
+def test_el_csv_dice_el_modo_y_el_modo_cambia_la_corrida(corridas):
+    # Decisión 28: la columna modo. Sin --modo corre el guiado (decisión 1), y el autónomo, con la
+    # misma semilla, da otra corrida desde la generación 1: la guía cambia lo que hacen los agentes
+    i = COLUMNAS.index("modo")
+    filas = {nombre: _filas(corrida["csv"])[1:] for nombre, corrida in corridas.items()}
+    for nombre, filas_de_la_corrida in filas.items():
+        esperado = "autonomo" if nombre.startswith("autonomo_") else "guiado"
+        assert {fila[i] for fila in filas_de_la_corrida} == {esperado}, nombre
+    guiado, autonomo = filas["evolucion_1"][0], filas["autonomo_evolucion_1"][0]
+    j = COLUMNAS.index("fitness_prom")
+    assert guiado[j] != autonomo[j]
 
 
 def test_el_resumen_final_dice_el_tiempo_simulado(corridas):

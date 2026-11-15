@@ -241,7 +241,8 @@ def test_abrir_el_cofre_no_termina_la_corrida(monkeypatch):
                         lambda *args, **kwargs: finales.append(args[-2:]))
     filas = []
     main._simular(7, True, filas.append)
-    assert [(fila[2], fila[3]) for fila in filas] == [(1, 5), (2, 5)]  # generación, ticks completos
+    generacion, ticks = main.COLUMNAS_CSV.index("generacion"), main.COLUMNAS_CSV.index("ticks")
+    assert [(fila[generacion], fila[ticks]) for fila in filas] == [(1, 5), (2, 5)]  # ticks completos
     assert finales == [(1, 1)]  # primera generación con cofre, y agentes que lo abrieron
 
 
