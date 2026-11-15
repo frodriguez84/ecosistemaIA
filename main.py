@@ -19,7 +19,7 @@ from src.agents.advanced_agent import AdvancedAgent, PASOS_DEL_PUZZLE, agentes_p
 from src.evolution.genetic_algorithm import GeneticAlgorithm
 from src.ui.renderer import SpriteManager, ParticleSystem, dibujar_mundo
 from src.ui.stats import StatsPanel
-from src.ui.popup import SummaryPopup
+from src.ui.avisos import PilaDeAvisos
 from src.ui.pantalla_final import mostrar_pantalla_final
 from src.ui import fuentes
 from src.analytics.learning_monitor import LearningMonitor
@@ -109,6 +109,8 @@ COLUMNAS_CSV = [
 
 # Los valores de MODO en config.py y de --modo (decisión 1)
 MODOS = ("guiado", "autonomo")
+
+PAUSADO = "PAUSADO - Presiona ESPACIO"
 
 
 def _leer_argumentos(argv):
@@ -233,36 +235,6 @@ def _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, l
     print(f"   - ⏱️ Tiempo real acumulado: {elapsed_minutes}m {elapsed_seconds}s")
 
 
-def _datos_del_popup(generation, tick, agents, alive_agents, world, learning_monitor):
-    """Datos del cuadro de resumen de una generación. Solo lee: espera el fitness ya calculado."""
-    alive_agents_for_stats = [a for a in agents if a.alive]
-    trees_cut_this_generation = 0
-    if hasattr(world, 'trees'):
-        trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
-    return {
-        'generation': generation,
-        'avg_fitness': sum(agent.fitness for agent in agents) / len(agents),
-        'max_fitness': max(agent.fitness for agent in agents),
-        'avg_age': sum(agent.age for agent in agents) / len(agents),
-        'avg_food': sum(agent.food_eaten for agent in agents) / len(agents),
-        'avg_energy': (sum(agent.energy for agent in alive_agents_for_stats) / len(alive_agents_for_stats)
-                       if alive_agents_for_stats else 0),
-        'avg_exploration': sum(agent.distance_traveled for agent in agents) / len(agents),
-        'survival_rate': len(alive_agents) / len(agents) * 100,
-        'avg_movement_skill': sum(agent.get_movement_skill() for agent in agents) / len(agents),
-        'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents),
-        'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents),
-        'trees_cut': trees_cut_this_generation,
-        # Puzzle: cuántos agentes llegaron a cada paso
-        'agentes_por_paso': agentes_por_paso(agents),
-        'total_agents': len(agents),
-        'alive_count': len(alive_agents_for_stats),
-        'diversity': learning_monitor.calculate_diversity(agents),
-        'generation_time': 0,  # Se puede calcular si es necesario
-        'generation_time_ticks': tick  # Tiempo en ticks de esta generación
-    }
-
-
 def main(argv=None):
     """Punto de entrada: lee los flags, siembra el azar y corre la simulación escribiendo el CSV."""
     # Antes del primer print: con la salida redirigida a un archivo, Windows usa cp1252 y el
@@ -348,18 +320,14 @@ def _simular(semilla, evolucion, escribir_fila):
         print("🚀 MODO HEADLESS ACTIVADO - Sin render")
     clock = pygame.time.Clock()
     
-    # Crear fuentes una vez (cache para mejor rendimiento)
-    pause_font = pygame.font.Font(None, 24) if not config.HEADLESS_MODE else None
-    
     # Crear sistemas de sprites y partículas
     sprite_manager = SpriteManager()
     particle_system = ParticleSystem()
     graves = []  # Tumbas persistentes hasta la próxima generación
     dead_ids = set()  # Para detectar muertes nuevas sin duplicar tumbas
     
-    # Crear cuadro de resumen
-    summary_popup = SummaryPopup(screen_width, screen_height)
-    fitness_history = []  # Historial de fitness para el gráfico
+    # Avisos arriba del mundo: fin de generación y primera vez de cada paso del puzzle (con ventana)
+    avisos = PilaDeAvisos() if not config.HEADLESS_MODE else None
     
     # Crear monitor de aprendizaje
     learning_monitor = LearningMonitor()
@@ -377,8 +345,8 @@ def _simular(semilla, evolucion, escribir_fila):
     agents = ga._create_random_population()
     _ubicar_agentes(world, agents)
     
-    # Crear panel de estadísticas (más alto)
-    stats_panel = StatsPanel(screen_width - config.get_stats_panel_width(), 10, config.get_stats_panel_width() - 10, 300)  # Panel dinámico
+    # Panel de estadísticas: la columna entera, a la derecha del mundo
+    stats_panel = StatsPanel(config.get_game_area_width(), 0, config.get_stats_panel_width(), screen_height)
     
     print(f"✅ {len(agents)} agentes avanzados creados")
     print(f"✅ {len(world.food_items)} piezas de comida generadas")
@@ -413,12 +381,6 @@ def _simular(semilla, evolucion, escribir_fila):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    # Manejar clicks en el popup de resumen
-                    if event.button == 1:  # Click izquierdo
-                        mouse_pos = event.pos
-                        if summary_popup.handle_click(mouse_pos):
-                            pass  # El popup se cerró automáticamente
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
@@ -485,6 +447,8 @@ def _simular(semilla, evolucion, escribir_fila):
             # Hitos: la primera vez en la corrida que un agente llega a cada paso del puzzle
             for hito in registro.mirar_hitos(agents, generation, tick):
                 print("\n" + linea_de_hito(hito))
+                if avisos is not None:
+                    avisos.avisar_hito(hito)
         
         # Registrar tumbas para agentes que acaban de morir (sin colisión)
         if not paused:
@@ -517,10 +481,6 @@ def _simular(semilla, evolucion, escribir_fila):
             escribir_fila(fila)
             registro.cerrar_generacion(dict(zip(COLUMNAS_CSV, fila)), max_ticks_per_generation, agents)
 
-            # Datos del cuadro de resumen, y el fitness promedio al historial del gráfico
-            generation_data = _datos_del_popup(generation, tick, agents, alive_agents, world, learning_monitor)
-            fitness_history.append(generation_data['avg_fitness'])
-            
             # Registrar datos en el monitor de aprendizaje
             gen_data = learning_monitor.record_generation(generation, agents, world)
             
@@ -536,13 +496,14 @@ def _simular(semilla, evolucion, escribir_fila):
             if generation % 10 == 0:
                 learning_monitor.detect_learning_patterns()
             
-            # Mostrar cuadro de resumen
-            summary_popup.show(generation_data, fitness_history)
-            
             if generation >= max_generations:
                 print("🏁 Límite de generaciones alcanzado. Mostrando resumen final...")
                 mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, registro)
                 return
+
+            # Aviso de fin de generación: después de la última no hay, está la pantalla final
+            if avisos is not None:
+                avisos.avisar_generacion(registro.historia)
 
             # Evolucionar. La línea base (--sin-evolucion) arranca de cero: cerebros al azar, sin herencia
             if evolucion:
@@ -594,14 +555,12 @@ def _simular(semilla, evolucion, escribir_fila):
             # Dibujar partículas
             particle_system.draw(render_surface)
             
-            # Dibujar panel de estadísticas simplificado
-            stats_panel.draw(render_surface, generation, agents, world, tick)
-            
-            # Dibujar cuadro de resumen (si está visible)
-            summary_popup.draw(render_surface)
+            # Panel derecho y avisos arriba del mundo
+            stats_panel.draw(render_surface, generation, agents, world, tick, registro, sprite_manager)
+            avisos.dibujar(render_surface, sprite_manager)
                         
-            if paused and pause_font:
-                pause_text = pause_font.render("PAUSADO - Presiona ESPACIO", True, (255, 0, 0))
+            if paused:
+                pause_text = fuentes.fuente("negrita", 16).render(PAUSADO, True, (255, 0, 0))
                 render_surface.blit(pause_text, (10, 40))
             
             # Escalar y mostrar la superficie renderizada

@@ -39,3 +39,22 @@ def fuente(papel, tamano):
     if clave not in _cargadas:
         _cargadas[clave] = pygame.font.Font(os.path.join(CARPETA, ARCHIVOS[papel]), tamano)
     return _cargadas[clave]
+
+
+def olvidar():
+    """Vacía la caché. Una fuente cargada deja de servir cuando se cierra pygame.font (dibujar con
+    ella cuelga el proceso): quien lo cierra y lo vuelve a abrir, como los tests, llama a esto."""
+    _cargadas.clear()
+
+
+def renglones(fuente_, texto, ancho):
+    """El texto partido en renglones que entran en ese ancho, cortando entre palabras."""
+    resultado, actual = [], ""
+    for palabra in texto.split():
+        probado = f"{actual} {palabra}" if actual else palabra
+        if actual and fuente_.size(probado)[0] > ancho:
+            resultado.append(actual)
+            actual = palabra
+        else:
+            actual = probado
+    return resultado + ([actual] if actual else [])

@@ -816,27 +816,6 @@ class AdvancedAgent:
         else:
             self.metric_novelty = 0.0
     
-    def get_movement_skill(self):
-        """Calcula el porcentaje de habilidad de movimiento."""
-        if self.total_moves == 0:
-            return 0
-        efficiency = self.distance_traveled / self.total_moves
-        return min(100, efficiency * 20)  # Escalar a porcentaje
-    
-    def get_food_skill(self):
-        """Calcula el porcentaje de habilidad para encontrar comida."""
-        if self.total_food_attempts == 0:
-            return 0
-        success_rate = self.food_found_count / self.total_food_attempts
-        return success_rate * 100
-    
-    def get_energy_skill(self):
-        """Calcula el porcentaje de habilidad de gestión de energía."""
-        if self.age == 0:
-            return 0
-        energy_efficiency = self.energy / (self.age * 0.1 + 1)
-        return min(100, energy_efficiency)
-    
     def draw(self, screen, tick, sprite_manager, particle_system):
         """Dibuja el agente en la pantalla."""
         if not self.alive:

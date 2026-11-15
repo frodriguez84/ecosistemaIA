@@ -51,7 +51,7 @@ EcosistemaEvolutivo/
 ├── config.py            ← SimulationConfig: parámetros centralizados (tres no se leen, ver Notas)
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
-├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes, resumen, registro, boletín y fuentes
+├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes, resumen, registro, boletín, fuentes y pantallas
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── assets/fonts/        ← Pixelify Sans e Inter, TTF estáticos con licencia OFL (origen en su LEEME.md)
@@ -68,7 +68,7 @@ EcosistemaEvolutivo/
 │   │   ├── clustering.py          ← K-Means + PCA sobre comportamientos
 │   │   ├── registro.py            ← registro de la corrida: filas del CSV, hitos, mejor agente, mapa de calor (sin azar)
 │   │   └── boletin.py             ← boletín final (datos y texto de consola), formato de números, escala de gráficos
-│   └── ui/                        ← renderer (sprites, partículas, dibujar_mundo), panel de stats, popup de resumen, pantalla final
+│   └── ui/                        ← renderer (sprites, partículas, dibujar_mundo), panel con gráficos, avisos, gráficos, fuentes y pantalla final (el boletín)
 ├── docs/                ← metodología: specs, backlog, QA (índice en docs/README.md)
 └── .claude/             ← skills del proyecto y hook pre-commit
 ```

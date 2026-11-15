@@ -5,6 +5,36 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-013 — 2026-11-15 — Una fuente de pygame guardada en caché deja de servir cuando se cierra `pygame.font`
+
+**Qué pasó.** En el bloque B de [Pantallas para ver aprender](../specs/active/PANTALLAS_VER_APRENDER.md),
+`src/ui/fuentes.py` carga cada fuente una sola vez y la guarda en un diccionario del módulo. Los tests
+de pantallas cierran pygame al terminar (`pygame.quit()`) y los de fuentes cierran `pygame.font`; el
+módulo siguiente volvía a abrirlo, pero la caché seguía devolviendo las fuentes viejas, y dibujar con
+una de ellas colgó el proceso entero ("Windows fatal exception: access violation"), sin un error de
+Python que dijera cuál. Pasaba en los dos órdenes de los módulos. `pygame.register_quit` no sirvió
+para vaciarla: su lista se vacía con el primer `pygame.quit()` y `pygame.font.quit()` no la llama.
+
+**Regla.** Un objeto de pygame guardado en un módulo vale mientras pygame siga abierto. Quien lo cierra
+y lo vuelve a abrir (en este repo, solo los tests) vacía la caché: `fuentes.olvidar()`, al abrir y al
+cerrar el fixture. Aplicada en el docstring de `fuentes.olvidar` y en los fixtures de
+`tests/test_fuentes.py` y `tests/test_pantallas.py`.
+
+## LEC-012 — 2026-11-15 — Una fuente de píxeles se mira dibujada por pygame, al tamaño en que se usa
+
+**Qué pasó.** La maqueta aprobada de [Pantallas para ver aprender](../specs/active/PANTALLAS_VER_APRENDER.md)
+usaba Pixelify Sans a 22 y 34 px, y en el navegador se veía bien. Dibujada por pygame, la "C" y la
+"c" salían cerradas, iguales a la "O" y la "o": "Eoosistema", "Oorrida terminada". La abertura mide
+unas 35 de 1.000 unidades, menos de medio "píxel" de diseño, y a 21, 22, 30, 33, 34 y 35 px el
+rasterizador la cierra. Se vio en la primera captura de la pantalla final; el test de caracteres
+faltantes no lo podía ver, porque el glifo existe.
+
+**Regla.** Un tamaño de fuente que viene de una maqueta se confirma en una captura de pygame, no en el
+navegador; y con Pixelify Sans, un título va en un tamaño donde la "C" queda abierta (16, 18, 20,
+23, 24, 26, 28, 32, 36 o 40 px). Aplicada en `tests/test_fuentes.py`
+(`test_la_c_de_los_titulos_queda_abierta`, sobre los tamaños que usan los módulos) y en las trampas
+de la bitácora del spec.
+
 ## LEC-011 — 2026-11-15 — El scratchpad es de una sola sesión: una referencia para otra sesión no puede vivir ahí
 
 **Qué pasó.** El spec de [Pantallas para ver aprender](../specs/active/PANTALLAS_VER_APRENDER.md)

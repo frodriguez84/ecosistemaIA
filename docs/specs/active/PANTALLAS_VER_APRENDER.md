@@ -1,6 +1,7 @@
 # Spec: Pantallas para ver aprender
 
-**Estado:** 🟢 Activo — Parcial: bloque A (los datos) ✅ 2026-11-15; bloque B (las pantallas) pendiente
+**Estado:** 🟢 Activo — Parcial: bloque A (los datos) ✅ 2026-11-15; bloque B (las pantallas) ✅ 2026-11-15;
+falta el cierre (`/close-spec`)
 **Prioridad:** Alta — es el ítem 4 del [BACKLOG](../../product/BACKLOG.md). Fer decidió hacerlo antes
 que el puzzle aprendible (ítem 5), para que lo que sigue se disfrute mirando: lo que más le gusta es
 mirar cómo aprenden.
@@ -146,21 +147,21 @@ marcas de hitos en el gráfico (decisión 14).
   modos), el mismo CSV que sin ventana.
 - [x] `python -m pytest -q` verde en menos de 90 s.
 
-**Bloque B — Las pantallas**
-- [ ] `grep` no encuentra `popup.py`, `SummaryPopup`, `_datos_del_popup`, `MOUSEBUTTONDOWN`,
+**Bloque B — Las pantallas** (✅ 2026-11-15, sesión 2)
+- [x] `grep` no encuentra `popup.py`, `SummaryPopup`, `_datos_del_popup`, `MOUSEBUTTONDOWN`,
   `get_movement_skill`, `get_food_skill` ni `get_energy_skill` en el código.
-- [ ] El panel sigue la decisión 9, con los dos gráficos en vivo y la escala de la decisión 10.
-- [ ] Los avisos siguen las decisiones 11 y 12.
-- [ ] La pantalla final sigue la decisión 14: no tiene MOVIMIENTO ni CLUSTERING, y la frase del cofre
+- [x] El panel sigue la decisión 9, con los dos gráficos en vivo y la escala de la decisión 10.
+- [x] Los avisos siguen las decisiones 11 y 12.
+- [x] La pantalla final sigue la decisión 14: no tiene MOVIMIENTO ni CLUSTERING, y la frase del cofre
   está una sola vez.
-- [ ] `grep "font.Font(None"` solo encuentra los rótulos de respaldo de `src/world/obstacles.py`.
-- [ ] `tests/test_pantallas.py` verde, con su control anotado en la bitácora.
-- [ ] La verificación con ventana de la decisión 18 está hecha y anotada: corrida hasta el final sin
+- [x] `grep "font.Font(None"` solo encuentra los rótulos de respaldo de `src/world/obstacles.py`.
+- [x] `tests/test_pantallas.py` verde, con su control anotado en la bitácora.
+- [x] La verificación con ventana de la decisión 18 está hecha y anotada: corrida hasta el final sin
   clics, ESC cierra, capturas miradas, log con el boletín y los hitos, CSV igual que sin ventana en los
   dos modos.
-- [ ] Las 4 corridas dan los 4 CSV de referencia byte a byte.
-- [ ] `python -m pytest -q` verde en menos de 90 s.
-- [ ] Docs al día: README (árbol de `src/ui/`, las líneas que nombran el popup, la pantalla final y el
+- [x] Las 4 corridas dan los 4 CSV de referencia byte a byte.
+- [x] `python -m pytest -q` verde en menos de 90 s.
+- [x] Docs al día: README (árbol de `src/ui/`, las líneas que nombran el popup, la pantalla final y el
   panel, y la licencia de las fuentes), `CLAUDE.md` (árbol: `ui/` sin el popup) y DIAG-32 ✅ en
   `AnalisisQA.md`.
 
@@ -480,3 +481,83 @@ sha256sum "$S"/nuevo_*.csv   # contra la tabla
   - **Trampas:** Pixelify Sans no tiene la `→` (ningún título puede llevarla). Los títulos de los hitos
     están en `boletin.TITULOS_DE_HITOS`; los subtítulos de los avisos (decisión 12) todavía no existen.
     Las notas de edad y recorrido dicen "se alargan" solo si es verdad (desvío confirmado por Fer).
+
+### Sesión 2 — 2026-11-15 — Bloque B (las pantallas)
+
+- **Hecho** (commit `pantallas: bloque B, las pantallas`): sale el popup (decisión 1): `src/ui/popup.py`,
+  `SummaryPopup` (también de `src/ui/__init__.py`), `_datos_del_popup`, `fitness_history` y el clic de
+  `main.py`, y `get_movement_skill`, `get_food_skill` y `get_energy_skill` (`grep`: nadie más los llamaba).
+  Sale el cuadro final de antes (decisión 2): `textos_del_cuadro`, `_dibujar_cuadro`, `_grafico_de_fitness`
+  y `_renglones_de_clustering`. Nuevos: `src/ui/graficos.py` (`dibujar_grafico` con la escala de la
+  decisión 10, `x_de`, `rotulo_del_eje`), `src/ui/avisos.py` (`PilaDeAvisos` con el reloj como parámetro,
+  `textos_de_generacion`, `textos_de_hito`; duraciones y medidas como constantes del módulo). Reescritos:
+  `src/ui/stats.py` (el panel de la decisión 9; los gráficos se dibujan una vez por generación en una
+  `Surface`) y `src/ui/pantalla_final.py` (`dibujar_boletin`, la decisión 14). `fuentes.py` suma
+  `renglones` (partir texto) y `olvidar` (vaciar la caché). `main.py`: el panel ocupa la columna entera
+  (x 960, 240×800), los avisos de hito salen del mismo `for` que la línea de consola, el de fin de
+  generación va después del `return` de la última, y el "PAUSADO" usa Inter Bold. Tests:
+  `tests/test_pantallas.py` (nuevo, 20), `test_fuentes.py` (los textos salen de los módulos nuevos, más
+  el test de la "C" abierta) y `test_reportes.py` (queda el de DIAG-14). Docs: README (árbol de
+  `src/ui/` y las líneas del popup, el panel y la pantalla final), `CLAUDE.md` (árbol), DIAG-32 ✅ en
+  `AnalisisQA.md` y el sub-ítem del popup en `mejoras_futuras.md`.
+- **Verificación:** las 4 corridas dan los 4 SHA-256 de la tabla de arriba. `python -m pytest -q`:
+  123 verdes en 24 s. Con ventana (`ventana.py` del scratchpad: envuelve `main.mostrar_pantalla_final`
+  para prender una bandera, `pygame.event.get` para mandar ESC cuando la pantalla final ya se capturó,
+  `pygame.display.flip` para las capturas y `PilaDeAvisos` para saber cuándo hay avisos;
+  `TARGET_FPS` = 100.000): semilla 1, 5 generaciones, guiado, 124 s, código 0, un solo ESC, sin ningún
+  clic; el log tiene la línea del hito (llave roja, generación 2, la primera fila con
+  `agentes_llave_roja` > 0) y el boletín. Semilla 7, 2 generaciones, en los dos modos: código 0 (32 s cada una), el boletín y la línea del hito en el log; el CSV con ventana es igual al de sin ventana (`cmp`) en las tres corridas, también la de la semilla 1. Capturas miradas (en el scratchpad, no en el
+  repo): aviso de fin de generación con datos reales ("Generación 2 terminada · Fitness promedio 24,5
+  +2,6 · Manzanas por agente 0,75 +0,12", los de la maqueta), aviso de la primera llave roja, panel con
+  los dos gráficos y el puzzle, y la pantalla final (gen 1: 36 % del mapa, como la maqueta; mejor
+  agente con fitness 69,7, el máximo de `fitness_max`).
+- **Controles de `test_pantallas.py` y del test nuevo de `test_fuentes.py`** (cada uno con un plugin de
+  pytest del scratchpad, `controles_b.py`, que rompe una cosa sin tocar el código; los 7 fallan, como
+  tienen que fallar): `x_de` sin la guarda de una generación (la división por cero con G = 1) → fallan el
+  panel y la pantalla final con 1 generación y el test con ventana · el aviso de generación sin vencer
+  (duración 10⁹ ms) → falla el de 2,5 s · el de hito sin vencer → falla el de 4 s · sin tope de 3
+  hitos → falla el de la pila · `main.py` con el aviso de fin de generación antes de la pantalla final
+  (cargado desde una copia) → falla el test con ventana (avisa 1, 2 y 3) · el gráfico de fitness de
+  170 px → falla "sin pisar el pie" con murieron todos · el título final a 34 px → falla el de la "C".
+- **Estados:** DoD del bloque B completo. QA (para `/qa-spec` al cerrar): PANTALLAS-11 a 18 cubiertos
+  por tests, corridas y capturas; 01 cerrado en los dos bloques; 17 completo.
+- **Desvíos del spec, y por qué:**
+  - **Los títulos en Pixelify van a 24 px (panel) y 32 px (pantalla final), no a 22 y 34 como la
+    maqueta:** Pixelify Sans Bold cierra la abertura de la "C" y de la "c" a 21, 22, 30, 33, 34 y 35 px
+    (mide ~35 de 1.000 unidades, menos de medio "píxel" de diseño), y se leía "Eoosistema" y "Oorrida
+    terminada". `test_fuentes.py` lo vigila en los cuatro tamaños de títulos que se usan.
+  - **Los títulos de sección ("FITNESS POR GENERACIÓN", "PUZZLE"…) van en Inter SemiBold,** como en la
+    maqueta, no en Pixelify: en Pixelify van "Ecosistema", "Corrida terminada" y los títulos de los
+    avisos. La lista `TITULOS` del bloque A los tenía como títulos.
+  - **`fuentes.olvidar()`, que el spec no tenía:** una fuente cargada deja de servir cuando se cierra
+    `pygame.font`, y dibujar con ella cuelga el proceso (access violation). Pasaba entre
+    `test_fuentes.py` y `test_pantallas.py`, en cualquier orden; los dos fixtures la llaman al abrir y
+    al cerrar. `pygame.register_quit` no sirve: se vacía con el primer `pygame.quit()`.
+  - **Las marcas del gráfico salen del embudo** (la primera fila del CSV con el paso), no de
+    `registro.hitos`: por la decisión 5 dan la misma generación, y así el gráfico y el embudo no pueden
+    decir cosas distintas.
+  - **`mostrar_pantalla_final` conserva `generation` en la firma,** aunque ya no la usa: los tests de
+    `test_reglas.py` y `test_pantallas.py` la reemplazan leyendo los argumentos por posición.
+  - **Textos que el spec no fijaba:** en el panel, "Con hacha: 3" y "Llave roja: 2" (lo de antes, sin
+    el asterisco); la generación anterior dice "con llave roja", "con llave dorada" o "abrieron la
+    puerta de madera / de hierro / el cofre", en singular con 1; la marca del cofre es "1er cofre · gen
+    N"; la tarjeta es "MEJOR AGENTE DE LA CORRIDA"; una diferencia de 0 en el aviso va en gris, y la que
+    baja, en naranja `#e88a3c`; "murieron todos" va debajo del embudo; antes de la generación 1, los
+    títulos de los gráficos quedan y el aviso va debajo del primero.
+- **A medias o bloqueado:** nada del B. Falta el cierre: no entró en esta sesión por contexto.
+- **Para verificar en producción:** N/A (no hay producción).
+- **Próxima sesión — Cierre:**
+  1. `git status -sb` limpio, en `main`, con el commit del bloque B.
+  2. `/close-spec docs/specs/active/PANTALLAS_VER_APRENDER.md`. Los checkers de `/qa-spec` no pueden
+     correr `main.py` (LEC-006): las corridas que pide el QA se rehacen frescas en la sesión. Las 4 de
+     referencia, con el bloque de comandos de arriba contra los SHA-256 de la tabla. Con ventana, con el
+     patrón de `ventana.py` que describe "Verificación" (el scratchpad de esta sesión no lo ve la
+     próxima: se rearma): semilla 7, 2 generaciones, en los dos modos, contra el CSV sin ventana; y
+     semilla 1, 5 generaciones, guiado, para las capturas (~2 minutos).
+  3. Los IDs PANTALLAS-01 a 18 van a una sección nueva de `docs/qa/AnalisisQA.md`; PANTALLAS-12, 13, 14
+     y 15 piden captura: se miran las de la semilla 1. Con 2 generaciones no alcanza: el aviso de la
+     generación 1 va sin diferencias, después de la última no hay aviso y el panel tiene un solo punto.
+  4. Después del cierre, borrar la memoria `spec-en-ejecucion` (el spec deja de estar en ejecución).
+  - **Trampas:** Pixelify Sans Bold cierra la "C" en algunos tamaños (ver desvíos): un título nuevo
+    va en 16, 18, 20, 23, 24, 26, 28, 32, 36 o 40 px. Un test que cierra pygame llama a
+    `fuentes.olvidar()`. Las capturas con ventana tardan: 5 generaciones, ~2 minutos.

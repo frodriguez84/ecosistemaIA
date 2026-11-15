@@ -9,6 +9,7 @@ detecta comparando su dibujo con el de un carácter que seguro no está (U+0378,
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pygame
 import pytest
@@ -16,44 +17,76 @@ import pytest
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
+from main import PAUSADO  # noqa: E402
 from src.analytics.boletin import TITULOS_DE_HITOS, armar_boletin  # noqa: E402
-from src.ui import fuentes  # noqa: E402
+from src.ui import avisos, fuentes, pantalla_final, stats  # noqa: E402
+from src.ui.graficos import rotulo_del_eje  # noqa: E402
 from test_boletin import _con_cofre, _fila, _registro, _siete_generaciones  # noqa: E402
 
 CARPETA = RAIZ / "assets" / "fonts"
 SIN_ASIGNAR = "͸"
 
+
+def _historia(**valores):
+    """Las filas de 11 generaciones; la última con esos valores."""
+    filas = [_fila(g) for g in range(1, 12)]
+    filas[-1].update(valores)
+    return filas
+
+
 # Los títulos van con Pixelify Sans: no pueden llevar "→", que esa fuente no tiene
-TITULOS = [
-    "Ecosistema", "Corrida terminada", "FITNESS POR GENERACIÓN", "MANZANAS POR AGENTE", "PUZZLE",
-    "FITNESS PROMEDIO", "EDAD PROMEDIO", "RECORRIDO PROMEDIO", "POR DÓNDE CAMINARON", "MEJOR AGENTE",
-    "PUZZLE: CUÁNTOS LLEGARON A CADA PASO EN LA ÚLTIMA GENERACIÓN",
-]
-# Los textos fijos del panel, de los avisos y de la pantalla final (decisiones 9, 11, 12 y 14), con
-# números de ejemplo. El bloque B los reemplaza por los de sus módulos
-TEXTOS_FIJOS = [
-    "Generación", "12 de 30", "Modo", "guiado", "autónomo", "Tiempo", "00:00", "Vivos", "Muertos",
-    "Comida", "Promedio", "Máximo", "Máx. 64,7", "Prom. 39,7", "G1", "G11", "Esta generación:",
-    "nadie todavía", "agentes con hacha", "Gen 11: 2 agentes con llave roja",
-    "Gen 11: nadie agarró la llave roja", "ESPACIO pausa", "+ − zoom", "ESC salir",
-    "Se dibuja al terminar la generación 1", "Generación 11 terminada",
-    "Fitness promedio 31,2 +1,1 · Manzanas por agente 1,10 −0,18", *TITULOS_DE_HITOS,
-    "Un agente la agarró en la generación 2", "Un agente abrió la de madera en la generación 2",
-    "Un agente la abrió en la generación 2", "Un agente lo abrió en la generación 2",
-    "Hasta dónde llegaron:", "1ª llave roja · gen 2", "poco tiempo", "mucho", "ESC o ENTER para salir",
-    "PAUSADO - Presiona ESPACIO", "0,5", "1,5", "−5", "125",
-]
+TITULOS = [stats.TITULO, _con_cofre()["titulo"], *TITULOS_DE_HITOS,
+           avisos.textos_de_generacion(_fila(11), None)[0]]
+TAMANOS_DE_TITULOS = [stats.TAMANO_TITULO, pantalla_final.TAMANO_TITULO,
+                      avisos.TAMANO_TITULO_GENERACION, avisos.TAMANO_TITULO_HITO]
+
+
+def _textos_de_las_pantallas():
+    """Los textos del panel, de los avisos, de la pantalla final y del "PAUSADO" (decisiones 9, 11,
+    12 y 14), sacados de sus módulos con datos de mentira."""
+    mundo = SimpleNamespace(food_items=[{"eaten": False}] * 70)
+    agentes = [SimpleNamespace(alive=i < 40, tiene_hacha=i < 3, etapa=5 - i if i < 5 else 0) for i in range(60)]
+    textos = [stats.TITULO_FITNESS, stats.TITULO_MANZANAS, stats.TITULO_PUZZLE, stats.SIN_GRAFICOS,
+              stats.ESTA_GENERACION, stats.NADIE_TODAVIA, PAUSADO]
+    textos += [nombre for nombre, _ in stats.LEYENDA]
+    textos += [tecla for teclas, que_hace in stats.TECLAS for tecla in (*teclas, que_hace)]
+    for rotulo, valor in stats.datos_de_la_generacion(12, agentes, mundo, 3599):
+        textos += [rotulo, valor]
+    textos += stats.renglones_del_puzzle(agentes, [])[0]
+    for paso in range(6):
+        columnas = {columna: 2 if i < paso else 0
+                    for i, columna in enumerate(("agentes_llave_roja", "agentes_puerta_madera",
+                                                 "agentes_llave_dorada", "agentes_puerta_hierro",
+                                                 "agentes_cofre"))}
+        for cantidad in (1, 2):
+            columnas = {c: (cantidad if v else 0) for c, v in columnas.items()}
+            textos.append(stats.renglones_del_puzzle(agentes, _historia(**columnas))[1][1])
+    for anterior in (None, _fila(10, fitness_prom=40.0, manzanas_prom=2.0)):
+        titulo, segmentos = avisos.textos_de_generacion(_fila(11, fitness_prom=31.2, manzanas_prom=1.1), anterior)
+        textos += [titulo, *(texto for texto, _ in segmentos)]
+    for paso in range(1, 6):
+        textos += avisos.textos_de_hito({"paso": paso, "generacion": 29, "tick": 1, "agente": 1})
+    textos += [pantalla_final.TITULO_FITNESS, pantalla_final.TITULO_MANZANAS, pantalla_final.TITULO_MAPAS,
+               pantalla_final.TITULO_EMBUDO, pantalla_final.TITULO_MEJOR, pantalla_final.HASTA_DONDE,
+               pantalla_final.NOTA_CALOR, *pantalla_final.LEYENDA_CALOR, *pantalla_final.SALIR]
+    textos += [nombre for nombre, _ in pantalla_final.LEYENDA]
+    textos += [texto for _, texto in pantalla_final.marcas_del_grafico(_con_cofre())]
+    textos += ["Máx. 64,7", "Prom. 39,7", "G1", "G30", "Gen 1", "Gen 15", "Gen 30"]
+    textos += [rotulo_del_eje(valor) for valor in (0, 0.2, 0.5, 1.5, 2.5, 125, -5)]
+    return textos
 
 
 @pytest.fixture(scope="module", autouse=True)
 def _pygame_font():
+    fuentes.olvidar()
     pygame.font.init()
     yield
     pygame.font.quit()
+    fuentes.olvidar()
 
 
-def _dibujo(fuente, caracter):
-    superficie = fuente.render(caracter, True, (255, 255, 255), (0, 0, 0))
+def _dibujo(fuente, caracter, suavizado=True):
+    superficie = fuente.render(caracter, suavizado, (255, 255, 255), (0, 0, 0))
     return superficie.get_size(), pygame.image.tobytes(superficie, "RGB")
 
 
@@ -115,10 +148,19 @@ def test_cada_caracter_de_los_titulos_esta_en_pixelify_sans():
         assert faltan(titulo, texto) == [], texto
 
 
+def test_la_c_de_los_titulos_queda_abierta():
+    # Pixelify Sans Bold cierra la "C" y la "c" en algunos tamaños (a 22 y 34 px, por ejemplo): se
+    # leían "Eoosistema" y "Oorrida terminada"
+    for tamano in TAMANOS_DE_TITULOS:
+        titulo = fuentes.fuente("titulo", tamano)
+        for abierta, cerrada in (("C", "O"), ("c", "o")):
+            assert _dibujo(titulo, abierta, suavizado=False) != _dibujo(titulo, cerrada, suavizado=False), tamano
+
+
 @pytest.mark.parametrize("papel", ["texto", "seminegrita", "negrita"])
 def test_cada_caracter_del_resto_esta_en_inter(papel):
     fuente = fuentes.fuente(papel, 14)
-    textos = _textos_del_boletin() + TEXTOS_FIJOS + TITULOS
+    textos = _textos_del_boletin() + _textos_de_las_pantallas() + TITULOS
     assert "→" in "".join(textos) and "×" in "".join(textos) and "−" in "".join(textos)
     for texto in textos:
         assert faltan(fuente, texto) == [], texto

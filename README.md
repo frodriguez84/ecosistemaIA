@@ -87,10 +87,11 @@ EcosistemaEvolutivo/
 │   │
 │   └── ui/                 # Interfaz de usuario
 │       ├── renderer.py     # Renderizado con pygame (sprites, partículas)
-│       ├── stats.py        # Panel de estadísticas
-│       ├── popup.py        # Popup de resumen generacional
+│       ├── stats.py        # Panel derecho: datos, gráficos de fitness y manzanas, puzzle y teclas
+│       ├── graficos.py     # Gráfico de líneas con escala automática (panel y pantalla final)
+│       ├── avisos.py       # Avisos arriba del mundo: fin de generación y primera vez de cada paso
 │       ├── fuentes.py      # Fuentes de las pantallas (Pixelify Sans e Inter)
-│       └── pantalla_final.py  # Resumen final: el boletín por consola y un cuadro con ventana
+│       └── pantalla_final.py  # El boletín final: por consola y, con ventana, en una pantalla
 │
 ├── assets/
 │   ├── fonts/              # Fuentes de las pantallas (licencia OFL, ver LEEME.md)
@@ -173,10 +174,11 @@ EcosistemaEvolutivo/
   * Sistema de sprites (personajes, objetos, entorno)
   * Sistema de partículas para efectos visuales
   * Renderizado de agentes, mundo, HUD
-* **`stats.py`**: Panel lateral de estadísticas en tiempo real
-* **`popup.py`**: Popup de resumen al final de cada generación
+* **`stats.py`**: Panel derecho, la columna entera: generación, modo, tiempo, vivos, muertos y comida; los gráficos de fitness (promedio y máximo) y de manzanas por agente de cada generación terminada; el puzzle de esta generación y de la anterior; las teclas
+* **`graficos.py`**: Gráfico de líneas con la escala automática de `boletin.py` (nunca de 0 a 100 fijo); lo usan el panel y la pantalla final
+* **`avisos.py`**: Avisos arriba del mundo, que no tapan ni frenan nada: el fin de cada generación (2,5 s, con la diferencia contra la anterior) y la primera vez que un agente llega a cada paso del puzzle (4 s, hasta 3 a la vez)
 * **`fuentes.py`**: Carga las fuentes de `assets/fonts/` (Pixelify Sans para los títulos, Inter para el resto); si falta una, `main.py` con ventana se corta al arrancar
-* **`pantalla_final.py`**: Resumen final de la corrida: el boletín por consola, con ventana y sin ella; con ventana, además, un cuadro sobre el último cuadro de la simulación, hasta ESC o ENTER
+* **`pantalla_final.py`**: El boletín de la corrida: por consola, con ventana y sin ella; con ventana, además, en una pantalla sobre el último cuadro del mundo oscurecido, hasta ESC o ENTER: los cuatro números (la generación 1 contra las últimas 5), los gráficos con los pasos del puzzle marcados, el mapa de calor de la generación 1 y de la última, el embudo del puzzle y el mejor agente de la corrida
 
 ### 6. `config.py`
 
@@ -226,7 +228,7 @@ EcosistemaEvolutivo/
      * Cruce uniforme
      * Mutación gaussiana
      * Nueva población
-   * **Resumen**: Popup con estadísticas de la generación
+   * **Resumen**: el reporte por consola y, con ventana, un aviso arriba del mundo con el fitness y las manzanas contra la generación anterior
    * **Reinicio**: Nuevo mapa, puzzle reiniciado, nueva población (evolucionada, o al azar en la línea base)
 3. **Condición de fin**:
 
@@ -305,7 +307,7 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 3. **Golpear** es la quinta salida de la red (> 0,5). Cuesta 0,05 de energía por tick (`HIT_ENERGY_COST`), golpee algo o no.
 4. **Brújula**: los sensores 9 y 11 apuntan al próximo paso del agente; con el cofre abierto dan 0 y 1.
 5. **Reinicio**: cada generación arranca con todos los agentes en la etapa 0 y sin hacha, las puertas y el cofre cerrados, y la llave roja y el hacha en lugares nuevos.
-6. **Abrir el cofre no termina la corrida**: la consola, el popup, la pantalla final y el CSV dicen cuántos agentes llegaron a cada paso.
+6. **Abrir el cofre no termina la corrida**: la consola, el panel, la pantalla final y el CSV dicen cuántos agentes llegaron a cada paso.
 
 ### Mecánica de Aprendizaje
 
@@ -447,8 +449,8 @@ Se puede correr con ventana o sin ella (aparte del modo guiado o autónomo):
 * **Con ventana** (por defecto, `HEADLESS_MODE = False`):
 
   * Renderizado completo con pygame
-  * Panel de estadísticas en tiempo real
-  * Popups de resumen generacional
+  * Panel con los gráficos de fitness y manzanas en tiempo real
+  * Avisos de fin de generación y de cada paso del puzzle, sin tapar el mundo
   * Más lento pero visualmente informativo
 * **Sin ventana** (`--sin-ventana`, o `HEADLESS_MODE = True`):
 
@@ -556,7 +558,7 @@ semillas: que el fitness suba con las generaciones no alcanza, porque la línea 
 - **`src/world/`** - Mundo procedural con puzzle y recursos
 - **`src/evolution/`** - Algoritmo genético completo (selección, cruce, mutación)
 - **`src/analytics/`** - Métricas, clustering y monitoreo de aprendizaje
-- **`src/ui/`** - Interfaz visual con pygame, estadísticas y popups
+- **`src/ui/`** - Interfaz visual con pygame: panel, avisos y pantalla final
 
 ### 🔧 Características Implementadas
 

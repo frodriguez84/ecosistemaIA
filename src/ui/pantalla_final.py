@@ -1,20 +1,60 @@
 """
-Pantalla final: el resumen de la corrida. Por consola, el boletín (spec PANTALLAS_VER_APRENDER,
-decisión 15), con ventana y sin ella; con ventana, además, un cuadro sobre el último cuadro de la
-simulación, hasta que se aprieta ESC o ENTER.
+Pantalla final: el boletín de la corrida (spec PANTALLAS_VER_APRENDER, decisiones 14 y 15). Por
+consola, con ventana y sin ella; con ventana, además, en una sola pantalla sobre el último cuadro del
+mundo oscurecido, hasta que se aprieta ESC o ENTER. No usa el azar.
 """
+
+import math
 
 import pygame
 
 from config import SimulationConfig
-from ..agents.advanced_agent import agentes_por_paso
-from ..analytics.boletin import armar_boletin, minutos_simulados, texto_de_consola
-from ..analytics.clustering import BehaviorClusterer
+from ..analytics.boletin import armar_boletin, numero, texto_de_consola
+from . import fuentes
+from .avisos import SPRITES_DE_HITOS, SUBE, BAJA
+from .graficos import TEXTO, SECUNDARIO, APAGADO, PROMEDIO, MAXIMO, dibujar_grafico
 from .renderer import dibujar_mundo
 
-VERDE = (100, 255, 150)
-GRIS = (200, 200, 200)
-GRIS_OSCURO = (150, 150, 150)
+# Colores de la maqueta
+FONDO_PANEL = (0x16, 0x18, 0x26)
+OSCURECER = (0, 0, 0, 184)
+FONDO_CUADRO = (26, 26, 25, 242)
+BORDE_CUADRO = (255, 255, 255, 26)
+FONDO_TARJETA = (0x22, 0x22, 0x20)
+BORDE_TARJETA = (0x33, 0x33, 0x31)
+GRILLA = (0x2c, 0x2c, 0x2a)
+EJE = (0x38, 0x38, 0x35)
+TECLA = (0x4a, 0x49, 0x44)
+CALOR_POCO = (0x3a, 0x34, 0x18)
+CALOR_MUCHO = (0xff, 0xb0, 0x20)
+FORTALEZA = (0x8a, 0x89, 0x82)
+
+# Medidas: el cuadro de 1144×744 sobre la superficie de 1200×800
+CUADRO = pygame.Rect(28, 28, 1144, 744)
+MARGEN_X, MARGEN_Y = 28, 24
+SEPARACION = 12
+ANCHO_IZQUIERDA = 660        # Gráficos y embudo; a la derecha, los mapas y el mejor agente
+TAMANO_MAPA = (196, 163)     # 960×800 en chico
+ALTO_FITNESS, ALTO_MANZANAS = 132, 76
+ALTO_PASO = 25               # Cada renglón del embudo
+ANCHO_FRASE_DEL_COFRE = 400
+# Pixelify Sans Bold cierra la "C" a 34 px (y a 21, 22, 30, 33 y 35): 32 la deja abierta
+TAMANO_TITULO = 32
+
+TITULO_FITNESS = "FITNESS POR GENERACIÓN"
+TITULO_MANZANAS = "MANZANAS POR AGENTE"
+TITULO_MAPAS = "POR DÓNDE CAMINARON"
+TITULO_EMBUDO = "PUZZLE: CUÁNTOS LLEGARON A CADA PASO EN LA ÚLTIMA GENERACIÓN"
+TITULO_MEJOR = "MEJOR AGENTE DE LA CORRIDA"
+HASTA_DONDE = "Hasta dónde llegaron: "
+LEYENDA = (("Promedio", PROMEDIO), ("Máximo", MAXIMO))
+LEYENDA_CALOR = ("poco tiempo", "mucho")
+NOTA_CALOR = ("El calor es el tiempo que pasaron en cada lugar, por tick. Los recuadros grises son "
+              "las dos fortalezas; el resto del mapa cambia en cada generación.")
+COMANDO = "python experimento.py"
+SALIR = ("ESC", " o ", "ENTER", " para salir")
+# Cómo se nombra la primera vez de cada paso en el gráfico: "1ª llave roja · gen 2"
+ORDINALES = ("1ª", "1ª", "1ª", "1ª", "1er")
 
 
 def mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor,
@@ -22,7 +62,8 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
                            particle_system, registro):
     """Muestra el resumen final. Lee SimulationConfig.HEADLESS_MODE de la clase: main.py lo pisa ahí.
 
-    registro es el RegistroDeLaCorrida, con todas las generaciones ya cerradas.
+    registro es el RegistroDeLaCorrida, con todas las generaciones ya cerradas: de ahí sale todo lo
+    que se muestra. generation queda en la firma por los tests que la reemplazan.
     """
     imprimir_resumen_final(registro)
     if SimulationConfig.HEADLESS_MODE:
@@ -30,27 +71,14 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
 
     learning_monitor.create_learning_report()
 
-    # El cuadro de antes del spec, hasta el bloque B: el cofre y el tiempo simulado salen del registro
-    historia = registro.historia
-    ticks_totales = sum(fila["ticks"] for fila in historia)
-    primera_generacion_cofre = next((fila["generacion"] for fila in historia if fila["agentes_cofre"] > 0),
-                                    None)
-    agentes_con_cofre = sum(fila["agentes_cofre"] for fila in historia)
-
-    # Se calcula y se dibuja una sola vez: el mundo con el dibujo del loop, los agentes vivos,
-    # las partículas quietas y el cuadro (DIAG-17)
+    # Se dibuja una sola vez: el mundo con el dibujo del loop, los agentes vivos, las partículas
+    # quietas, todo oscurecido, y el boletín encima (DIAG-17)
     dibujar_mundo(render_surface, world, sprite_manager, tick)
     for agent in agents:
         if agent.alive:
             agent.draw(render_surface, tick, sprite_manager, particle_system)
     particle_system.draw(render_surface)
-
-    textos = textos_del_cuadro(generation, agents, learning_monitor, ticks_totales,
-                               primera_generacion_cofre, agentes_con_cofre)
-    cuadro = _dibujar_cuadro(textos, learning_monitor, primera_generacion_cofre is not None)
-    panel_x = (render_surface.get_width() - cuadro.get_width()) // 2 - 113
-    panel_y = (render_surface.get_height() - cuadro.get_height()) // 2
-    render_surface.blit(cuadro, (panel_x, panel_y))
+    dibujar_boletin(render_surface, registro, world, sprite_manager)
     display_screen.blit(pygame.transform.scale(render_surface, (screen_width, screen_height)), (0, 0))
 
     # El loop solo atiende eventos y muestra lo ya dibujado
@@ -73,243 +101,262 @@ def imprimir_resumen_final(registro):
     print("\n" + texto_de_consola(armar_boletin(registro)))
 
 
-def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, primera_generacion_cofre,
-                      agentes_con_cofre):
-    """Arma los textos del cuadro final sin dibujar nada, así se pueden probar (DIAG-16).
+def marcas_del_grafico(boletin):
+    """Cada paso del puzzle que se alcanzó, en la primera generación con algún agente en él (la del
+    embudo, es decir, la del CSV): (generación, "1ª llave roja · gen 2")."""
+    return [(paso["primera_vez"], f"{ORDINALES[paso['paso'] - 1]} {paso['nombre'].lower()} · gen {paso['primera_vez']}")
+            for paso in boletin["embudo"] if paso["primera_vez"] is not None]
 
-    Devuelve un dict con titulo, subtitulo, encabezado (generación y tiempo), secciones (lista de
-    (título, [(texto, color), ...])) y mensaje_final.
+
+def color_de_calor(fraccion):
+    """De ocre oscuro a ámbar; fraccion es la raíz cuadrada de valor / máximo, de 0 a 1."""
+    return tuple(round(a + (b - a) * fraccion) for a, b in zip(CALOR_POCO, CALOR_MUCHO))
+
+
+def mapa_de_calor(registro, grilla, maximo, fortalezas):
+    """El mapa de una generación sobre fondo liso, con el contorno de las fortalezas. maximo es el
+    valor más alto de los mapas que se muestran juntos: así comparten la escala de color."""
+    chico = pygame.Surface((registro.columnas, registro.filas))
+    chico.fill(FONDO_TARJETA)
+    for i, (cuenta, valor) in enumerate(zip(grilla["cuentas"], registro.valores(grilla))):
+        if cuenta > 0:
+            chico.set_at((i % registro.columnas, i // registro.columnas),
+                         color_de_calor(math.sqrt(valor / maximo)))
+    mapa = pygame.transform.scale(chico, TAMANO_MAPA)
+    escala_x = TAMANO_MAPA[0] / (registro.columnas * registro.celda)
+    escala_y = TAMANO_MAPA[1] / (registro.filas * registro.celda)
+    # Los recuadros de _is_inside_fortress: tamaño × 20 px desde la esquina de cada fortaleza
+    for fortaleza in fortalezas:
+        lado = fortaleza["size"] * 20
+        pygame.draw.rect(mapa, FORTALEZA, (round(fortaleza["x"] * escala_x), round(fortaleza["y"] * escala_y),
+                                           round(lado * escala_x), round(lado * escala_y)), 1)
+    return mapa
+
+
+def _texto(superficie, texto, papel, tamano, color, x, y):
+    """Dibuja un renglón y devuelve su ancho."""
+    renglon = fuentes.fuente(papel, tamano).render(texto, True, color)
+    superficie.blit(renglon, (x, y))
+    return renglon.get_width()
+
+
+def _titulo_de_seccion(superficie, texto, x, y):
+    _texto(superficie, texto, "seminegrita", 13, APAGADO, x, y)
+    return y + fuentes.fuente("seminegrita", 13).get_height() + 6
+
+
+def _parrafo(superficie, texto, tamano, color, x, y, ancho, derecha=False):
+    """Un texto partido en renglones; devuelve la y de abajo."""
+    fuente_ = fuentes.fuente("texto", tamano)
+    for renglon in fuentes.renglones(fuente_, texto, ancho):
+        imagen = fuente_.render(renglon, True, color)
+        superficie.blit(imagen, (x + ancho - imagen.get_width() if derecha else x, y))
+        y += fuente_.get_height()
+    return y
+
+
+def dibujar_boletin(superficie, registro, world, sprite_manager):
+    """Dibuja el boletín sobre la superficie de 1200×800, que ya tiene el último cuadro del mundo.
+
+    Devuelve (y de abajo del contenido, y de arriba del pie): el test mira que no se pisen.
     """
-    cofre_abierto = primera_generacion_cofre is not None
-    datos = learning_monitor.generation_data
-    minutos = minutos_simulados(ticks_totales)
+    boletin = armar_boletin(registro)
+    superficie.fill(FONDO_PANEL, (960, 0, 240, 800))
+    velo = pygame.Surface(superficie.get_size(), pygame.SRCALPHA)
+    velo.fill(OSCURECER)
+    superficie.blit(velo, (0, 0))
+    cuadro = pygame.Surface(CUADRO.size, pygame.SRCALPHA)
+    pygame.draw.rect(cuadro, FONDO_CUADRO, cuadro.get_rect(), border_radius=12)
+    pygame.draw.rect(cuadro, BORDE_CUADRO, cuadro.get_rect(), 1, border_radius=12)
+    superficie.blit(cuadro, CUADRO.topleft)
 
-    if cofre_abierto:
-        titulo = "¡MISIÓN COMPLETADA!"
-        subtitulo = "El cofre ha sido abierto por un agente evolutivo"
-    else:
-        titulo = "Simulación finalizada"
-        subtitulo = "Se alcanzó el límite de generaciones sin abrir el cofre"
+    x0, ancho = CUADRO.x + MARGEN_X, CUADRO.w - 2 * MARGEN_X
+    y = _encabezado(superficie, boletin, x0, CUADRO.y + MARGEN_Y, ancho) + SEPARACION
+    y = _cuatro_numeros(superficie, boletin["numeros"], x0, y, ancho) + SEPARACION
 
-    secciones = []
+    x_derecha = x0 + ANCHO_IZQUIERDA + 20
+    ancho_derecha = ancho - ANCHO_IZQUIERDA - 20
+    abajo_graficos = _graficos(superficie, registro.historia, marcas_del_grafico(boletin), x0, y)
+    fortalezas = [f for f in (world.small_fortress_pos, world.large_fortress_pos) if f]
+    abajo_mapas = _mapas(superficie, registro, boletin["mapas"], fortalezas, x_derecha, y, ancho_derecha)
+    y = max(abajo_graficos, abajo_mapas) + SEPARACION
 
-    # 1) Objetivo y resultado
-    secciones.append(("OBJETIVO", [
-        ("Objetivo: Abrir el cofre", GRIS),
-        ("Resultado: Completado", (200, 255, 200)) if cofre_abierto else ("Resultado: No logrado", GRIS),
-    ]))
+    abajo_embudo = _embudo(superficie, boletin, sprite_manager, x0, y)
+    abajo_mejor = _mejor_agente(superficie, boletin["mejor"], sprite_manager, x_derecha, y, ancho_derecha)
+    abajo = max(abajo_embudo, abajo_mejor)
 
-    # 2) Pasos clave del reto: cuántos agentes de la última generación llegaron a cada uno
-    roja, madera, dorada, hierro, cofre = agentes_por_paso(agents)
-    secciones.append(("PASOS CLAVE", [
-        ("Agentes de la última generación que llegaron a cada paso:", GRIS),
-        (f"Llave roja: {roja}   Puerta madera: {madera}   Llave dorada: {dorada}", GRIS),
-        (f"Puerta hierro: {hierro}   Cofre: {cofre}", GRIS),
-    ]))
-
-    # 3) La corrida: la generación 1 contra las últimas 3 (o las que haya; main.py registra cada
-    # generación antes de llegar acá). Si aprendieron no se ve acá: la línea base sin evolución sube
-    # también (LEC-001, decisión 25)
-    ultimas = datos[-3:]
-    fitness_inicio, manzanas_inicio = datos[0].get('avg_fitness', 0), datos[0].get('avg_food', 0)
-    fitness_final = sum(g.get('avg_fitness', 0) for g in ultimas) / len(ultimas)
-    manzanas_final = sum(g.get('avg_food', 0) for g in ultimas) / len(ultimas)
-    # La fuente de pygame no tiene el glifo de la flecha: en pantalla va "->"
-    secciones.append(("LA CORRIDA", [
-        (f"Fitness prom.: gen 1 {fitness_inicio:.1f} -> últimas {len(ultimas)} {fitness_final:.1f}", GRIS),
-        (f"Manzanas por agente: gen 1 {manzanas_inicio:.1f} -> últimas {len(ultimas)} "
-         f"{manzanas_final:.1f}", GRIS),
-        ("Si aprendieron se mide contra la línea base: python experimento.py", GRIS),
-    ]))
-
-    # 4) Línea de tiempo. Abrir el cofre no termina la corrida (decisión 11): la primera vez y cuántos
-    if cofre_abierto:
-        renglones_cofre = [(f"Primera vez con cofre abierto: Gen {primera_generacion_cofre}", GRIS),
-                           (f"Agentes que abrieron el cofre en la corrida: {agentes_con_cofre}", GRIS)]
-    else:
-        renglones_cofre = [("El cofre no se abrió en ninguna generación", GRIS)]
-    secciones.append(("LÍNEA DE TIEMPO", renglones_cofre + [
-        (f"Tiempo simulado: {minutos:.1f} min", GRIS),
-    ]))
-
-    # 5) Top agente, con el id por contador de la corrida (decisión 24): entero, sin recortar
-    renglones_top = []
-    top_agent = max(agents, key=lambda a: a.fitness) if agents else None
-    if top_agent:
-        top_km = top_agent.distance_traveled / 100 / 1000  # px -> m -> km (1px=1cm)
-        top_fitness_capped = min(100.0, getattr(top_agent, 'fitness', 0.0))
-        renglones_top.append((f"Agente #{top_agent.id}: fitness {top_fitness_capped:.1f}, comida "
-                              f"{top_agent.food_eaten} manzanas, recorrio {top_km:.2f} km", GRIS))
-    secciones.append(("TOP AGENTE", renglones_top))
-
-    # 6) Sello de movimiento
-    try:
-        avg_sr = sum(getattr(a, 'metric_sr', 0.0) for a in agents) / len(agents) if agents else 0.0
-        movement_flag = "Mas recto y con menos vueltas" if avg_sr >= 0.5 else "Aun con vueltas"
-    except Exception:
-        movement_flag = "Aun con vueltas"
-    secciones.append(("MOVIMIENTO", [(movement_flag, GRIS)]))
-
-    # 7) Clustering de la última generación
-    secciones.append(("CLUSTERING", _renglones_de_clustering(agents)))
-
-    if cofre_abierto:
-        mensaje_final = "¡Los agentes evolutivos han completado su misión!"
-    else:
-        mensaje_final = "Los agentes no llegaron a abrir el cofre"
-
-    return {
-        "titulo": titulo,
-        "subtitulo": subtitulo,
-        "encabezado": [f"Generación: {generation}", f"Tiempo simulado: {minutos:.1f} min"],
-        "secciones": secciones,
-        "mensaje_final": mensaje_final,
-    }
+    return abajo, _pie(superficie, boletin["pie"], x0, CUADRO.bottom - MARGEN_Y, ancho)
 
 
-def _renglones_de_clustering(agents):
-    """Hasta tres renglones: cada estrategia con su porcentaje, cantidad y fitness."""
-    try:
-        if not agents or len(agents) < 3:
-            return [("No disponible (pocos agentes)", GRIS_OSCURO)]
-        clusterer = BehaviorClusterer(n_clusters=3)
-        _, cluster_stats = clusterer.cluster_agents(agents)
-        interpretations = clusterer.get_cluster_interpretation(cluster_stats)
+def _encabezado(superficie, boletin, x, y, ancho):
+    """Título y subtítulo a la izquierda; a la derecha, hasta dónde llegaron y la frase del cofre."""
+    titulo = fuentes.fuente("titulo", TAMANO_TITULO).render(boletin["titulo"], True, TEXTO)
+    superficie.blit(titulo, (x, y))
+    subtitulo_y = y + titulo.get_height() + 6
+    ancho_subtitulo = _texto(superficie, boletin["subtitulo"], "texto", 14, SECUNDARIO, x, subtitulo_y)
+    abajo_izquierda = subtitulo_y + fuentes.fuente("texto", 14).get_height()
 
-        # Ordenar clusters por tipo
-        cluster_order = ["Exploradores", "Recolectores", "Exitosos"]
-        sorted_clusters = []
-        for cluster_id, count in cluster_stats['cluster_counts'].items():
-            if count > 0:
-                strategy = interpretations.get(cluster_id, f"C{cluster_id}")
-                fitness = cluster_stats['cluster_fitness'][cluster_id]['promedio']
-                percentage = (count / len(agents)) * 100
-                sorted_clusters.append((strategy, count, percentage, fitness))
-        sorted_clusters.sort(key=lambda x: (cluster_order.index(x[0]) if x[0] in cluster_order else 999, -x[1]))
-
-        return [(f"{strategy}: {percentage:.1f}% ({count} agentes, fit {fitness:.1f})", GRIS)
-                for strategy, count, percentage, fitness in sorted_clusters[:3]]
-    except Exception:
-        return [("Error en clustering", GRIS_OSCURO)]
+    # Angosto, para que la frase del cofre se parta en el punto y coma y no deje una palabra sola
+    ancho_derecha = min(ANCHO_FRASE_DEL_COFRE, ancho - max(titulo.get_width(), ancho_subtitulo) - 24)
+    fuente_ = fuentes.fuente("texto", 14)
+    cofre = fuentes.renglones(fuente_, boletin["cofre"], ancho_derecha)
+    alto_derecha = (1 + len(cofre)) * fuente_.get_height()
+    y_derecha = abajo_izquierda - alto_derecha  # Alineado abajo con el subtítulo
+    paso = fuentes.fuente("seminegrita", 14).render(boletin["hasta_donde"], True, TEXTO)
+    rotulo = fuente_.render(HASTA_DONDE, True, SECUNDARIO)
+    superficie.blit(paso, (x + ancho - paso.get_width(), y_derecha))
+    superficie.blit(rotulo, (x + ancho - paso.get_width() - rotulo.get_width(), y_derecha))
+    _parrafo(superficie, boletin["cofre"], 14, SECUNDARIO, x + ancho - ancho_derecha,
+             y_derecha + fuente_.get_height(), ancho_derecha, derecha=True)
+    return max(abajo_izquierda, y_derecha + alto_derecha)
 
 
-def _dibujar_cuadro(textos, learning_monitor, cofre_abierto):
-    """El cuadro semitransparente de 800×600 con los textos y el gráfico de fitness."""
-    font_large = pygame.font.Font(None, 48)   # Título principal
-    font_title = pygame.font.Font(None, 22)   # Secciones
-    font_medium = pygame.font.Font(None, 18)  # Subtítulos/ítems destacados
-    font_small = pygame.font.Font(None, 16)   # Texto
+def _cuatro_numeros(superficie, numeros, x, y, ancho):
+    """Cuatro tarjetas: el valor de la generación 1 → el de las últimas, el cambio y la nota."""
+    ancho_tarjeta = (ancho - 3 * 12) // 4
+    adentro = ancho_tarjeta - 28
+    fuente_nota = fuentes.fuente("texto", 12)
+    alto_titulo = fuentes.fuente("seminegrita", 12).get_height()
+    alto_valor = fuentes.fuente("negrita", 28).get_height()
+    renglones_nota = max(len(fuentes.renglones(fuente_nota, dato["nota"], adentro)) for dato in numeros)
+    alto = 12 + alto_titulo + 6 + alto_valor + 4 + renglones_nota * fuente_nota.get_height() + 12
 
-    panel_width, panel_height = 800, 600
-    final_surface = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
-    final_surface.fill((0, 0, 0, 200))
+    for i, dato in enumerate(numeros):
+        tarjeta = pygame.Rect(x + i * (ancho_tarjeta + 12), y, ancho_tarjeta, alto)
+        pygame.draw.rect(superficie, FONDO_TARJETA, tarjeta, border_radius=8)
+        pygame.draw.rect(superficie, BORDE_TARJETA, tarjeta, 1, border_radius=8)
+        cx, cy = tarjeta.x + 14, tarjeta.y + 12
+        _texto(superficie, dato["titulo"], "seminegrita", 12, APAGADO, cx, cy)
+        cy += alto_titulo + 6
 
-    # Título (dorado si se abrió el cofre, azul si no), subtítulo y línea separadora
-    title_color = (255, 215, 0) if cofre_abierto else (0, 100, 255)
-    title_text = font_large.render(textos["titulo"], True, title_color)
-    final_surface.blit(title_text, title_text.get_rect(center=(panel_width // 2, 40)))
-    subtitle_text = font_medium.render(textos["subtitulo"], True, (255, 255, 255))
-    final_surface.blit(subtitle_text, subtitle_text.get_rect(center=(panel_width // 2, 70)))
-    pygame.draw.line(final_surface, VERDE, (20, 90), (panel_width - 20, 90), 2)
-
-    grafico = _grafico_de_fitness(learning_monitor, font_small)
-    final_surface.blit(grafico, (panel_width - grafico.get_width() - 30, 110))
-
-    # Encabezado: generación y tiempo simulado
-    y_pos = 110
-    generacion, tiempo = textos["encabezado"]
-    final_surface.blit(font_medium.render(generacion, True, VERDE), (30, y_pos))
-    final_surface.blit(font_medium.render(tiempo, True, VERDE), (260, y_pos))
-    y_pos += 28
-
-    for titulo, renglones in textos["secciones"]:
-        final_surface.blit(font_title.render(titulo, True, VERDE), (30, y_pos))
-        y_pos += 18
-        for texto, color in renglones:
-            final_surface.blit(font_small.render(texto, True, color), (40, y_pos))
-            y_pos += 18
-        y_pos += 2
-    y_pos += 6  # Aire antes del mensaje final
-
-    final_text = font_medium.render(textos["mensaje_final"], True, VERDE)
-    final_surface.blit(final_text, final_text.get_rect(center=(panel_width // 2, y_pos)))
-    y_pos += 26
-    instructions_text = font_small.render("Presiona ESC o ENTER para salir", True, (220, 220, 220))
-    final_surface.blit(instructions_text, instructions_text.get_rect(center=(panel_width // 2, y_pos)))
-    return final_surface
+        # Todo el renglón sobre la misma línea de base que el número grande
+        base = cy + fuentes.fuente("negrita", 28).get_ascent()
+        desde, _, hasta = dato["valor"].rpartition(" → ")
+        partes = ([(desde, "texto", 15, SECUNDARIO), ("→", "texto", 15, APAGADO)] if desde else []) \
+            + [(hasta, "negrita", 28, TEXTO)]
+        if dato["cambio"]:
+            color = SUBE if dato["sube"] else BAJA if dato["sube"] is False else SECUNDARIO
+            partes.append((dato["cambio"], "seminegrita", 13, color))
+        for texto, papel, tamano, color in partes:
+            cx += _texto(superficie, texto, papel, tamano, color, cx,
+                         base - fuentes.fuente(papel, tamano).get_ascent()) + 8
+        _parrafo(superficie, dato["nota"], 12, APAGADO, tarjeta.x + 14, cy + alto_valor + 4, adentro)
+    return y + alto
 
 
-def _grafico_de_fitness(learning_monitor, font_small):
-    """Gráfico de 340×220 con el fitness promedio y el máximo de cada generación."""
-    chart_width, chart_height = 340, 220
-    chart_surface = pygame.Surface((chart_width, chart_height), pygame.SRCALPHA)
-    chart_surface.fill((20, 20, 20, 180))
+def _graficos(superficie, historia, marcas, x, y):
+    """Fitness promedio y máximo, con los pasos del puzzle marcados, y debajo manzanas por agente."""
+    titulo_y = y
+    y = _titulo_de_seccion(superficie, TITULO_FITNESS, x, y)
+    fuente_ = fuentes.fuente("texto", 12)
+    leyenda_x = x + ANCHO_IZQUIERDA
+    for nombre, color in reversed(LEYENDA):
+        rotulo = fuente_.render(nombre, True, SECUNDARIO)
+        leyenda_x -= rotulo.get_width()
+        superficie.blit(rotulo, (leyenda_x, titulo_y))
+        pygame.draw.line(superficie, color, (leyenda_x - 22, titulo_y + 8), (leyenda_x - 6, titulo_y + 8), 2)
+        leyenda_x -= 22 + 16
 
-    axis_color = (80, 200, 120)
-    grid_color = (70, 70, 70)
-    avg_color = (120, 255, 180)
-    max_color = (255, 215, 0)
+    promedio = [fila["fitness_prom"] for fila in historia]
+    maximo = [fila["fitness_max"] for fila in historia]
+    manzanas = [fila["manzanas_prom"] for fila in historia]
+    estilo = {"fondo": FONDO_CUADRO[:3], "grilla": GRILLA, "eje": EJE, "tamano": 11, "prefijo": "Gen ",
+              "rotulo_medio": True}
+    dibujar_grafico(superficie, pygame.Rect(x, y, ANCHO_IZQUIERDA, ALTO_FITNESS),
+                    [(maximo, MAXIMO, f"Máx. {numero(maximo[-1], 1)}", False),
+                     (promedio, PROMEDIO, f"Prom. {numero(promedio[-1], 1)}", True)],
+                    marcas=marcas, **estilo)
+    y = _titulo_de_seccion(superficie, TITULO_MANZANAS, x, y + ALTO_FITNESS + 8)
+    dibujar_grafico(superficie, pygame.Rect(x, y, ANCHO_IZQUIERDA, ALTO_MANZANAS),
+                    [(manzanas, PROMEDIO, numero(manzanas[-1], 2), True)], **estilo)
+    return y + ALTO_MANZANAS
 
-    inner_left, inner_top = 50, 20  # Márgenes: 50 a la izquierda, 20 arriba, 20 a la derecha, 40 abajo
-    inner_width = chart_width - inner_left - 20
-    inner_height = chart_height - inner_top - 40
 
-    # Marco y ejes
-    pygame.draw.rect(chart_surface, (90, 90, 90), (0, 0, chart_width, chart_height), 1)
-    pygame.draw.line(chart_surface, axis_color,
-                     (inner_left, inner_top + inner_height),
-                     (inner_left + inner_width, inner_top + inner_height), 2)
-    pygame.draw.line(chart_surface, axis_color,
-                     (inner_left, inner_top),
-                     (inner_left, inner_top + inner_height), 2)
+def _mapas(superficie, registro, mapas, fortalezas, x, y, ancho):
+    """El mapa de calor de la generación 1 y el de la última, con la misma escala de color."""
+    y = _titulo_de_seccion(superficie, TITULO_MAPAS, x, y)
+    grillas = [registro.calor_gen1] + ([registro.calor_ultima] if len(mapas) > 1 else [])
+    maximo = max(max(registro.valores(grilla)) for grilla in grillas) or 1
+    for i, (grilla, mapa) in enumerate(zip(grillas, mapas)):
+        mx = x + i * (TAMANO_MAPA[0] + 16)
+        superficie.blit(mapa_de_calor(registro, grilla, maximo, fortalezas), (mx, y))
+        pygame.draw.rect(superficie, BORDE_TARJETA, (mx, y, *TAMANO_MAPA), 1)
+        _texto(superficie, mapa["texto"], "texto", 12, SECUNDARIO, mx, y + TAMANO_MAPA[1] + 6)
+    y += TAMANO_MAPA[1] + 6 + fuentes.fuente("texto", 12).get_height() + 8
 
-    # Etiquetas del eje Y (0-100)
-    for level in range(0, 101, 25):
-        y = inner_top + inner_height - int(level / 100.0 * inner_height)
-        pygame.draw.line(chart_surface, grid_color, (inner_left, y), (inner_left + inner_width, y), 1)
-        chart_surface.blit(font_small.render(f"{level}", True, (180, 180, 180)), (10, y - 8))
+    # Leyenda: poco tiempo, la barra de colores, mucho
+    lx = x + _texto(superficie, LEYENDA_CALOR[0], "texto", 12, APAGADO, x, y) + 8
+    for i in range(120):
+        pygame.draw.line(superficie, color_de_calor(i / 119), (lx + i, y + 5), (lx + i, y + 12))
+    _texto(superficie, LEYENDA_CALOR[1], "texto", 12, APAGADO, lx + 128, y)
+    y += fuentes.fuente("texto", 12).get_height() + 6
+    return _parrafo(superficie, NOTA_CALOR, 12, APAGADO, x, y, ancho)
 
-    datos = learning_monitor.generation_data
-    avg_history = [d.get('avg_fitness', 0.0) for d in datos]
-    max_history = [d.get('max_fitness', d.get('avg_fitness', 0.0)) for d in datos]
-    gen_count = len(avg_history)
 
-    def _map_point(idx, value):
-        if gen_count <= 1:
-            x = inner_left + inner_width // 2
+def _embudo(superficie, boletin, sprite_manager, x, y):
+    """Los cinco pasos de la última generación, con su barra y la primera vez; y "murieron todos"."""
+    y = _titulo_de_seccion(superficie, TITULO_EMBUDO, x, y)
+    ancho_texto = 196
+    barra_x = x + 20 + 10 + 118 + 10
+    ancho_barra = ANCHO_IZQUIERDA - (barra_x - x) - 10 - ancho_texto
+    for paso in boletin["embudo"]:
+        sprite = sprite_manager.get_environment_sprite(SPRITES_DE_HITOS[paso["paso"] - 1])
+        if sprite is not None:
+            superficie.blit(pygame.transform.scale(sprite, (18, 18)), (x, y + 1))
+        _texto(superficie, paso["nombre"], "texto", 13, TEXTO, x + 30, y + 1)
+        pygame.draw.rect(superficie, GRILLA, (barra_x, y + 5, ancho_barra, 10), border_radius=4)
+        if paso["agentes"]:
+            pygame.draw.rect(superficie, PROMEDIO, (barra_x, y + 5, max(2, round(ancho_barra * paso["fraccion"])), 10),
+                             border_radius=4)
+        _texto(superficie, paso["texto"], "texto", 12, SECUNDARIO, barra_x + ancho_barra + 10, y + 2)
+        y += ALTO_PASO
+    if boletin["murieron_todos"]:
+        _texto(superficie, boletin["murieron_todos"], "texto", 13, SECUNDARIO, x, y + 2)
+        y += fuentes.fuente("texto", 13).get_height() + 2
+    return y
+
+
+def _mejor_agente(superficie, mejor, sprite_manager, x, y, ancho):
+    """La tarjeta del récord de la corrida: sprite, id y generación, y sus datos."""
+    fuente_ = fuentes.fuente("texto", 13)
+    alto_titulo = fuentes.fuente("seminegrita", 12).get_height()
+    alto = 12 + alto_titulo + 6 + (1 + len(mejor["renglones"])) * (fuente_.get_height() + 2) + 10
+    tarjeta = pygame.Rect(x, y, ancho, alto)
+    pygame.draw.rect(superficie, FONDO_TARJETA, tarjeta, border_radius=8)
+    pygame.draw.rect(superficie, BORDE_TARJETA, tarjeta, 1, border_radius=8)
+    sprite = sprite_manager.sprites.get("agent_down_1") or sprite_manager.sprites.get("agent")
+    if sprite is not None:
+        superficie.blit(pygame.transform.scale(sprite, (48, 48)), (x + 14, y + 12))
+    cx, cy = x + 14 + 48 + 14, y + 12
+    _texto(superficie, TITULO_MEJOR, "seminegrita", 12, APAGADO, cx, cy)
+    cy += alto_titulo + 6
+    _texto(superficie, mejor["titulo"], "seminegrita", 13, TEXTO, cx, cy)
+    for renglon in mejor["renglones"]:
+        cy += fuente_.get_height() + 2
+        _texto(superficie, renglon, "texto", 13, SECUNDARIO, cx, cy)
+    return y + alto
+
+
+def _pie(superficie, pie, x, abajo, ancho):
+    """La invitación a medir contra la línea base (o que esta es la línea base), y cómo salir.
+    Devuelve la y de arriba del pie."""
+    fuente_ = fuentes.fuente("texto", 13)
+    y = abajo - fuente_.get_height()
+    antes, comando, _ = pie.partition(COMANDO)
+    ancho_antes = _texto(superficie, antes, "texto", 13, APAGADO, x, y)
+    if comando:
+        _texto(superficie, comando, "texto", 13, SECUNDARIO, x + ancho_antes, y)
+
+    rotulos = [fuente_.render(texto, True, SECUNDARIO if texto.strip() in ("ESC", "ENTER") else APAGADO)
+               for texto in SALIR]
+    sx = x + ancho - sum(r.get_width() for r in rotulos) - 2 * 12
+    for rotulo, texto in zip(rotulos, SALIR):
+        if texto.strip() in ("ESC", "ENTER"):
+            pygame.draw.rect(superficie, TECLA, (sx, y - 1, rotulo.get_width() + 12, rotulo.get_height() + 2),
+                             1, border_radius=4)
+            superficie.blit(rotulo, (sx + 6, y))
+            sx += rotulo.get_width() + 12
         else:
-            x = inner_left + int(idx * inner_width / (gen_count - 1))
-        value_clamped = max(0.0, min(100.0, float(value)))
-        return x, inner_top + inner_height - int((value_clamped / 100.0) * inner_height)
-
-    # Líneas de historia
-    if gen_count:
-        avg_points = [_map_point(i, val) for i, val in enumerate(avg_history)]
-        max_points = [_map_point(i, val) for i, val in enumerate(max_history)]
-
-        if len(avg_points) >= 2:
-            pygame.draw.lines(chart_surface, avg_color, False, avg_points, 2)
-        else:
-            pygame.draw.circle(chart_surface, avg_color, avg_points[0], 3)
-
-        if len(max_points) >= 2:
-            pygame.draw.lines(chart_surface, max_color, False, max_points, 2)
-        else:
-            pygame.draw.circle(chart_surface, max_color, max_points[0], 3)
-
-        # Puntos finales resaltados
-        pygame.draw.circle(chart_surface, avg_color, avg_points[-1], 4)
-        pygame.draw.circle(chart_surface, max_color, max_points[-1], 4, 1)
-
-        # Etiquetas de generaciones (inicio y fin)
-        start_label = font_small.render("Gen 1", True, (180, 180, 180))
-        chart_surface.blit(start_label, (inner_left - start_label.get_width() // 2, inner_top + inner_height + 10))
-        end_label = font_small.render(f"Gen {gen_count}", True, (180, 180, 180))
-        chart_surface.blit(end_label, (inner_left + inner_width - end_label.get_width() // 2,
-                                       inner_top + inner_height + 10))
-
-    # Leyenda
-    chart_surface.blit(font_small.render("Promedio", True, avg_color), (inner_left + 10, 5))
-    chart_surface.blit(font_small.render("Máximo", True, max_color), (inner_left + 120, 5))
-
-    return chart_surface
+            superficie.blit(rotulo, (sx, y))
+            sx += rotulo.get_width()
+    return y - 1
