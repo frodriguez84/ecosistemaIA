@@ -14,7 +14,17 @@ Convención: `- [ ]` abierta · `- [x]` pasó al BACKLOG o se descartó (con fec
 - [ ] **Enemigos.**
 - [ ] **Más objetos.**
 - [ ] **Transición de mapa, historia, storytelling.**
-- [ ] **Mecánicas nuevas para que aprendan otras cosas.** Se cruza con el modo autónomo (BACKLOG ítem 3): mirarla al escribir ese spec. *Mirada el 2026-11-14:* el spec [MODO_GUIADO_Y_AUTONOMO](../specs/active/MODO_GUIADO_Y_AUTONOMO.md) suma golpear y el puzzle por agente, pero ninguna mecánica nueva; esta idea sigue abierta para después.
+- [x] 2026-11-15 — pasó al [BACKLOG](BACKLOG.md), ítem 6. **Mecánicas nuevas para que aprendan otras cosas.** Se cruza con el modo autónomo (BACKLOG ítem 3): mirarla al escribir ese spec. *Mirada el 2026-11-14:* el spec [MODO_GUIADO_Y_AUTONOMO](../specs/active/MODO_GUIADO_Y_AUTONOMO.md) suma golpear y el puzzle por agente, pero ninguna mecánica nueva; esta idea sigue abierta para después.
+
+## Para ver aprender y para jugar — 2026-11-15
+
+Charladas con Fer al cerrar el spec de los modos. Fer prefiere mirar cómo aprenden antes que jugarlo: lo de jugar (el sandbox) va para más adelante.
+
+- [ ] **Ver qué piensa un agente:** clic en un agente y se ven sus 11 sensores y sus 5 salidas como barras en vivo, con la flecha de la brújula.
+- [ ] **Colores por linaje:** cada familia de un color, para ver cómo un linaje exitoso toma la población. Pide que el genético guarde de qué padres viene cada agente.
+- [ ] **La estela del mejor:** al arrancar cada generación, el recorrido del mejor de la anterior, tenue.
+- [ ] **Sandbox (más adelante):** cambiar parámetros en vivo desde la ventana, guardar el mejor cerebro y volver a verlo, guiado y autónomo lado a lado.
+- [ ] **Publicar:** repo público con un GIF y la historia del experimento; después, quizás itch.io (PyInstaller o pygbag). Antes, revisar la licencia de los sprites de `assets/sprites/` (no hay archivo de licencia).
 
 ## Fuera de alcance del spec Modo guiado y modo autónomo — 2026-11-14
 
