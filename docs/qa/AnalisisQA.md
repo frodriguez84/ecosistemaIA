@@ -161,6 +161,7 @@ estado en el BACKLOG.
 | DIAG-23 | `world.py` importa `pygame` y no lo usa. | `src/world/world.py:6` | Limpieza |
 | DIAG-24 | La extensión Pylint de VS Code marcaba "Unable to import 'pygame'" en `advanced_agent.py` y `world.py`: corría con el Python global de la Microsoft Store, que no tiene `pygame`. No era un error del código. | `.vscode/settings.json` | Resuelto |
 | DIAG-26 | La extensión Pylint marcaba 29 errores en `main.py`, todos `E1101: Module 'pygame' has no '…' member` (`QUIT`, `SRCALPHA`, `KEYDOWN`, `init`…). pygame está compilado en C, y Pylint no carga módulos en C para ver sus miembros salvo que se le permita. No era un error del código: corre sin problemas. Además, el panel mostraba un análisis de `main.py` anterior al bloque A del spec *Medir* (las líneas no coincidían) hasta que Pylint volvió a analizar. Encontrado el 2026-11-14. | `.vscode/settings.json` | Resuelto |
+| DIAG-31 | La extensión Pylint marcaba 4 errores `E0402: Attempted relative import beyond top-level package`, en `pantalla_final.py` (2), `popup.py` y `stats.py`: las importaciones `from ..agents…` y `from ..analytics…`. `src/` no tenía `__init__.py` (sus subcarpetas sí): al correr, Python lo toma como paquete implícito y la importación anda, pero Pylint toma como raíz la última carpeta con `__init__.py` (`ui`). No era un error del código. En el mismo archivo, un "fixme" falso: Pylint lee el "Todo se calcula…" de un comentario como `TODO` (como en DIAG-26). Encontrado el 2026-11-15. | `src/ui/pantalla_final.py:9-10`, `popup.py:7`, `stats.py:8` | Resuelto |
 
 > ✅ DIAG-22 (2026-11-14): `LICENSE` pasa a MIT, por decisión de Fer. El `.env.example` vacío se
 > borra en la limpieza.
@@ -173,6 +174,12 @@ estado en el BACKLOG.
 > Los warnings que siguen son de estilo o restos: imports y variables sin usar (unas 35 en
 > `main.py`), f-strings sin variables y llamadas a métodos `_privados`. Los restos van a la
 > limpieza. El "fixme" de la línea 720 es falso: Pylint lee el "Todo" de "Todo el área" como `TODO`.
+>
+> ✅ DIAG-31 (2026-11-15): `src/__init__.py`, con solo un docstring, y el comentario de
+> `pantalla_final.py:38` pasa a decir "Se calcula…". Con el Pylint de la extensión corrido desde la
+> terminal, 0 E0402 y 0 fixme en `src/`; los 53 tests, verdes, y la misma semilla da el mismo CSV.
+> Lo que sigue en `pantalla_final.py` es de diseño (`_calculate_fitness` llamado desde afuera, dos
+> `except Exception`) y de estilo (líneas de más de 100), y queda como está.
 >
 > Encontrado al escribir el spec *Limpieza* (2026-11-14) y sumado a su alcance: a DIAG-18,
 > `LearningMonitor.save_data` y `BehaviorClusterer.print_cluster_report`, que nadie llama; a DIAG-19,

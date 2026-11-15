@@ -35,7 +35,7 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
 
     learning_monitor.create_learning_report()
 
-    # Todo se calcula y se dibuja una sola vez: el mundo con el dibujo del loop, los agentes vivos,
+    # Se calcula y se dibuja una sola vez: el mundo con el dibujo del loop, los agentes vivos,
     # las partículas quietas y el cuadro (DIAG-17)
     dibujar_mundo(render_surface, world, sprite_manager, tick)
     for agent in agents:
