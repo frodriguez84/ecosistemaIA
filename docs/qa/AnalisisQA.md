@@ -785,3 +785,60 @@ dio todo PASS. Los IDs `MODOS-NN` son los del QA manual del spec.
   (`README.md:252`), y `genetic_algorithm.py:113-114` la sube a 50% cuando la diversidad del fitness
   baja de 0,15. Los pesos del anti-círculo se leen con `getattr` y un valor por defecto distinto del
   de `config.py` (`advanced_agent.py:732-734`): hoy no pesa, porque `config.py` los define.
+
+---
+
+<a id="qa-pantallas-ver-aprender"></a>
+## QA /qa-spec — Pantallas para ver aprender (2026-11-15)
+**Veredicto:** APROBADO
+**Verificación técnica:** sintaxis ✅ (`compileall` de `main.py`, `config.py` y `src`) · tests 123/123 en
+26,4 s · build N/A (Python, sin build)
+**Método:** cuatro checkers independientes (Explore/haiku, solo lectura) contra las decisiones, el DoD
+y el QA manual de `docs/specs/active/PANTALLAS_VER_APRENDER.md`, sin leer su bitácora: datos
+(PANTALLAS-02 a 05), boletín (06 a 10), pantallas (11 a 15) y docs (18). Los checkers no ejecutaban
+nada: lo que pide corridas o capturas se volvió a correr en la sesión desde `f62a7f0`, con el árbol
+limpio: las 4 corridas de referencia, tres con ventana y eventos inyectados (LEC-004), una medición
+del costo del mapa de calor y del récord dentro de 4 corridas reales, y el control del azar. Cada
+`archivo:línea` de la tabla se imprimió antes de copiarlo (LEC-006). Los checkers dieron PARCIAL en
+03, 04, 05, 06, 08 y 15: en cada caso faltaba una corrida o una captura, que se hizo en la sesión, o
+era un texto que el spec no fijaba o un desvío anotado (ver las observaciones). Los IDs
+`PANTALLAS-NN` son los del QA manual del spec.
+
+| ID | Criterio | Resultado | Evidencia / Gap |
+|----|----------|-----------|-----------------|
+| PANTALLAS-QA-01 | La simulación no cambia | ✅ | Las 4 corridas de referencia (semilla 7, 3 generaciones, guiado y autónomo, con evolución y sin ella) dan los 4 SHA-256 de la bitácora del spec. Con ventana, semilla 7 y 2 generaciones en los dos modos, y semilla 1 y 5 generaciones en el guiado: el mismo CSV que sin ventana (`cmp`) (PANTALLAS-01) |
+| PANTALLAS-QA-02 | Sin azar nuevo | ✅ | `test_registro.py:171` compara el estado de `random` y de `np.random` antes y después de contar, mirar hitos, cerrar generaciones y armar el boletín: verde. Su control, vuelto a correr en esta sesión (un plugin de pytest del scratchpad agrega un `random.random()` al conteo): falla. Ningún módulo nuevo llama a `random` ni a `np.random` (PANTALLAS-02) |
+| PANTALLAS-QA-03 | Mapa de calor | ✅ | Celda `int(x) // 16` e `int(y) // 16`, recortada a la grilla, solo los vivos (`registro.py:43-49`); después de `world.update()` y `tick += 1`, dentro del `if not paused` (`main.py:465-468`); valor por los ticks de su generación (`registro.py:94-97`); grillas de la generación 1 y de la última (`registro.py:88-92`); `HEATMAP_CELL_SIZE = 16` (`config.py:60`). Tests: `test_registro.py:55` (bordes), `:74` (solo vivos), `:81` (normalización) y `:95` (gen 1, última y arranque en cero). Costo, medido en esta sesión dentro de 4 corridas reales (semillas 7 y 1, los dos modos): de 28 a 36 µs por tick contra ticks de 4,9 a 7,1 ms, de 0,41 a 0,62 % (PANTALLAS-03) |
+| PANTALLAS-QA-04 | Hitos | ✅ | Se miran en cada tick, después de que actúan los agentes (`main.py:447-451`); solo la primera vez, con generación, tick e id, en el orden del puzzle (`registro.py:51-64`); la línea de consola (`boletin.py:93`), con ventana y sin ella. Tests: `test_registro.py:116` y `:127`, y `test_humo.py:142` (el log contra el CSV, sin ventana). En esta sesión, en 7 logs (4 sin ventana y 3 con ventana), cada línea de hito coincide con la primera generación del CSV con esa columna `agentes_*` > 0 (PANTALLAS-04) |
+| PANTALLAS-QA-05 | Mejor agente | ✅ | El récord cambia solo si se lo supera (`registro.py:76-77`, con `>`); `test_registro.py:138` (el empate no lo cambia). En esta sesión, en 4 corridas (semillas 7 y 1, los dos modos), su fitness redondeado a 4 decimales es el máximo de `fitness_max` del CSV; en las dos del autónomo el récord es de una generación anterior a la última (53,3098 contra 53,0123; 58,6046 contra 51,7472), así que el control "el mejor de la última" daría distinto. Sale en el log sin ventana ("Mejor agente de la corrida: #168 · generación 3") (PANTALLAS-05) |
+| PANTALLAS-QA-06 | Los cuatro números | ✅ | K = mín(5, G − 1), sin la generación 1 (`boletin.py:104-108`); % para fitness y edad, × para manzanas y recorrido, "—" si la generación 1 vale 0, "una sola generación" con G = 1; la nota "se alargan" solo si es verdad (desvío confirmado por Fer en la sesión 1). Tests: `test_boletin.py:101` (K = 5) y los de K = 2, K = 1 y G = 1. Con G = 2, la nota dice "gen 1 → gen 2" (`boletin.py:110`): ver observaciones (PANTALLAS-06) |
+| PANTALLAS-QA-07 | Embudo y cofre | ✅ | Embudo de la última generación con la primera vez de cada paso; una sola frase del cofre (`boletin.py:166`); "murieron todos" solo con `vivos` = 0 (`boletin.py:176-177`). Tests desde `test_boletin.py:196`. En los 7 logs de esta sesión la frase del cofre sale una vez y "murieron todos" no sale (ninguna última generación terminó con `vivos` = 0); en la captura de la pantalla final, la frase sale una vez (PANTALLAS-07) |
+| PANTALLAS-QA-08 | Consola sin ventana | ✅ | `imprimir_resumen_final(registro)` va antes del `return` sin ventana (`pantalla_final.py:68-70`). En los logs sin ventana de esta sesión: encabezado con "0,8 min simulados" (3 × 960 ticks), los cuatro números con sus notas, el embudo, el mejor agente, la cobertura de la generación 1 y de la última, y la frase del cofre una vez; "últimas 3" no está en el código. `test_humo.py:126` (DIAG-15) (PANTALLAS-08) |
+| PANTALLAS-QA-09 | Escala automática | ✅ | `escala` (`boletin.py:70`), con la tolerancia de la trampa de coma flotante del spec; los seis ejemplos de la decisión 10 en `test_boletin.py:76`, más todo 0, series que comparten eje y negativos; el formato de la decisión 8, con sus tests. Ningún gráfico usa la escala fija de 0 a 100. El control (la escala del popup), en la bitácora de la sesión 1 (PANTALLAS-09) |
+| PANTALLAS-QA-10 | Fuentes | ✅ | `assets/fonts/`: Pixelify Sans Bold e Inter Regular, SemiBold y Bold, un `OFL.txt` por familia y `LEEME.md`. `fuentes.verificar()` (`fuentes.py:26`) corta con el nombre del archivo, antes de abrir la ventana (`main.py:302`). `test_fuentes.py:121` (archivos), `:139` (el control: la fuente de pygame no tiene la `→`) y los que recorren cada carácter de los textos de pantalla en su fuente. La `→` se ve en la captura de la pantalla final (PANTALLAS-10) |
+| PANTALLAS-QA-11 | Sin popup | ✅ | `grep` no encuentra `popup`, `SummaryPopup`, `_datos_del_popup`, `MOUSEBUTTONDOWN` ni los `get_*_skill` en `main.py`, `src/`, `tests/` ni `experimento.py`; `src/ui/popup.py` no existe. Las 3 corridas con ventana de esta sesión llegaron al final con 0 clics. DIAG-32 ✅ (PANTALLAS-11) |
+| PANTALLAS-QA-12 | Panel | ✅ | La columna entera (`main.py:349`: x 960, 240×800); datos con "N de M" (`stats.py:51-52`), gráficos de fitness y manzanas con la escala automática, puzzle, "Se dibuja al terminar la generación 1" (`stats.py:29`) y teclas (`stats.py:32`). Captura (semilla 1, generación 5): "5 de 5", ejes de 0 a 80 y de 0 a 0,8, el último valor de cada serie rotulado ("58,3" y "24,7"), G1 y G4, "Gen 4: 2 agentes con llave roja" (PANTALLAS-12) |
+| PANTALLAS-QA-13 | Aviso de fin de generación | ✅ | 2,5 s y 440 px (`avisos.py:16` y `:19`); después de la última generación no hay: el `return` de `main.py:502` va antes del aviso. `test_pantallas.py:129` (a los 2,4 s está, a los 2,6 s no) y `:203` (una corrida con ventana en el driver dummy). Captura: "Generación 2 terminada · Fitness promedio 24,5 +2,6 · Manzanas por agente 0,75 +0,12", con las diferencias en verde y la barra por la mitad (PANTALLAS-13) |
+| PANTALLAS-QA-14 | Aviso de hito | ✅ | 4 s y no más de 3 (`avisos.py:17-18`), con el reloj como parámetro; los cinco títulos (`boletin.py:18-19`) y subtítulos (`test_pantallas.py:165`). `test_pantallas.py:141` (4 s, apilados en orden, tope de 3). Captura: "¡Primera llave roja!" en dorado, con el sprite de la llave, y "Un agente la agarró en la generación 2" (PANTALLAS-14) |
+| PANTALLAS-QA-15 | Pantalla final | ✅ | `dibujar_boletin` en `pantalla_final.py`: encabezado, cuatro números, gráficos con las marcas, mapas con la raíz cuadrada (`:124`) y el contorno de las fortalezas (`:128`), embudo, mejor agente y pie; se cierra con ESC o ENTER (`:91`). `textos_del_cuadro`, `_dibujar_cuadro`, `_grafico_de_fitness` y `_renglones_de_clustering` no existen. Captura (semilla 1, 5 generaciones): todo lo de la decisión 14, la marca "1ª llave roja · gen 2", el cofre una vez, el mejor agente #285 con fitness 69,7 (el máximo de `fitness_max`), sin MOVIMIENTO ni CLUSTERING (PANTALLAS-15) |
+| PANTALLAS-QA-16 | Ventana con eventos inyectados | ✅ | `ventana.py` del scratchpad (envuelve `mostrar_pantalla_final`, `pygame.event.get` y `pygame.display.flip`; `TARGET_FPS` = 100.000): 3 corridas, código 0, un solo ESC inyectado, recién después de capturar la pantalla final, y 0 clics; el log de cada una tiene la línea del hito y el boletín. 34, 33 y 88 s (PANTALLAS-16) |
+| PANTALLAS-QA-17 | Tests | ✅ | 123 passed en 26,4 s. Cada test nuevo, con su control en la bitácora del spec: 9 del bloque A y 7 del B; el del azar, vuelto a correr en esta sesión (PANTALLAS-17) |
+| PANTALLAS-QA-18 | Docs | ✅ | README: el árbol de `src/ui/` es la carpeta, sin el popup (`README.md:89-94`); el panel (`:177`), la pantalla final (`:181`) y la licencia de las fuentes (`:663-665`). `CLAUDE.md:71`, sin el popup. DIAG-32 ✅ (`AnalisisQA.md:153`) (PANTALLAS-18) |
+
+**Observaciones que no cambian el veredicto:**
+- **Con 2 generaciones, la nota de los cuatro números dice "gen 1 → gen 2"** (`boletin.py:110`), y no
+  "gen 1 → promedio de las últimas 1", como da el texto literal de la decisión 14 b. Dice lo mismo. La
+  sesión 1 lo anotó entre los textos que el spec no fijaba, pero la decisión sí lo fija: es un desvío
+  del texto. Fer lo confirmó el 2026-11-15 y queda así (LEC-014).
+- **El fondo del aviso de fin de generación tiene alfa 230 de 255** (`avisos.py:27`, ~90 % opaco): es
+  semitransparente, como pide la decisión 11, pero el mundo apenas se ve detrás.
+- **Con ventana, después del boletín sale el "REPORTE COMPLETO DE APRENDIZAJE"** de
+  `create_learning_report` (`pantalla_final.py:72`); sin ventana no sale. Era igual antes del spec
+  (`4212fad`), y el spec no lo toca.
+- **El costo del mapa de calor da más que en la sesión 1** (0,41 a 0,62 % contra 0,27 %): la sesión 1
+  lo midió con `timeit` fuera de la corrida, y esta lo mide adentro, con el envoltorio incluido. Las
+  dos quedan por debajo del 1 %.
+- **`test_humo.py` corre sin ventana:** la coincidencia de las líneas de hito con el CSV con ventana
+  no tiene test; se verificó en las corridas de esta sesión.
+- En `src/ui/__pycache__/` queda un `popup.cpython-311.pyc` viejo, fuera de git: Python no lo importa
+  sin su `.py`.

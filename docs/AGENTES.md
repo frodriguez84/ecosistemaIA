@@ -50,7 +50,8 @@ medias):
 ### Sesión N — AAAA-MM-DD — <fase o bloque>
 - Hecho: qué se cerró, con el commit.
 - Estados: qué criterios del DoD o casos de QA cambiaron.
-- Desvíos del spec, y por qué.
+- Desvíos del spec, y por qué. Un texto o un valor que se aparta del que da una decisión es un desvío,
+  aunque la decisión lo dé con una variable ("las últimas K"): se confirma con Fer (LEC-014).
 - A medias o bloqueado: qué falta y qué lo destraba.
 - Para verificar en producción después del deploy.
 - Próxima sesión: fase o bloque, primer paso concreto, trampas que aparecieron.

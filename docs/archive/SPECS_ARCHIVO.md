@@ -5,6 +5,43 @@ diseño queda en el spec, en [`../specs/done/`](../specs/done/). El más nuevo a
 
 ---
 
+## Pantallas para ver aprender {#pantallas-ver-aprender}
+
+**Spec:** [PANTALLAS_VER_APRENDER](../specs/done/PANTALLAS_VER_APRENDER.md) · cerrado el 2026-11-15: autoría
+con una [maqueta](https://claude.ai/artifact/SvXK3fB1Yv8zpSB3HBXE5Z), dos bloques (los datos y las
+pantallas) y el cierre.
+
+**Qué hace:** ver aprender sin cambiar la simulación (el mismo CSV byte a byte). Sale el popup de cada
+generación (DIAG-32). Durante la corrida, el panel derecho ocupa la columna entera, con gráficos en vivo
+de fitness y de manzanas por agente (escala automática), y arriba del mundo hay avisos que no toman
+clics ni frenan nada: el fin de cada generación (2,5 s, con la diferencia contra la anterior) y la
+primera vez de cada paso del puzzle (4 s, en dorado). Al final, una sola pantalla como boletín: cuatro
+números (la generación 1 contra el promedio de las últimas 5), los gráficos con los pasos del puzzle
+marcados, el mapa de calor de por dónde caminaron (la generación 1 contra la última), el puzzle como
+embudo, el mejor agente de la corrida y el cofre una sola vez. Sin ventana, el mismo boletín por
+consola.
+
+**Alcance:**
+- Bloque A, los datos: `src/analytics/registro.py` (`RegistroDeLaCorrida`: la fila del CSV de cada
+  generación, los hitos, el récord del mejor agente y el mapa de calor, en celdas de
+  `HEATMAP_CELL_SIZE` = 16 px), alimentado por un solo camino en `main.py`, con ventana y sin ella;
+  `src/analytics/boletin.py` (formato de números, escala automática, `armar_boletin`,
+  `texto_de_consola`, `linea_de_hito`). Cada hito imprime su línea en la consola. Fuentes Pixelify Sans
+  e Inter (TTF estáticos, OFL) en `assets/fonts/`, con `src/ui/fuentes.py`.
+- Bloque B, las pantallas: salen `src/ui/popup.py`, el cuadro final de antes y los `get_*_skill`.
+  Nuevos `src/ui/graficos.py` y `src/ui/avisos.py` (`PilaDeAvisos`, con el reloj como parámetro);
+  reescritos `src/ui/stats.py` (el panel) y `src/ui/pantalla_final.py` (`dibujar_boletin`). Ningún
+  texto de pantalla usa la fuente de pygame, salvo los rótulos de respaldo de `obstacles.py`.
+- Tests: `test_registro.py`, `test_boletin.py`, `test_fuentes.py` y `test_pantallas.py` (con
+  `SDL_VIDEODRIVER=dummy`), nuevos; `test_humo.py` y `test_reportes.py` al día: 123 en ~26 s.
+- No cambian la simulación, el CSV, `experimento.py` ni el reporte de consola de cada generación. Nada
+  nuevo consume azar ni escribe archivos.
+
+**QA:** [AnalisisQA § QA /qa-spec — Pantallas para ver aprender](../qa/AnalisisQA.md#qa-pantallas-ver-aprender),
+APROBADO 18/18. Resuelve DIAG-32.
+
+---
+
 ## Modo guiado y modo autónomo {#modo-guiado-y-autonomo}
 
 **Spec:** [MODO_GUIADO_Y_AUTONOMO](../specs/done/MODO_GUIADO_Y_AUTONOMO.md) · cerrado el 2026-11-15,

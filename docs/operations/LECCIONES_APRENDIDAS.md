@@ -5,6 +5,19 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-014 — 2026-11-15 — Un texto distinto del de una decisión es un desvío, aunque la decisión lo dé con una variable
+
+**Qué pasó.** En el bloque A de [Pantallas para ver aprender](../specs/done/PANTALLAS_VER_APRENDER.md),
+la nota de los cuatro números con 2 generaciones quedó "gen 1 → gen 2". La decisión 14 b dice "gen 1 →
+promedio de las últimas K", que con K = 1 da "promedio de las últimas 1". La bitácora lo anotó entre
+los "textos que el spec no fijaba", junto con otros que de verdad no fijaba, y no entre los desvíos,
+que son los que se confirman con Fer. Lo encontró el checker independiente del QA de cierre, que leyó
+la decisión sin leer la bitácora.
+
+**Regla.** Antes de anotar un texto como "que el spec no fijaba", buscarlo en las decisiones: si una lo
+da, aunque sea con una variable o como plantilla, apartarse es un desvío y se confirma con Fer. Aplicada
+en `docs/AGENTES.md`, en el formato de la bitácora ("Desvíos del spec, y por qué").
+
 ## LEC-013 — 2026-11-15 — Una fuente de pygame guardada en caché deja de servir cuando se cierra `pygame.font`
 
 **Qué pasó.** En el bloque B de [Pantallas para ver aprender](../specs/active/PANTALLAS_VER_APRENDER.md),
