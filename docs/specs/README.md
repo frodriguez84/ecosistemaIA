@@ -21,7 +21,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Limpieza sin cambiar comportamiento](active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) — código muerto, dependencias, `.pyc`, duplicación y reportes, con el mismo CSV byte a byte | Antes de tocar `main.py`, `src/` o `requirements.txt`. En ejecución desde el 2026-11-14: bloques A, B y C ✅, con el chequeo de cierre; falta `/close-spec` (cuarta sesión); con bitácora |
+| _(vacío)_ | |
 
 ## 🔵 Planned (`planned/`)
 
@@ -33,4 +33,5 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Resumen en SPECS_ARCHIVO |
 |------|---------------------------|
+| [Limpieza sin cambiar comportamiento](done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) — código muerto, dependencias, `.pyc`, duplicación y reportes, con el mismo CSV byte a byte | [§ Limpieza sin cambiar comportamiento](../archive/SPECS_ARCHIVO.md#limpieza-sin-cambiar-comportamiento) |
 | [Medir antes de tocar](done/MEDIR_ANTES_DE_TOCAR.md) — flags, semilla, CSV por generación, `experimento.py`, tests | [§ Medir antes de tocar](../archive/SPECS_ARCHIVO.md#medir-antes-de-tocar) |

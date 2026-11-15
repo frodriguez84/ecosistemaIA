@@ -314,3 +314,62 @@ QA manual del spec.
 - `_fila_csv` divide por `len(agents)`. No puede valer 0: la lista `agents` es la población entera
   de cada generación (60) y los muertos solo se filtran para los reportes.
 - El comando que registra `resumen.md` no lleva `--paralelo`, a propósito: no cambia los resultados.
+
+---
+
+<a id="qa-limpieza-sin-cambiar-comportamiento"></a>
+## QA /qa-spec — Limpieza sin cambiar comportamiento (2026-11-14)
+**Veredicto:** APROBADO
+**Verificación técnica:** sintaxis ✅ (`compileall` de `main.py`, `config.py`, `src`) · tests 17/17 en
+20,4 s · build N/A (Python, sin build) · Pylint del spec: 0 hallazgos
+**Método:** tres checkers independientes (Explore/haiku, solo lectura) contra el DoD de
+`docs/specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md`: código y duplicación, reportes y tests,
+docs y alcance. Los checkers no ejecutaban nada. Las corridas de las tres sesiones siguen en
+`results/` (fuera de git) y se volvieron a comparar el mismo día con el comparador del spec
+(verificado contra el bloque del spec con `diff`). Para las líneas de log que la decisión 18 deja
+cambiar, un script del scratchpad verificó cada "Tasa:" del análisis detallado contra `vivos` / 60
+de su fila del CSV, y el tiempo simulado contra la suma de `ticks` / 3.600. Su control: con los logs
+del código viejo da MAL. Además, un chequeo rápido nuevo sobre `HEAD` (`results/rapido_cierre/`):
+4 CSV iguales, y en cada log solo cambia la "Tasa:" de la generación 5. Lo que pide ventana (06,
+16, 17 y 18) se verificó en vivo en la sesión 3, con Fer. El código no cambió desde entonces: el
+último archivo de código se tocó a las 19:42, `ventana_despues/` es de las 19:45 a las 19:49, y el
+árbol está limpio contra `HEAD`. Los IDs `LIMPIEZA-NN` son los del QA manual del spec.
+
+| ID | Criterio | Resultado | Evidencia / Gap |
+|----|----------|-----------|-----------------|
+| LIMPIEZA-QA-01 | Línea base desde el commit anterior al primer cambio, con su control | ✅ | Hash `1ad83b9` en la bitácora, y es el padre del primer commit del spec (`076ffa3`). Comparador: los 10 CSV y los 10 logs de `results/linea_base_limpieza/` son iguales a los de `experimento_20261114-160055/` (LIMPIEZA-01) |
+| LIMPIEZA-QA-02 | Chequeo completo del bloque A | ✅ | `results/experimento_20261114-171106/`: 6 CSV y 6 logs iguales (LIMPIEZA-02) |
+| LIMPIEZA-QA-03 | Chequeo completo del bloque B | ✅ | `results/experimento_20261114-191956/`: 6 CSV y 6 logs iguales (LIMPIEZA-03) |
+| LIMPIEZA-QA-04 | Chequeo completo del bloque C | ✅ | `results/experimento_20261114-194553/`: 6 CSV iguales; en cada log, 2 líneas distintas, las "Tasa:" de las generaciones 5 y 10, cada una igual a `vivos` / 60 (LIMPIEZA-04) |
+| LIMPIEZA-QA-05 | Chequeo de cierre, 5 × 20 | ✅ | `results/experimento_20261114-195055/`: 10 CSV iguales; `resumen.md` igual desde la línea 4; en cada log, 5 líneas: las 4 "Tasa:" (`vivos` / 60) y la del tiempo (suma de `ticks` / 3.600; 7,3 minutos en la semilla 1) (LIMPIEZA-05) |
+| LIMPIEZA-QA-06 | Con ventana, `--generaciones 2 --semilla 1` | ✅ | `results/ventana_despues/`: CSV igual a las 2 primeras generaciones; el log solo difiere en las 3 líneas del modo con ventana (LIMPIEZA-06) |
+| LIMPIEZA-QA-07 | `requirements.txt` e instalación limpia | ✅ | Solo `pygame`, `numpy`, `scikit-learn` y `pytest`, con `>=`; ningún import de terceros fuera de esos cuatro. La instalación limpia es de la sesión 1 (bitácora): `pytest` verde y chequeo rápido idéntico. `requirements.txt` no cambió desde entonces (LIMPIEZA-07) |
+| LIMPIEZA-QA-08 | `.pyc` | ✅ | `git ls-files "*.pyc"` vacío; `.gitignore:6-7`. Después del chequeo rápido nuevo, `git status` limpio (LIMPIEZA-08) |
+| LIMPIEZA-QA-09 | Código muerto | ✅ | No existen `src/agents/brain/`, `src/analytics/metrics.py`, `save_data` ni `print_cluster_report`; `grep -rn 'safe"' src` vacío (LIMPIEZA-09) |
+| LIMPIEZA-QA-10 | Pylint | ✅ | El comando de Implementación da 0 hallazgos (antes 53) (LIMPIEZA-10) |
+| LIMPIEZA-QA-11 | `genetic_algorithm.py` | ✅ | `random.randint(50, 900)` 3 veces (`:44`, `:111`, `:239`); un solo bucle de 100, en `_posicion_libre` (`:108-115`); respaldos: `(100, 100)` en `:149` y `:200`, la grilla en `:156`. Comparado camino por camino contra `1ad83b9` (élites, hijos, población al azar, inmigrantes): mismos sorteos, mismos argumentos, mismo orden (LIMPIEZA-11) |
+| LIMPIEZA-QA-12 | Estructura de `main.py` | ✅ | `_reposicionar_agentes` (`main.py:125`) y `_ticks_de_generacion` (`:251`), una vez cada una. En `_simular`, el paso del agente (`:546-566`) y el fin de generación en orden (`:603-652`). Sin clases nuevas. `mostrar_pantalla_final` en `src/ui/pantalla_final.py:22`; `dibujar_mundo` (`src/ui/renderer.py:284`) la usan `main.py:672` y `pantalla_final.py:34` (LIMPIEZA-12) |
+| LIMPIEZA-QA-13 | DIAG-27 | ✅ | `main.py:145` sortea la `y` con `world.screen_height`. El control con zoom no dio distinto porque ese sorteo no corre en las semillas de la verificación: vale la lectura, como dice el spec, y la sesión 2 ejercitó la rama aparte (bitácora) (LIMPIEZA-13) |
+| LIMPIEZA-QA-14 | DIAG-14 | ✅ | `learning_monitor.py:47` guarda `total_agents` y `:172` divide por él. `tests/test_reportes.py:35-43` (60 y 45 vivos), que falló con el código de antes (sesión 3: 120.0% y 90.0%). Las "Tasa:" del cierre valen `vivos` / 60 (LIMPIEZA-14) |
+| LIMPIEZA-QA-15 | DIAG-15 | ✅ | `minutos_simulados` (`pantalla_final.py:17-19`), con división real; `main.py:571` y `:610` suman los ticks, también los de la generación parcial del cofre; la consola y el cuadro usan la misma función. `test_humo.py:104-108`; antes decía 0.0 (LIMPIEZA-15) |
+| LIMPIEZA-QA-16 | DIAG-16 | ✅ | `textos_del_cuadro` (`pantalla_final.py:94-201`) no dibuja; `test_reportes.py:67-79`, con cofre y sin cofre. Con ventana y sin cofre, mirado por Fer y en capturas en la sesión 3 (LIMPIEZA-16) |
+| LIMPIEZA-QA-17 | DIAG-17 | ✅ | En vivo, sesión 3: 56 s de CPU en 10 s antes, 0,19 s después. Todo se calcula y se dibuja una vez antes del loop (`pantalla_final.py:30-45`); el loop solo atiende eventos, hace `flip` y espera con `clock.tick(30)` (`:50-57`) (LIMPIEZA-17) |
+| LIMPIEZA-QA-18 | Pantalla final, a ojo | ✅ | En vivo, sesión 3: las capturas de los cuadros 1 y 30 son idénticas (quieta), el fondo es el último cuadro, y ESC (Fer) y ENTER (inyectada) la cierran. Sin `particle_system.update()` (`pantalla_final.py:34-38`); `K_ESCAPE` y `K_RETURN` en `:54` (LIMPIEZA-18) |
+| LIMPIEZA-QA-19 | `python -m pytest -q` | ✅ | 17 passed en 20,4 s (LIMPIEZA-19) |
+| LIMPIEZA-QA-20 | Lo que salió del spec por la decisión 8 | ✅ | Las tres entradas de la bitácora dicen que no salió nada (LIMPIEZA-20) |
+| LIMPIEZA-QA-21 | Docs | ✅ | README: dependencias (`:47-50`), estructura sin `brain/` ni `metrics.py`, con `pantalla_final.py` (`:87`). `CLAUDE.md` § Stack, § Estructura (la pantalla final en `src/ui/`, `:70`) y § Variables de entorno. DIAG-14 a DIAG-21, DIAG-23, DIAG-26 y DIAG-27 ✅ en este archivo (LIMPIEZA-21) |
+| LIMPIEZA-QA-22 | § "Qué NO es": no cambia la simulación, `experimento.py`, las columnas del CSV ni la lógica de "¿APRENDIERON?" | ✅ | `git diff 1ad83b9 HEAD -- src/agents src/world`: solo `brain/`, la rama `"safe"`, imports sin usar y `.pyc`. `experimento.py` sin diff; `COLUMNAS_CSV` igual. "¿APRENDIERON?": mismas ramas y umbrales (`pantalla_final.py:132-155` contra `1ad83b9:main.py:1307-1334`) |
+
+**Observaciones de los checkers que no cambian el veredicto:**
+- El checker de docs dio dos PARCIAL por criterios que se le escribieron más estrictos que el DoD:
+  `pantalla_final.py` literal en `CLAUDE.md` § Estructura (el DoD pide la sección al día, y la línea
+  de `src/ui/` nombra los módulos por lo que hacen), y una lista de lo permitido en `src/agents` sin
+  los `.pyc` que saca la decisión 24.
+- `find_safe_position` (`main.py:38`) sortea la `y` con el 800 literal: es el alto del mundo, no el
+  de la ventana, y el spec la deja como está. `fix_agent_positions` corre dos veces, también a
+  propósito (§ "Qué NO es").
+- Con ventana, la consola no imprime el resumen final (igual que antes): el tiempo simulado se ve
+  solo en el cuadro, calculado con la misma función.
+- Fuera de alcance, al ítem 3 del BACKLOG (decisión 15): `src/ui/popup.py:93` conserva un
+  `.get('total_agents', 50)` cuyo 50 nunca se usa (la clave siempre llega), y el README lista
+  `logs/` y `checkpoints/` (`README.md:92-93` y `:493-497`), que no existen.

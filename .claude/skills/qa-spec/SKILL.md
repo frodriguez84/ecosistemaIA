@@ -45,12 +45,15 @@ justificada). Instrucción al checker:
   repo la evidencia concreta (archivo:línea). Devolvé veredicto PASS/FAIL/PARCIAL,
   evidencia (rutas+líneas) y qué falta si no es PASS. No asumas: sin evidencia = FAIL."
 - Pasale solo el criterio y el extracto relevante del spec, NO tu opinión de si
-  está hecho.
+  está hecho. El criterio va con el texto del DoD tal cual: si le agregás algo, un
+  FAIL/PARCIAL sobre lo agregado no cuenta contra el spec (LEC-006).
 - Criterios de **comportamiento en vivo** (IA/chat, prompts, flujos de UI): marcalos
   "requiere QA en vivo"; no los declares PASS por lectura de código — anotá el
   procedimiento de verificación manual.
 
 ### 4. Agregar y reportar
+- Antes de la tabla, imprimí cada `archivo:línea` que citaron los checkers (`sed -n`) y
+  corregí lo que no coincida: un checker puede citar la línea de al lado (LEC-006).
 - Tabla `| ID | Criterio | Resultado | Evidencia / Gap |`.
 - **Veredicto global (3 estados):**
   - **APROBADO** — todos los criterios PASS *y* sin criterios en vivo pendientes de verificar.

@@ -5,6 +5,23 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-006 — 2026-11-14 — Lo que cita un checker de QA se verifica antes de copiarlo
+
+**Qué pasó.** En el cierre de [Limpieza](../specs/done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),
+`/qa-spec` lanzó tres checkers (Explore, haiku). Uno citó `genetic_algorithm.py:240` como una de
+las tres apariciones de `random.randint(50, 900)`. La 240 es el `randint(50, 750)`: la tercera está
+en la 239. El veredicto era correcto (`grep -c` daba 3), pero la tabla de QA es la evidencia que
+queda, y habría quedado con una cita falsa. Se encontró imprimiendo cada línea citada antes de
+cerrar la tabla. En la misma corrida, otro checker dio dos PARCIAL porque su prompt pedía más que el
+DoD: un nombre de archivo literal en `CLAUDE.md` que el DoD no exige. El checker verifica lo que se
+le escribe, no el spec.
+
+**Regla.** Antes de escribir la tabla de QA, se imprime cada `archivo:línea` que citaron los
+checkers (`sed -n`) y se corrige lo que no coincide. Al checker se le pasa el texto del DoD tal
+cual. Si se le agrega algo, un FAIL o PARCIAL sobre lo agregado no cuenta contra el spec, y se
+explica en las observaciones. Aplicada en
+[`.claude/skills/qa-spec/SKILL.md`](../../.claude/skills/qa-spec/SKILL.md) § 3 y § 4.
+
 ## LEC-005 — 2026-11-14 — `sed -i` en Git Bash deja en LF un archivo CRLF entero
 
 **Qué pasó.** En el bloque C de [Limpieza](../specs/active/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),
