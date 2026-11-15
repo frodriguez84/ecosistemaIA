@@ -5,6 +5,22 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-007 — 2026-11-14 — Un script de edición escrito con Write pierde los espacios de sus líneas en blanco
+
+**Qué pasó.** En el bloque A de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),
+los archivos CRLF se editaron con un script de Python, como pide LEC-005: textos viejos exactos,
+unicidad verificada, escritura en CRLF. El primer reemplazo no encontró su texto. El script se había
+escrito con la herramienta Write, que deja vacías las líneas que solo tienen espacios, y en el
+código esas líneas llevan la sangría (`'    '`): todo texto viejo con una línea en blanco adentro
+dejaba de coincidir. Escribirlo de nuevo con los espacios no sirve, porque la herramienta los vuelve
+a quitar. Pasa lo mismo con una línea de código que termina en espacios.
+
+**Regla.** El script compara contra el archivo con los espacios finales recortados y, al escribir,
+devuelve la línea original en todo lo que no cambió (con `difflib.SequenceMatcher` entre las líneas
+recortadas y las nuevas); una línea en blanco nueva toma la sangría de la que le sigue. Así el diff
+muestra solo lo que se quiso cambiar y no toca los blancos (LEC-002). Aplicada en
+[`CLAUDE.md`](../../CLAUDE.md) § Notas.
+
 ## LEC-006 — 2026-11-14 — Lo que cita un checker de QA se verifica antes de copiarlo
 
 **Qué pasó.** En el cierre de [Limpieza](../specs/done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md),

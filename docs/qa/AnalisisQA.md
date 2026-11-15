@@ -40,6 +40,12 @@ estado en el BACKLOG.
 > ✅ DIAG-07 (2026-11-14, spec *Medir*): `main.py` acepta `--sin-ventana`, `--generaciones N`,
 > `--semilla S`, `--sin-evolucion` y `--csv RUTA`, que pisan los valores de `config.py` (MEDIR-01
 > a MEDIR-03).
+>
+> ✅ DIAG-05 (2026-11-14, spec *Aprendizaje*, bloque A): el consumo (`AGENT_ENERGY_CONSUMPTION`,
+> 0,10 por tick) y lo que suma comer (`AGENT_ENERGY_GAIN_FOOD`, 8) se leen de `config.py`; la energía
+> alcanza para 1.000 ticks sin comer. En el [experimento del bloque A](#experimento-modos-a), desde
+> la generación 5 quedan vivos entre 0 y 16 de 60 al final de cada generación.
+> `tests/test_reglas.py` lo prueba con otros valores, y fallaba con el código de antes.
 
 ### Bugs
 
@@ -58,6 +64,7 @@ estado en el BACKLOG.
 | DIAG-25 | Con la salida redirigida a un archivo (`python main.py > corrida.log`), el primer `print` con emoji tira `UnicodeEncodeError`: en Windows la salida redirigida usa cp1252. Encontrado el 2026-11-14 al escribir el spec *Medir*. | `main.py:133`; prueba: `python -c "print('🎨')" > x.txt` falla con el Python del `.venv` | Medir |
 | DIAG-27 | Con ventana, el zoom (`+` y `-`) cambia la simulación. El reposicionamiento de agentes sortea la `y` entre 20 y `screen_height - 20`, y `screen_height` es el alto de la ventana, que cambia con el zoom; el mundo mide 800 siempre. Por lectura de código: con zoom, la misma semilla puede dar otro CSV que sin ventana. Encontrado el 2026-11-14 al escribir el spec *Limpieza*. | `main.py:326` y `:653`; el zoom en `:416-439` | Limpieza |
 | DIAG-29 | Al final de cada generación, los agentes se ubican contra el mapa viejo: `evolve` (con `_posicion_libre`), `fix_agent_positions` y `_reposicionar_agentes` corren antes de que `reset_food()` regenere obstáculos y estanque. El único chequeo que sirve es el segundo `fix_agent_positions`, contra el mapa nuevo. Explica por qué el reposicionamiento casi nunca mueve a nadie (DIAG-27). Encontrado el 2026-11-14 al escribir el spec *Aprendizaje*. | `main.py:641-668` | Aprendizaje |
+| DIAG-30 | La colisión con el estanque y con el perímetro mira una caja que arranca en la posición del agente y va hacia abajo y a la derecha (`collides_with(x, y, radio, radio)`), no una centrada en él: un agente que entra por la derecha o por abajo se mete en el estanque hasta la mitad del cuerpo. La ubicación de agentes del algoritmo genético usaba la misma caja; con ella, la ubicación nueva del bloque A del spec *Aprendizaje* dejaba 10 de 1.260 agentes arrancando con medio cuerpo en el agua (3 semillas × 7 generaciones). El bloque A la centró en la ubicación (0 de 1.260), pero el movimiento sigue igual. Encontrado el 2026-11-14 al verificar MODOS-08. | `advanced_agent.py:420` y `:435`; `obstacles.py:396` y `:428` | Mejoras futuras |
 
 > ✅ DIAG-25 (2026-11-14, spec *Medir*): `main.py` y `experimento.py` reconfiguran `stdout` y
 > `stderr` a UTF-8 antes del primer `print`. `python main.py --sin-ventana > corrida.log` termina
@@ -99,6 +106,26 @@ estado en el BACKLOG.
 > solo atiende eventos y muestra, con `clock.tick(30)`: **0,19 s en 10 s**. La pantalla queda quieta
 > (dos capturas a un segundo de distancia, idénticas) y su fondo es el mundo con el dibujo del loop
 > (LIMPIEZA-17, LIMPIEZA-18).
+>
+> ✅ DIAG-08, DIAG-09, DIAG-10, DIAG-12, DIAG-13 y DIAG-29 (2026-11-14, spec *Aprendizaje*,
+> bloque A). Cada uno tiene su test en `tests/test_reglas.py`, y los 11 tests fallaron con el código
+> de antes:
+> - DIAG-08: las recompensas por árbol y por casita van a `cut_rewards`, que `_calculate_fitness()`
+>   suma, como `puzzle_rewards`. El árbol vale `TREE_CUT_REWARD` (15).
+> - DIAG-09: salen los tres contadores, el término de fitness por obstáculos, `get_obstacle_skill`,
+>   `avg_obstacle_skill` del popup y el comportamiento `obstacle_avoiders`. Valían siempre 0: sumar
+>   un 0 entero al fitness no cambia el resultado.
+> - DIAG-10: el sensor 7 es `(ángulo mod 2π) / 2π`, en [0, 1).
+> - DIAG-12: `VISION_RANGE`, `AGENT_RADIUS`, `AGENT_ENERGY` (energía inicial y máxima, también para
+>   la poción) y `WATER_ENERGY_LOSS` se leen de `config.py`.
+> - DIAG-13: la exploración extra cuelga del `if fitness > 30`: corre solo con fitness ≤ 30.
+> - DIAG-29: una sola función, `_ubicar_agentes` (`main.py`), ubica a todos después de
+>   `reset_food()`, con todos los criterios juntos; el algoritmo genético ya no ubica. En 3 semillas
+>   × 7 generaciones (1.260 ubicaciones), ningún agente arrancó en una fortaleza, sobre un obstáculo
+>   o en el estanque del mapa de su generación. Al verificarlo apareció DIAG-30.
+>
+> DIAG-11, a medias (bloque A): el tope de la penalización por agua es `WATER_PENALTY_MAX` (10), con
+> su test. Falta el README, que sigue diciendo "sin límite": va en el bloque C.
 
 ### Limpieza y deuda
 
@@ -375,3 +402,82 @@ del código viejo da MAL. Además, un chequeo rápido nuevo sobre `HEAD` (`resul
 - Fuera de alcance, al ítem 3 del BACKLOG (decisión 15): `src/ui/popup.py:93` conserva un
   `.get('total_agents', 50)` cuyo 50 nunca se usa (la clave siempre llega), y el README lista
   `logs/` y `checkpoints/` (`README.md:92-93` y `:493-497`), que no existen.
+
+---
+
+<a id="experimento-modos-a"></a>
+## Modo guiado y modo autónomo — experimento del bloque A (2026-11-14, MODOS-10)
+
+**Qué cambió** (bloque A del [spec](../specs/active/MODO_GUIADO_Y_AUTONOMO.md)): `config.py` manda
+con sus números: el consumo es 0,10 por tick (corría 0,05), comer suma 8 (sumaba 30), el radio es 6
+(era 8), el árbol suma 15 (sumaba 10 y no contaba, DIAG-08) y el agua resta `WATER_ENERGY_LOSS`. Los
+pesos del fitness pasan a `config.py` con los mismos valores. DIAG-08 a DIAG-11 y DIAG-13 quedan
+arreglados; los agentes se ubican una vez por generación, con el mapa nuevo (DIAG-29), y el id es un
+contador. El modo es el de siempre, con la guía (el switch es del bloque C). La simulación cambia a
+propósito: no se compara byte a byte contra la de antes (decisión 27).
+
+**Cómo se corrió:** las 10 corridas a la vez, en 12 núcleos: 370 s. Carpeta
+`results/experimento_20261114-224205`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 20`
+
+**Por modo** (promedio ± desvío muestral entre semillas):
+
+| Modo | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Etapa del puzzle (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Con evolución | 5 | 23.61 ± 0.71 | 39.99 ± 3.23 | 16.39 ± 3.86 | 0.61 ± 0.07 | 2.50 ± 0.66 | 1.88 ± 0.71 | 1169 ± 43 | 2.2 ± 0.8 | 0 de 5 |
+| Sin evolución | 5 | 21.18 ± 0.44 | 21.80 ± 0.72 | 0.62 ± 0.97 | 0.55 ± 0.10 | 0.66 ± 0.08 | 0.11 ± 0.11 | 1052 ± 5 | 2.6 ± 1.5 | 1 de 5 (gen. 6.0) |
+
+**Comparación pareada por semilla:** la evolución subió más que la línea base en 4 de 4 semillas en fitness, y en 4 de 4 en manzanas por agente.
+
+**Por corrida:**
+
+| Semilla | Modo | Generaciones | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom., últimas 5 | Etapa del puzzle | Cofre en la gen. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Con evolución | 20 | 22.43 | 45.30 | 22.87 | 0.51 | 3.55 | 3.05 | 1238 | 1 | — |
+| 1 | Sin evolución | 6 | — | — | — | — | — | — | — | 5 | 6 |
+| 2 | Con evolución | 20 | 24.35 | 38.43 | 14.08 | 0.69 | 2.24 | 1.54 | 1151 | 2 | — |
+| 2 | Sin evolución | 20 | 21.05 | 20.89 | -0.16 | 0.44 | 0.56 | 0.12 | 1045 | 2 | — |
+| 3 | Con evolución | 20 | 23.92 | 39.35 | 15.43 | 0.64 | 2.20 | 1.55 | 1158 | 3 | — |
+| 3 | Sin evolución | 20 | 21.66 | 21.63 | -0.02 | 0.69 | 0.65 | -0.04 | 1052 | 3 | — |
+| 4 | Con evolución | 20 | 23.69 | 36.73 | 13.04 | 0.62 | 1.85 | 1.22 | 1121 | 2 | — |
+| 4 | Sin evolución | 20 | 20.64 | 22.60 | 1.96 | 0.53 | 0.69 | 0.16 | 1057 | 2 | — |
+| 5 | Con evolución | 20 | 23.64 | 40.17 | 16.53 | 0.61 | 2.65 | 2.04 | 1177 | 3 | — |
+| 5 | Sin evolución | 20 | 21.36 | 22.09 | 0.72 | 0.53 | 0.75 | 0.21 | 1055 | 1 | — |
+
+Las corridas de menos de 10 generaciones (abrieron el cofre antes) quedan fuera de los promedios de fitness y manzanas: semilla 1 sin evolución.
+
+**Lectura, contra el [experimento de cinco semillas](#experimento-cinco-semillas):**
+- **Ahora hay presión de supervivencia, como preveía la decisión 15.** En las generaciones 1 a 4
+  (960 ticks) mueren a lo sumo dos agentes, por la energía extra que resta el agua. Desde la 5
+  (1.140 ticks) la energía no alcanza sin comer: al final de cada generación quedan vivos entre 0 y
+  16 de 60. En las últimas 5 quedan 4,1 vivos en promedio con evolución y 1,4 sin ella.
+- **Con evolución viven más, y lo aprenden:** la edad promedio de las últimas 5 es 1.169 ± 43 ticks
+  con evolución y 1.052 ± 5 sin ella. Sin evolución apenas pasa los 1.000 ticks que da la energía
+  inicial (cada manzana suma ~80). Con evolución sube de ~1.035 en las generaciones 5 a 8 a entre
+  1.121 y 1.238 en las últimas 5.
+- **Sigue aprendiendo algo, en todas las semillas comparables:** subió más que la línea base en 4 de
+  4, en fitness y en manzanas. La peor semilla con evolución (+13,0 de fitness) sube más que la mejor
+  sin evolución (+2,0).
+- **Los números absolutos bajan, y era esperable:** con evolución, el fitness de las últimas 5 pasa
+  de 42,6 a 40,0 y las manzanas por agente de 3,60 a 2,50. Comer suma 8 de energía en lugar de 30 y
+  el que no come muere: vive menos ticks para comer, explorar y sumar supervivencia. El fitness
+  máximo, en cambio, sube más que antes: de ~58 a ~75 con evolución (antes, a ~67) y a ~64 sin ella.
+- **La distancia sube menos que antes:** de ~470 a ~1.280 con evolución (×2,7; antes ×4,3) y de ~360
+  a ~440 sin ella (×1,2).
+- **Todavía no separa aprendizaje de guía.** El fitness promedio con evolución termina en 40,0, por
+  encima del umbral de 30 desde el que la guía lleva a la comida (DIAG-01). Lo mide el bloque C.
+- **El puzzle sigue sin mostrar aprendizaje, y una línea base lo resolvió:** la semilla 1 sin
+  evolución abrió el cofre en la generación 6 y la corrida terminó ahí; por eso la comparación
+  pareada es sobre 4 semillas. El puzzle todavía es colectivo y persistente (DIAG-03, DIAG-04): con
+  cerebros al azar y el mapa de esa semilla, alcanzó. Etapa 2,2 ± 0,8 con evolución contra
+  2,6 ± 1,5 sin ella. Lo cambia el bloque B.
+- **La población converge igual que antes:** diversidad en la generación 20 entre 0,097 y 0,117 con
+  evolución (antes, 0,087 a 0,111); la línea base se queda en 0,23.
+
+**Parada de la decisión 22: no se dispara.** Con evolución, ninguna semilla corrió sin muertes: hay
+muertes en 17 o 18 de las 20 generaciones de cada una. Las generaciones cortadas porque murieron
+todos antes del final son 4 de 80 desde la generación 5 (semilla 2: la 18; semilla 3: la 17;
+semilla 4: la 17 y la 19), y ninguna semilla tiene la mayoría cortada. Los valores de energía quedan
+como están. Para tener en cuenta: la presión es fuerte, y las generaciones cortadas aparecen desde
+la 17, cuando duran 1.680 ticks.

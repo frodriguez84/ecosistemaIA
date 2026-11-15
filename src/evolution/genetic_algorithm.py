@@ -19,7 +19,6 @@ class GeneticAlgorithm:
         self.selection_method = selection_method
         self.tournament_size = tournament_size
         self.meeting_pool_fraction = meeting_pool_fraction
-        self.world = None
         
         print(f"🧬 Algoritmo genético configurado:")
         print(f"   - Población: {population_size}")
@@ -34,94 +33,17 @@ class GeneticAlgorithm:
             print(f"   - Élite: {elitism}")
     
     def _create_random_population(self):
-        """Crea población inicial aleatoria."""
+        """Crea la población con cerebros al azar, en (0, 0): la ubica main.py."""
+        from config import SimulationConfig
         agents = []
-        attempts = 0
-        max_attempts = self.population_size * 50
-        
-        while len(agents) < self.population_size and attempts < max_attempts:
-            # Posición aleatoria en área segura
-            x = random.randint(50, 900)  # Evitar área de stats
-            y = random.randint(50, 750)  # Evitar área de stats
-            
-            # Verificar que no esté en obstáculos
-            valid_position = True
-            if self.world:
-                # Verificar colisión con obstáculos y con el estanque
-                valid_position = not self._choca(x, y)
-                
-                # Verificar colisión con comida
-                if valid_position:
-                    for food in self.world.food_items:
-                        if not food['eaten']:
-                            distance = ((x - food['x'])**2 + (y - food['y'])**2)**0.5
-                            if distance < 35:
-                                valid_position = False
-                                break
-                
-                # Verificar que tenga al menos una dirección libre
-                if valid_position:
-                    free_directions = 0
-                    for dx in [-1, 0, 1]:
-                        for dy in [-1, 0, 1]:
-                            if dx == 0 and dy == 0:
-                                continue
-                            test_x = x + dx * 20
-                            test_y = y + dy * 20
-                            if (0 <= test_x < self.world.screen_width and 
-                                0 <= test_y < self.world.screen_height):
-                                # Verificar que no esté en obstáculo
-                                obstacle_free = True
-                                for obstacle in self.world.obstacles:
-                                    if obstacle.collides_with(test_x, test_y, 20):
-                                        obstacle_free = False
-                                        break
-                                if obstacle_free:
-                                    free_directions += 1
-                    
-                    if free_directions < 1:
-                        valid_position = False
-            
-            if valid_position:
-                from config import SimulationConfig
-                brain = SimpleNeuralNetwork(
-                    SimulationConfig.INPUT_SIZE,
-                    SimulationConfig.HIDDEN_SIZE,
-                    SimulationConfig.OUTPUT_SIZE
-                )
-                agent = AdvancedAgent(x, y, brain)
-                agents.append(agent)
-            
-            attempts += 1
-        
-        # Si no se pudieron crear suficientes agentes, crear los que se pueda
-        if len(agents) < self.population_size:
-            print(f"⚠️ Solo se pudieron crear {len(agents)} agentes de {self.population_size}")
-        
+        for _ in range(self.population_size):
+            brain = SimpleNeuralNetwork(
+                SimulationConfig.INPUT_SIZE,
+                SimulationConfig.HIDDEN_SIZE,
+                SimulationConfig.OUTPUT_SIZE
+            )
+            agents.append(AdvancedAgent(0, 0, brain))
         return agents
-    
-    def _choca(self, x, y):
-        """True si (x, y) cae sobre un obstáculo (radio 35) o sobre el estanque."""
-        return (any(obstacle.collides_with(x, y, 35) for obstacle in self.world.obstacles)
-                or any(pond_obj.collides_with(x, y, 35, 35) for pond_obj in self.world.pond_obstacles))
-
-    def _posicion_libre(self):
-        """Hasta 100 posiciones al azar (dos randint cada una): la primera que no choca, o None."""
-        for _ in range(100):
-            x = random.randint(50, 900)
-            y = random.randint(50, 750)
-            if not self._choca(x, y):
-                return x, y
-        return None
-
-    def _posicion_de_respaldo(self):
-        """La primera posición de una grilla fija que no cae en el estanque; si ninguna sirve, (100, 100)."""
-        for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
-            for test_y in [100, 200, 300, 400, 500, 600]:
-                if not any(pond_obj.collides_with(test_x, test_y, 35, 35)
-                           for pond_obj in self.world.pond_obstacles):
-                    return test_x, test_y
-        return 100, 100
 
     def evolve(self, agents, generation=1):
         """Evoluciona la población."""
@@ -146,15 +68,13 @@ class GeneticAlgorithm:
             # Meeting pool por ranking + elitismo configurable
             for i in range(min(self.elitism, len(agents))):
                 # Nuevo agente con el cerebro del élite, estado reseteado
-                x, y = self._posicion_libre() or (100, 100)
-                new_agents.append(AdvancedAgent(x, y, agents[i].brain))
+                new_agents.append(AdvancedAgent(0, 0, agents[i].brain))
             parents = self._meeting_pool_selection(agents, self.population_size - len(new_agents))
         else:
             # Elitismo: "elitism", y también cualquier método que no se reconozca
             for i in range(min(self.elitism, len(agents))):
                 # Nuevo agente con el cerebro del élite, estado reseteado
-                x, y = self._posicion_libre() or self._posicion_de_respaldo()
-                new_agents.append(AdvancedAgent(x, y, agents[i].brain))
+                new_agents.append(AdvancedAgent(0, 0, agents[i].brain))
             # Seleccionar padres restantes por torneo
             parents = self._tournament_selection(agents, self.population_size - self.elitism)
         
@@ -196,10 +116,8 @@ class GeneticAlgorithm:
             if random.random() < mutation_rate:
                 child_brain.mutate(mutation_rate)
             
-            # Crear agente hijo con verificación de colisión
-            x, y = self._posicion_libre() or (100, 100)
-            
-            child = AdvancedAgent(x, y, child_brain)
+            # Crear agente hijo (lo ubica main.py)
+            child = AdvancedAgent(0, 0, child_brain)
             new_agents.append(child)
         
         new_agents = new_agents[:self.population_size]
@@ -229,46 +147,16 @@ class GeneticAlgorithm:
         return new_agents
     
     def _create_immigrant_agents(self, count):
-        """Crea agentes inmigrantes completamente aleatorios para mantener diversidad."""
+        """Crea agentes inmigrantes con cerebros al azar, en (0, 0): los ubica main.py."""
+        from config import SimulationConfig
         immigrants = []
-        attempts = 0
-        max_attempts = count * 50
-        
-        while len(immigrants) < count and attempts < max_attempts:
-            # Posición aleatoria en área segura
-            x = random.randint(50, 900)
-            y = random.randint(50, 750)
-            
-            # Verificar que no esté en obstáculos
-            valid_position = True
-            if self.world:
-                # Verificar colisión con obstáculos y con el estanque
-                valid_position = not self._choca(x, y)
-                
-                attempts += 1
-                
-                if valid_position:
-                    # Crear agente con cerebro completamente aleatorio
-                    from config import SimulationConfig
-                    random_brain = SimpleNeuralNetwork(
-                        SimulationConfig.INPUT_SIZE,
-                        SimulationConfig.HIDDEN_SIZE,
-                        SimulationConfig.OUTPUT_SIZE
-                    )
-                    immigrant = AdvancedAgent(x, y, random_brain)
-                    immigrants.append(immigrant)
-            else:
-                # Si no hay mundo, crear en posición segura por defecto
-                from config import SimulationConfig
-                random_brain = SimpleNeuralNetwork(
-                    SimulationConfig.INPUT_SIZE,
-                    SimulationConfig.HIDDEN_SIZE,
-                    SimulationConfig.OUTPUT_SIZE
-                )
-                immigrant = AdvancedAgent(x, y, random_brain)
-                immigrants.append(immigrant)
-                break
-        
+        for _ in range(count):
+            random_brain = SimpleNeuralNetwork(
+                SimulationConfig.INPUT_SIZE,
+                SimulationConfig.HIDDEN_SIZE,
+                SimulationConfig.OUTPUT_SIZE
+            )
+            immigrants.append(AdvancedAgent(0, 0, random_brain))
         return immigrants
     
     def _tournament_selection(self, agents, num_parents):

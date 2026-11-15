@@ -133,6 +133,8 @@ _(vacío — se llena con el primer feature)_
   Devolverlas para que el diff muestre solo lo que se quiso cambiar (LEC-002). Para mirar finales
   de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003).
   En un archivo CRLF, nunca `sed -i`: lo deja entero en LF y `git diff` no lo muestra (LEC-005).
+  Un script de edición escrito con Write pierde los espacios de sus líneas en blanco: que compare
+  contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base). El experimento con
   evolución contra sin evolución en varias semillas es `python experimento.py`.

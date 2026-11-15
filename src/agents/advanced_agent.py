@@ -18,21 +18,29 @@ from config import SimulationConfig
 class AdvancedAgent:
     """Agente avanzado con cerebro, sensores y actuadores."""
     
+    _proximo_id = 1  # Contador de ids de la corrida (spec MODO_GUIADO_Y_AUTONOMO, decisión 24)
+    
+    @classmethod
+    def reiniciar_ids(cls):
+        """Vuelve el contador de ids a 1. main.py lo llama al empezar cada corrida."""
+        cls._proximo_id = 1
+    
     def __init__(self, x, y, brain=None):
-        # Identificador único
-        self.id = id(self)  # Usar el id del objeto Python como identificador único
+        # Identificador: contador por corrida (1, 2, 3...), igual en dos corridas con la misma semilla
+        self.id = AdvancedAgent._proximo_id
+        AdvancedAgent._proximo_id += 1
         
         # Posición y movimiento
         self.x = float(x)
         self.y = float(y)
         self.angle = random.uniform(0, 2 * np.pi)
         self.speed = SimulationConfig.AGENT_SPEED  # Velocidad desde config
-        self.radius = 8
+        self.radius = SimulationConfig.AGENT_RADIUS
         
         # Estado
         self.alive = True
-        self.energy = 100.0
-        self.max_energy = 100.0
+        self.energy = SimulationConfig.AGENT_ENERGY
+        self.max_energy = SimulationConfig.AGENT_ENERGY
         self.age = 0
         self.fitness = 0.0
         
@@ -47,7 +55,7 @@ class AdvancedAgent:
             )
         
         # Sensores
-        self.vision_range = 150
+        self.vision_range = SimulationConfig.VISION_RANGE
         self.vision_angle = np.pi / 3  # 60 grados
         
         # Actuadores
@@ -57,13 +65,10 @@ class AdvancedAgent:
         # Estadísticas
         self.food_eaten = 0
         self.distance_traveled = 0.0
-        self.obstacles_avoided = 0
         self.total_moves = 0
         self.movement_distance = 0.0
         self.total_food_attempts = 0
         self.food_found_count = 0
-        self.obstacle_avoidance_count = 0
-        self.total_obstacle_encounters = 0
         
         # Ventanas deslizantes para métricas anti-círculo
         window = int(getattr(SimulationConfig, 'ANTI_CIRCLE_WINDOW_TICKS', 180))
@@ -76,6 +81,7 @@ class AdvancedAgent:
         self.metric_novelty = 0.0
         self.fitness_env_penalty = 0.0  # penalizaciones acumuladas del entorno (agua, etc.)
         self.puzzle_rewards = 0.0  # rewards acumulados del puzzle (llaves, puertas, cofre)
+        self.cut_rewards = 0.0  # recompensas acumuladas por cortar árboles y casitas (DIAG-08)
         
         # Objetivo de comida
         self.target_food = None
@@ -136,8 +142,8 @@ class AdvancedAgent:
         # 6. Posición Y normalizada
         perceptions.append(self.y / world.screen_height)
         
-        # 7. Ángulo actual normalizado
-        perceptions.append(self.angle / (2 * np.pi))
+        # 7. Ángulo actual normalizado a [0, 1): el ángulo se acumula sin límite (DIAG-10)
+        perceptions.append((self.angle % (2 * np.pi)) / (2 * np.pi))
         
         # 8. Estado combinado de llaves (0=ninguna, 0.5=una, 1=ambas)
         red_key_collected = 1.0 if (hasattr(world, 'red_key_collected') and world.red_key_collected) else 0.0
@@ -245,6 +251,17 @@ class AdvancedAgent:
                         decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.5)
                 else:
                     self.target_food = None
+        else:
+            # Para agentes con fitness bajo (<= 30), agregar comportamiento exploratorio. Antes
+            # colgaba del if de la guía de llaves y corría también con fitness más alto (DIAG-13)
+            if not hasattr(self, 'exploration_timer'):
+                self.exploration_timer = 0
+            self.exploration_timer += 1
+            
+            # Cada 100 ticks, cambiar dirección aleatoriamente
+            if self.exploration_timer > 100:
+                self.angle += random.uniform(-0.3, 0.3)
+                self.exploration_timer = 0
         # LÓGICA INTELIGENTE PARA PUZZLE - SOLO DESPUÉS DE APRENDER TAREAS BÁSICAS
         # Umbrales ajustados para activarse cuando corresponde (fitness ~45-50)
         # Solo agentes con fitness medio-alto (que ya dominan tareas básicas) intentan el puzzle
@@ -304,17 +321,6 @@ class AdvancedAgent:
                     decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.3)
                 self.target_food = None
         
-        else:
-            # Para agentes con fitness bajo, agregar comportamiento exploratorio
-            if not hasattr(self, 'exploration_timer'):
-                self.exploration_timer = 0
-            self.exploration_timer += 1
-            
-            # Cada 100 ticks, cambiar dirección aleatoriamente
-            if self.exploration_timer > 100:
-                self.angle += random.uniform(-0.3, 0.3)
-                self.exploration_timer = 0
-        
         # Agregar exploración continua pero reducida (MEJORADO)
         exploration_factor = 0.02  # Reducido de 0.08 a 0.02 para movimiento más dirigido
         decisions['move_forward'] += random.uniform(-exploration_factor, exploration_factor)
@@ -348,8 +354,8 @@ class AdvancedAgent:
         # Envejecer
         self.age += 1
         
-        # Consumir energía (REDUCIDO para mejor supervivencia)
-        self.energy -= 0.05
+        # Consumir energía
+        self.energy -= SimulationConfig.AGENT_ENERGY_CONSUMPTION
         
         # ===== NORMALIZACIÓN DE GIROS (Evitar turn_left y turn_right simultáneos) =====
         # Si ambos están activos, elegir solo el más fuerte (evita círculos)
@@ -525,7 +531,7 @@ class AdvancedAgent:
                 
                 if dist < 20:  # Rango MÁS grande para comer (AUMENTADO)
                     food['eaten'] = True
-                    self.energy = min(self.max_energy, self.energy + 30)
+                    self.energy = min(self.max_energy, self.energy + SimulationConfig.AGENT_ENERGY_GAIN_FOOD)
                     self.food_eaten += 1
                     # Actualizar fitness en tiempo real para feedback visual
                     self._calculate_fitness()
@@ -545,8 +551,8 @@ class AdvancedAgent:
             return False
         
         if world.process_tree_hit(self.x, self.y, current_tick):
-            # Recompensa por cortar árbol
-            self.fitness += 10  # TREE_CUT_REWARD
+            # Recompensa por cortar árbol, al acumulador que suma _calculate_fitness (DIAG-08)
+            self.cut_rewards += SimulationConfig.TREE_CUT_REWARD
             # Actualizar cooldown del agente
             self.last_tree_hit_tick = current_tick
             return True
@@ -554,7 +560,7 @@ class AdvancedAgent:
         # Intentar golpear huts
         if world.process_hut_hit(self.x, self.y, current_tick):
             # Recompensa por destruir hut
-            self.fitness += SimulationConfig.HUT_CUT_REWARD  # Usar config
+            self.cut_rewards += SimulationConfig.HUT_CUT_REWARD
             # Actualizar cooldown del agente
             self.last_tree_hit_tick = current_tick
             return True
@@ -602,8 +608,8 @@ class AdvancedAgent:
             if obstacle.type == "potion":
                 distance = float(((float(self.x) - float(obstacle.x))**2 + (float(self.y) - float(obstacle.y))**2)**0.5)
                 if distance < 20:  # Rango de usar poción
-                    # Curar completamente
-                    self.energy = 100
+                    # Curar hasta AGENT_ENERGY
+                    self.energy = self.max_energy
                     self.health = 100
                     # Remover la poción (opcional)
                     world.obstacles.remove(obstacle)
@@ -714,33 +720,16 @@ class AdvancedAgent:
         return nearest_target
     
     def _calculate_fitness(self):
-        """Calcula el fitness del agente basado en rendimiento."""       
-        # MULTIPLICADORES FIJOS: premian el rendimiento real sin depender de la generación
-        # Valores balanceados que permiten crecimiento natural cuando los agentes mejoran
-        # Ajustados para mejorar curva de fitness promedio (presentación)
-        food_multiplier = 10.0  # Premia comer más (aumentado para mejor curva promedio)
-        exploration_multiplier = 10.0  # Premia explorar más (aumentado para mejor curva promedio)
-        survival_multiplier = 0.010  # Premia supervivencia (reducido para fitness inicial más bajo)
-        anti_circle_multiplier = 18.0  # Premia movimiento eficiente (aumentado para combatir círculos)
-        obstacle_multiplier = 0.20  # Premia evitar obstáculos
-        penalty_max = 10.0  # Penalización reducida (para mejor curva promedio)
-        
-        # Fitness por supervivencia (crece naturalmente con la edad)
-        # Cap reducido de 15 a 8 para que el fitness inicial sea más bajo
-        survival_fitness = min(self.age * survival_multiplier, 10)
+        """Calcula el fitness del agente basado en rendimiento. Los pesos están en config.py."""
+        # Fitness por supervivencia (crece con la edad, con tope)
+        survival_fitness = min(self.age * SimulationConfig.FITNESS_SURVIVAL, SimulationConfig.FITNESS_SURVIVAL_MAX)
         
         # Fitness por comida (crece naturalmente con sqrt para evitar explosión)
-        food_fitness = food_multiplier * float(np.sqrt(max(0.0, float(self.food_eaten))))
+        food_fitness = SimulationConfig.FITNESS_FOOD * float(np.sqrt(max(0.0, float(self.food_eaten))))
         
         # Fitness por exploración (crece naturalmente con log para evitar explosión)
-        exploration_fitness = exploration_multiplier * float(np.log1p(max(0.0, float(self.distance_traveled)) / 350.0))
-        exploration_fitness = min(exploration_fitness, 15.0)  # Límite aumentado de 15.0 a 18.0
-        
-        # Fitness por evitar obstáculos (solo si el agente tiene un fitness base decente)
-        obstacle_fitness = 0
-        base_fitness = survival_fitness + food_fitness + exploration_fitness
-        if base_fitness > 10:
-            obstacle_fitness = self.obstacles_avoided * obstacle_multiplier
+        exploration_fitness = SimulationConfig.FITNESS_EXPLORATION * float(np.log1p(max(0.0, float(self.distance_traveled)) / 350.0))
+        exploration_fitness = min(exploration_fitness, SimulationConfig.FITNESS_EXPLORATION_MAX)
         
         # Métricas anti-círculo (premian movimiento eficiente)
         # Solo dar bonus si el agente realmente se mueve (más estricto para fitness inicial)
@@ -750,16 +739,19 @@ class AdvancedAgent:
             w2 = getattr(SimulationConfig, 'ANTI_CIRCLE_W2_TURN', 0.3)
             w3 = getattr(SimulationConfig, 'ANTI_CIRCLE_W3_NOVELTY', 0.3)
             anti_circle_score = (w1 * self.metric_sr) + (w2 * self.metric_turn_smooth) + (w3 * self.metric_novelty)
-            anti_circle_bonus = anti_circle_multiplier * anti_circle_score
+            anti_circle_bonus = SimulationConfig.FITNESS_ANTI_CIRCLE * anti_circle_score
         
         # Fitness total (sin limitaciones artificiales por generación)
-        total_fitness = survival_fitness + food_fitness + exploration_fitness + obstacle_fitness + anti_circle_bonus
+        total_fitness = survival_fitness + food_fitness + exploration_fitness + anti_circle_bonus
         
         # Sumar rewards del puzzle (llaves, puertas, cofre) - estos premian el éxito real
         total_fitness += self.puzzle_rewards
         
-        # Restar penalizaciones acumuladas del entorno (fijo, no adaptativo)
-        total_fitness -= min(self.fitness_env_penalty, penalty_max)
+        # Sumar las recompensas por cortar árboles y casitas (DIAG-08)
+        total_fitness += self.cut_rewards
+        
+        # Restar penalizaciones acumuladas del entorno, con tope (DIAG-11)
+        total_fitness -= min(self.fitness_env_penalty, SimulationConfig.WATER_PENALTY_MAX)
         
         # Normalizar a 0-100 (sin tope artificial por generación)
         unclamped = max(0, min(100, total_fitness))
@@ -843,13 +835,6 @@ class AdvancedAgent:
             return 0
         success_rate = self.food_found_count / self.total_food_attempts
         return success_rate * 100
-    
-    def get_obstacle_skill(self):
-        """Calcula el porcentaje de habilidad para evitar obstáculos."""
-        if self.total_obstacle_encounters == 0:
-            return 0
-        avoidance_rate = self.obstacle_avoidance_count / self.total_obstacle_encounters
-        return avoidance_rate * 100
     
     def get_energy_skill(self):
         """Calcula el porcentaje de habilidad de gestión de energía."""

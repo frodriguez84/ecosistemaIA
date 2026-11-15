@@ -15,6 +15,7 @@ import numpy as np
 
 from config import SimulationConfig
 from src.world.world import World
+from src.agents.advanced_agent import AdvancedAgent
 from src.evolution.genetic_algorithm import GeneticAlgorithm
 from src.ui.renderer import SpriteManager, ParticleSystem, dibujar_mundo
 from src.ui.stats import StatsPanel
@@ -25,166 +26,73 @@ from src.analytics.learning_monitor import LearningMonitor
 # Agregar src al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-def find_safe_position(world, agents, radius=16):
-    """Encuentra una posición segura para un agente, evitando todos los obstáculos."""
+# Ubicación de los agentes (spec MODO_GUIADO_Y_AUTONOMO, decisión 23): los criterios que estaban
+# repartidos entre el algoritmo genético y tres funciones de este archivo, juntos
+RADIO_LIBRE = 35            # Distancia mínima a obstáculos, estanque, perímetro y manzanas
+SEPARACION_AGENTES = 32     # Dos agentes no arrancan a menos de esto, en x y en y
+PASO_DIRECCION = 20         # Una dirección está libre si a esta distancia no hay obstáculo
+INTENTOS_POR_AGENTE = 500
+GRILLA_DE_RESPALDO = [(x, y) for x in range(100, 801, 100) for y in range(100, 601, 100)]
     
     
-    max_attempts = 100
-    grass_area_width = 960  # Área de pasto válida
+def _lugar_libre(world, x, y, ubicados):
+    """True si un agente puede arrancar en (x, y): fuera de fortalezas, obstáculos, perímetro y
+    estanque, lejos de los agentes ya ubicados y de las manzanas, y con una dirección libre."""
+    if world._is_inside_fortress(x, y):
+        return False
+    if any(obstacle.collides_with(x, y, RADIO_LIBRE) for obstacle in world.obstacles):
+        return False
+    # Caja centrada en el agente: la del genético iba de (x, y) hacia abajo y a la derecha, y dejaba
+    # agentes con medio cuerpo en el estanque por arriba o por la izquierda
+    if any(objeto.collides_with(x - RADIO_LIBRE, y - RADIO_LIBRE, 2 * RADIO_LIBRE, 2 * RADIO_LIBRE)
+           for objeto in world.perimeter_obstacles + world.pond_obstacles):
+        return False
+    if any(abs(otro.x - x) < SEPARACION_AGENTES and abs(otro.y - y) < SEPARACION_AGENTES
+           for otro in ubicados):
+        return False
+    if any(not food['eaten'] and ((x - food['x'])**2 + (y - food['y'])**2)**0.5 < RADIO_LIBRE
+           for food in world.food_items):
+        return False
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            test_x, test_y = x + dx * PASO_DIRECCION, y + dy * PASO_DIRECCION
+            if (0 <= test_x < world.screen_width and 0 <= test_y < world.screen_height
+                    and not any(obstacle.collides_with(test_x, test_y, PASO_DIRECCION)
+                                for obstacle in world.obstacles)):
+                return True
+    return False
+
+
+def _ubicar_agentes(world, agents):
+    """Ubica a todos los agentes, con el mapa de la generación ya regenerado (DIAG-29).
     
-    for _ in range(max_attempts):
-        # Generar posición aleatoria en área de pasto
-        x = random.randint(radius, grass_area_width - radius)
-        y = random.randint(radius, 800 - radius)
-        
-        # Verificar colisiones con obstáculos
-        collision = False
-        
-        # Verificar colisión con obstáculos normales
-        for obstacle in world.obstacles:
-            if obstacle.collides_with(x, y, radius):
-                collision = True
-                break
-        
-        # Verificar colisión con perímetro
-        if not collision:
-            for perimeter_obj in world.perimeter_obstacles:
-                if perimeter_obj.collides_with(x, y, radius * 2, radius * 2):
-                    collision = True
-                    break
-        
-        # Verificar colisión con estanques
-        if not collision:
-            for pond_obj in world.pond_obstacles:
-                if pond_obj.collides_with(x, y, radius * 2, radius * 2):
-                    collision = True
-                    break
-        
-        # Verificar colisión con fortalezas (IMPORTANTE!)
-        if not collision and hasattr(world, '_is_inside_fortress'):
-            if world._is_inside_fortress(x, y):
-                collision = True
-        
-        # Verificar colisión con otros agentes
-        if not collision:
-            for agent in agents:
-                if agent.alive and abs(agent.x - x) < radius * 2 and abs(agent.y - y) < radius * 2:
-                    collision = True
-                    break
-        
-        # Si no hay colisión, esta es una posición segura
-        if not collision:
-            return (x, y)
-    
-    # Si no se encuentra posición segura después de 100 intentos, usar posición por defecto
-    print("⚠️ No se pudo encontrar posición segura, usando posición por defecto")
-    return (100, 100)
-
-
-def fix_agent_positions(world, agents):
-    """Detecta y corrige agentes en posiciones inválidas."""
-    for agent in agents:
-        if not agent.alive:
-            continue
-            
-        # Verificar si el agente está en posición inválida
-        needs_fixing = False
-        
-        # Verificar colisión con obstáculos normales
-        for obstacle in world.obstacles:
-            if obstacle.collides_with(agent.x, agent.y, agent.radius):
-                needs_fixing = True
-                break
-        
-        # Verificar colisión con perímetro
-        if not needs_fixing:
-            for perimeter_obj in world.perimeter_obstacles:
-                if perimeter_obj.collides_with(agent.x, agent.y, agent.radius * 2, agent.radius * 2):
-                    needs_fixing = True
-                    break
-        
-        # Verificar colisión con estanques
-        if not needs_fixing:
-            for pond_obj in world.pond_obstacles:
-                if pond_obj.collides_with(agent.x, agent.y, agent.radius * 2, agent.radius * 2):
-                    needs_fixing = True
-                    break
-        
-        # Verificar colisión con fortalezas (IMPORTANTE!)
-        if not needs_fixing and hasattr(world, '_is_inside_fortress'):
-            if world._is_inside_fortress(agent.x, agent.y):
-                needs_fixing = True
-        
-        # Si necesita corrección, mover a posición segura
-        if needs_fixing:
-            safe_x, safe_y = find_safe_position(world, agents, agent.radius)
-            agent.x = safe_x
-            agent.y = safe_y
-
-
-def _reposicionar_agentes(world, agents, config):
-    """Con fortalezas activas, mueve a los agentes que quedaron en una fortaleza o sobre un obstáculo.
-
-    La y se sortea con el alto del mundo, no con el de la ventana: el zoom no cambia la simulación
-    (DIAG-27).
+    Para cada uno prueba posiciones al azar; si ninguna sirve, la grilla de respaldo; si tampoco,
+    (100, 100). Las dos salidas de emergencia avisan por consola.
     """
-    if not config.FORTRESSES_ENABLED:
-        return
-
+    ubicados = []
     for agent in agents:
-        # Verificar si está dentro de fortalezas O sobre obstáculos
-        needs_repositioning = (world._is_inside_fortress(agent.x, agent.y) or
-                               any(obstacle.collides_with(agent.x, agent.y, agent.radius)
-                                   for obstacle in world.obstacles))
-
-        if needs_repositioning:
-            # Reposicionar fuera de fortalezas, obstáculos, perímetro y estanque
-            attempts = 0
-            while attempts < 500:  # Más intentos para mayor seguridad
-                new_x = random.randint(20, config.get_grass_area_width() - 20)  # Solo área de pasto, evitando perímetro
-                new_y = random.randint(20, world.screen_height - 20)  # Evitando perímetro superior e inferior
-
-                # Verificar que no esté en fortaleza Y no colisione con obstáculos Y no esté en perímetro Y no esté en estanque
-                if (not world._is_inside_fortress(new_x, new_y) and
-                    not any(obstacle.collides_with(new_x, new_y, agent.radius)
-                            for obstacle in world.obstacles) and
-                    not any(perimeter_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                            for perimeter_obj in world.perimeter_obstacles) and
-                    not any(pond_obj.collides_with(new_x, new_y, agent.radius, agent.radius)
-                            for pond_obj in world.pond_obstacles)):
-                    agent.x = new_x
-                    agent.y = new_y
-                    break
-                attempts += 1
-
-            # Si no se pudo reposicionar después de 500 intentos, usar posición segura
-            if attempts >= 500:
-                # Buscar posición segura que no esté en estanque
-                safe_x, safe_y = 100, 100  # Posición por defecto
-                for test_x in [100, 200, 300, 400, 500, 600, 700, 800]:
-                    for test_y in [100, 200, 300, 400, 500, 600]:
-                        # Verificar que no esté en estanque
-                        safe_position = True
-                        for pond_obj in world.pond_obstacles:
-                            if pond_obj.collides_with(test_x, test_y, agent.radius, agent.radius):
-                                safe_position = False
-                                break
-                        if safe_position:
-                            safe_x, safe_y = test_x, test_y
-                            break
-                    if safe_position:
-                        break
-
-                agent.x = safe_x
-                agent.y = safe_y
-                print(f"⚠️ Agente {agent.id} reposicionado a posición segura ({safe_x}, {safe_y})")
+        lugar = None
+        for _ in range(INTENTOS_POR_AGENTE):
+            x, y = random.randint(50, 900), random.randint(50, 750)
+            if _lugar_libre(world, x, y, ubicados):
+                lugar = (x, y)
+                break
+        if lugar is None:
+            lugar = next(((x, y) for x, y in GRILLA_DE_RESPALDO if _lugar_libre(world, x, y, ubicados)),
+                         (100, 100))
+            print(f"⚠️ No se encontró lugar al azar para el agente {agent.id}: va a {lugar}")
+        agent.x, agent.y = float(lugar[0]), float(lugar[1])
+        ubicados.append(agent)
 
 
-# Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6)
+# Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6;
+# edad_prom: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
 COLUMNAS_CSV = [
     "semilla", "evolucion", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
-    "manzanas_prom", "manzanas_max", "vivos", "distancia_prom", "diversidad",
+    "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre",
 ]
 
@@ -236,6 +144,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
         sum(manzanas) / len(manzanas),
         max(manzanas),
         len([agent for agent in agents if agent.alive]),
+        sum(agent.age for agent in agents) / len(agents),
         sum(agent.distance_traveled for agent in agents) / len(agents),
         learning_monitor.calculate_diversity(agents),
         arboles_cortados,
@@ -336,7 +245,6 @@ def _datos_del_popup(generation, tick, agents, alive_agents, world, learning_mon
         'survival_rate': len(alive_agents) / len(agents) * 100,
         'avg_movement_skill': sum(agent.get_movement_skill() for agent in agents) / len(agents),
         'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents),
-        'avg_obstacle_skill': sum(agent.get_obstacle_skill() for agent in agents) / len(agents),
         'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents),
         'trees_cut': trees_cut_this_generation,
         # Datos del puzzle
@@ -397,6 +305,7 @@ def main(argv=None):
 def _simular(semilla, evolucion, escribir_fila):
     """Corre la simulación. Con evolucion=False, cada generación arranca con cerebros al azar."""
     print("🎨 Ecosistema Evolutivo IA")
+    AdvancedAgent.reiniciar_ids()  # los ids van de 1 en cada corrida (decisión 24)
     
     
     # Configuración centralizada
@@ -453,13 +362,10 @@ def _simular(semilla, evolucion, escribir_fila):
     
     # Crear algoritmo genético con configuración
     ga = GeneticAlgorithm(**config.get_genetic_params())
-    ga.world = world  # Pasar referencia al mundo
     
-    # Crear población inicial
+    # Crear población inicial y ubicarla en el mundo
     agents = ga._create_random_population()
-    
-    # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos
-    _reposicionar_agentes(world, agents, config)
+    _ubicar_agentes(world, agents)
     
     # Crear panel de estadísticas (más alto)
     stats_panel = StatsPanel(screen_width - config.get_stats_panel_width(), 10, config.get_stats_panel_width() - 10, 300)  # Panel dinámico
@@ -642,14 +548,9 @@ def _simular(semilla, evolucion, escribir_fila):
             else:
                 agents = ga._create_random_population()
             
-            # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
-            print("🔍 Verificando posiciones de agentes...")
-            fix_agent_positions(world, agents)
-            
-            # Reposicionar agentes que spawnearon dentro de fortalezas O sobre obstáculos (después de evolucionar)
-            _reposicionar_agentes(world, agents, config)
-            
+            # El mapa se regenera y recién ahí se ubican los agentes (DIAG-29)
             world.reset_food()
+            _ubicar_agentes(world, agents)
             world.tick = 0
             tick = 0
             generation += 1
@@ -662,10 +563,6 @@ def _simular(semilla, evolucion, escribir_fila):
             max_ticks_per_generation = _ticks_de_generacion(config, generation)
             
             print(f"✅ Nueva generación {generation} creada ⏱️ {max_ticks_per_generation/60} seg")
-            
-            # SISTEMA DE DETECCIÓN Y CORRECCIÓN DE POSICIONES INVÁLIDAS
-            
-            fix_agent_positions(world, agents)
         
         # Renderizar (solo si no está en modo headless)
         if not config.HEADLESS_MODE:

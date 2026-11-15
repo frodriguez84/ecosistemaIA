@@ -27,7 +27,7 @@ def _agente(i, vivo=True):
     """Un agente con los atributos que leen el monitor y el clustering."""
     return SimpleNamespace(
         id=1000 + i, alive=vivo, fitness=float(10 + i % 7), food_eaten=i % 4, age=900 + i,
-        distance_traveled=float(100 * (i % 5)), total_moves=10, obstacles_avoided=0, metric_sr=0.3,
+        distance_traveled=float(100 * (i % 5)), total_moves=10, metric_sr=0.3,
         brain=SimpleNamespace(weights=[np.full((2, 2), float(i))], biases=[np.zeros(2)]),
     )
 

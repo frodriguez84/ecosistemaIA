@@ -29,10 +29,11 @@ VENTANA = 5
 MINIMO_GENERACIONES = 2 * VENTANA
 COLUMNAS_PUZZLE = ["llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre"]
 
-# Los números del resumen por corrida que se promedian entre semillas (decisiones 13 y 14)
+# Los números del resumen por corrida que se promedian entre semillas (decisiones 13 y 14;
+# supervivencia: spec MODO_GUIADO_Y_AUTONOMO, decisión 29)
 CLAVES = ["fitness_inicio", "fitness_final", "fitness_dif",
           "manzanas_inicio", "manzanas_final", "manzanas_dif",
-          "etapa_puzzle", "generacion_cofre"]
+          "supervivencia", "etapa_puzzle", "generacion_cofre"]
 
 
 # --- Resumen ------------------------------------------------------------------------------------
@@ -41,8 +42,9 @@ def resumir_corrida(ruta_csv):
     """Resume el CSV de una corrida (decisión 13).
 
     fitness y manzanas: promedio de la columna *_prom en las generaciones 1-5 (inicio), en las
-    últimas 5 (final) y su diferencia. Si la corrida tiene menos de 10 generaciones (se abrió el
-    cofre antes), quedan en None. etapa_puzzle: cuántas de las cinco columnas del puzzle valen 1 en
+    últimas 5 (final) y su diferencia. supervivencia: promedio de edad_prom (ticks vividos) en las
+    últimas 5. Si la corrida tiene menos de 10 generaciones (se abrió el cofre antes), todos
+    quedan en None. etapa_puzzle: cuántas de las cinco columnas del puzzle valen 1 en
     la última generación. generacion_cofre: la generación en que se abrió, o None.
     """
     with open(ruta_csv, newline="", encoding="utf-8") as archivo:
@@ -64,6 +66,9 @@ def resumir_corrida(ruta_csv):
                             f"{nombre}_dif": final - inicio})
         else:
             resumen.update(dict.fromkeys([f"{nombre}_inicio", f"{nombre}_final", f"{nombre}_dif"]))
+    resumen["supervivencia"] = (
+        statistics.mean(float(fila["edad_prom"]) for fila in filas[-VENTANA:])
+        if len(filas) >= MINIMO_GENERACIONES else None)
     return resumen
 
 
@@ -138,8 +143,9 @@ def resumen_markdown(corridas, fallidas, comando):
               "**Por modo** (promedio ± desvío muestral entre semillas):", "",
               _fila_md(["Modo", "Corridas", "Fitness prom., gens 1-5", "Fitness prom., últimas 5",
                         "Diferencia", "Manzanas por agente, gens 1-5", "Manzanas por agente, últimas 5",
-                        "Diferencia", "Etapa del puzzle (0-5)", "Cofre abierto"]),
-              _fila_md(["---"] * 10)]
+                        "Diferencia", "Edad prom. (ticks), últimas 5", "Etapa del puzzle (0-5)",
+                        "Cofre abierto"]),
+              _fila_md(["---"] * 11)]
     for evolucion in (True, False):
         del_modo = [corrida for corrida in corridas if corrida["evolucion"] == evolucion]
         if not del_modo:
@@ -151,7 +157,8 @@ def resumen_markdown(corridas, fallidas, comando):
         lineas.append(_fila_md(
             [_modo(evolucion), str(len(del_modo))]
             + [_promedio_desvio(modo[clave]) for clave in CLAVES[:6]]
-            + [_promedio_desvio(modo["etapa_puzzle"], 1), cofre]))
+            + [_promedio_desvio(modo["supervivencia"], 0),
+               _promedio_desvio(modo["etapa_puzzle"], 1), cofre]))
 
     comparacion = comparar_por_semilla(corridas)
     fitness_k, fitness_n = comparacion["fitness"]
@@ -164,14 +171,14 @@ def resumen_markdown(corridas, fallidas, comando):
                "**Por corrida:**", "",
                _fila_md(["Semilla", "Modo", "Generaciones", "Fitness prom., gens 1-5",
                          "Fitness prom., últimas 5", "Diferencia", "Manzanas por agente, gens 1-5",
-                         "Manzanas por agente, últimas 5", "Diferencia", "Etapa del puzzle",
-                         "Cofre en la gen."]),
-               _fila_md(["---"] * 11)]
+                         "Manzanas por agente, últimas 5", "Diferencia", "Edad prom., últimas 5",
+                         "Etapa del puzzle", "Cofre en la gen."]),
+               _fila_md(["---"] * 12)]
     for corrida in sorted(corridas, key=lambda c: (c["semilla"], not c["evolucion"])):
         lineas.append(_fila_md(
             [str(corrida["semilla"]), _modo(corrida["evolucion"]), str(corrida["generaciones"])]
             + [_numero(corrida[clave]) for clave in CLAVES[:6]]
-            + [str(corrida["etapa_puzzle"]),
+            + [_numero(corrida["supervivencia"], 0), str(corrida["etapa_puzzle"]),
                "—" if corrida["generacion_cofre"] is None else str(corrida["generacion_cofre"])]))
 
     cortas = [corrida for corrida in corridas if corrida["generaciones"] < MINIMO_GENERACIONES]

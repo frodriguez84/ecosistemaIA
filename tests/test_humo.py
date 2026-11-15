@@ -18,11 +18,12 @@ SEMILLA = 7
 GENERACIONES = 2
 TIMEOUT_S = 180
 
-# Decisión 6 del spec, escrita acá a propósito (no importada de main.py): si cambia, el test avisa
+# Decisión 6 del spec (con edad_prom, de MODO_GUIADO_Y_AUTONOMO), escrita acá a propósito (no
+# importada de main.py): si cambia, el test avisa
 COLUMNAS = [
     "semilla", "evolucion", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
-    "manzanas_prom", "manzanas_max", "vivos", "distancia_prom", "diversidad",
+    "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre",
 ]
 

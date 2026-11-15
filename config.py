@@ -40,7 +40,7 @@ class SimulationConfig:
     # === AGENTE ===
     AGENT_SPEED = 3.0            # Velocidad de movimiento
     VISION_RANGE = 150           # Rango de visión
-    AGENT_ENERGY = 100.0         # Energía inicial
+    AGENT_ENERGY = 100.0         # Energía inicial y máxima (comer y la poción no pasan de acá)
     AGENT_ENERGY_CONSUMPTION = 0.10  # Consumo de energía por tick 
     AGENT_ENERGY_GAIN_FOOD = 8      # Energía ganada al comer 
     AGENT_RADIUS = 6             # Tamaño del agente
@@ -79,6 +79,8 @@ class SimulationConfig:
     
     # === SISTEMA DE AGUA ===
     WATER_FITNESS_PENALTY = 5      # Fitness perdido por tick en agua (equilibrado con comida)
+    WATER_PENALTY_MAX = 10         # Tope de la penalización por agua en el fitness
+    WATER_ENERGY_LOSS = 0.05       # Energía perdida por tick en agua, además del consumo
     
     # === MÉTRICAS ANTI-CÍRCULO ===
     ANTI_CIRCLE_WINDOW_TICKS = 240   # ~3s a 60 FPS
@@ -87,6 +89,16 @@ class SimulationConfig:
     ANTI_CIRCLE_W3_NOVELTY = 0.40     # Peso novedad espacial
     TURN_MEAN_ABS_MAX = 0.2          # rad/tick para normalizar giro promedio
     NOVELTY_CELL_SIZE = 12           # tamaño de celda para novedad
+
+    # === FITNESS ===
+    # Fitness = supervivencia + comida + exploración + anti-círculo + puzzle + cortes - agua,
+    # entre 0 y 100, con un tope que crece con el tiempo vivido
+    FITNESS_FOOD = 10.0              # × raíz de las manzanas comidas
+    FITNESS_EXPLORATION = 10.0       # × log(1 + distancia recorrida / 350)
+    FITNESS_EXPLORATION_MAX = 15.0   # Tope del término de exploración
+    FITNESS_SURVIVAL = 0.010         # × ticks vividos
+    FITNESS_SURVIVAL_MAX = 10.0      # Tope del término de supervivencia
+    FITNESS_ANTI_CIRCLE = 18.0       # × puntaje anti-círculo (pesos de arriba)
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas

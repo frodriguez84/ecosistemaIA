@@ -1,6 +1,6 @@
 # Spec: Modo guiado y modo autónomo
 
-**Estado:** 🔵 Planned — decisiones cerradas con Fer el 2026-11-14; sin código
+**Estado:** 🟢 Activo — Parcial: bloque A ✅ (2026-11-14); bloques B y C pendientes
 **Prioridad:** Alta — es el rumbo del proyecto: que los agentes aprendan de verdad y medir ese
 aprendizaje. Hoy no se sabe si aprenden a comer (puede ser la guía escrita a mano), y el puzzle no lo
 pueden aprender: no lo ven ni lo pueden accionar.
@@ -150,22 +150,22 @@ para jugar con ellos después.
 
 ## Criterios de done (DoD)
 
-**Bloque A — Las reglas mandan**
-- [ ] `AGENT_ENERGY`, `AGENT_ENERGY_CONSUMPTION`, `AGENT_ENERGY_GAIN_FOOD`, `VISION_RANGE`, `AGENT_RADIUS`,
+**Bloque A — Las reglas mandan** (✅ 2026-11-14, sesión 1)
+- [x] `AGENT_ENERGY`, `AGENT_ENERGY_CONSUMPTION`, `AGENT_ENERGY_GAIN_FOOD`, `VISION_RANGE`, `AGENT_RADIUS`,
   `TREE_CUT_REWARD`, `WATER_ENERGY_LOSS`, `WATER_PENALTY_MAX` y los pesos del fitness (decisión 16) se
   leen de `config.py`. `grep` en `src/` no encuentra `self.energy -= 0.05`, `self.energy + 30`,
   `self.radius = 8`, `self.vision_range = 150`, `self.fitness += 10`, `penalty_max` ni los
   `*_multiplier` de `_calculate_fitness`, y `obstacles.py` ya no tiene el `"energy_loss": 0.05` del agua.
-- [ ] DIAG-08, DIAG-09, DIAG-10, DIAG-11 y DIAG-13 arreglados como dicen las decisiones 17 a 21, cada uno
-  con su test, que falla contra el código de antes.
-- [ ] Los agentes se ubican una vez por generación, después de `reset_food()`, con una sola función; no
+- [x] DIAG-08, DIAG-09, DIAG-10, DIAG-11 y DIAG-13 arreglados como dicen las decisiones 17 a 21, cada uno
+  con su test, que falla contra el código de antes. *(El README de DIAG-11 va con los docs del bloque C.)*
+- [x] Los agentes se ubican una vez por generación, después de `reset_food()`, con una sola función; no
   existen `find_safe_position`, `fix_agent_positions`, `_reposicionar_agentes`, `_posicion_libre`,
   `_posicion_de_respaldo` ni `_choca`.
-- [ ] El id de los agentes es un contador por corrida: en la generación 1 van de 1 a 60.
-- [ ] El CSV tiene `edad_prom` después de `vivos`, y el resumen de `experimento.py` trae la
+- [x] El id de los agentes es un contador por corrida: en la generación 1 van de 1 a 60.
+- [x] El CSV tiene `edad_prom` después de `vivos`, y el resumen de `experimento.py` trae la
   supervivencia (`edad_prom` de las últimas 5), cubierta por `test_resumen.py`. La misma semilla da el
   mismo CSV byte a byte, y con ventana el mismo que sin ventana (2 generaciones).
-- [ ] Experimento A corrido (5 semillas × 20 generaciones) y registrado en `AnalisisQA.md`, con su
+- [x] Experimento A corrido (5 semillas × 20 generaciones) y registrado en `AnalisisQA.md`, con su
   lectura contra el experimento de cinco semillas. La parada de la decisión 22 está evaluada en la
   bitácora.
 
@@ -385,3 +385,65 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
     de cinco semillas; la parada de la decisión 22, evaluada en la entrada de la bitácora.
   - **Trampa:** los tests de "config manda" cambian el valor (Trampas conocidas).
   - **Trampa:** casi todo lo que toca el bloque A es CRLF (LEC-002, LEC-003, LEC-005).
+
+### Sesión 1 — 2026-11-14 — Bloque A
+- **Hecho:** spec movido a `active/`, con el manifiesto, el BACKLOG y los links de mejoras futuras al
+  día. Primero `tests/test_reglas.py`, contra el código de antes: los 10 tests de la decisión 31
+  fallaron, todos por su aserción. Después: `config.py` con `WATER_PENALTY_MAX`, `WATER_ENERGY_LOSS` y
+  los pesos `FITNESS_*`; el agente lee de `config.py` energía, consumo, comida, radio, visión y
+  recompensas por cortar, que van a `cut_rewards` (DIAG-08); DIAG-09, DIAG-10, DIAG-11 y DIAG-13;
+  `obstacles.py` con `WATER_ENERGY_LOSS`; `_ubicar_agentes` en `main.py`, llamada después de
+  `World(...)` y después de `reset_food()`, y el genético crea los agentes en (0, 0) sin ubicarlos;
+  ids por contador (`AdvancedAgent.reiniciar_ids()` al empezar `_simular`); `edad_prom` en el CSV y
+  `supervivencia` en el resumen de `experimento.py` (`test_resumen.py`, que falló antes del cambio).
+  Experimento A registrado en [AnalisisQA § experimento del bloque A](../../qa/AnalisisQA.md#experimento-modos-a),
+  DIAG-30 registrado y LEC-007 escrita. Commit: `modos: las reglas mandan, ubicación única e ids por
+  contador (bloque A)`.
+- **Estados:** DoD del bloque A completo. DIAG-05, DIAG-08, DIAG-09, DIAG-10, DIAG-12, DIAG-13 y
+  DIAG-29 ✅; DIAG-11 a medias (falta el README, bloque C). `python -m pytest -q`: 28 passed en 19 s.
+  Determinismo: semilla 7, 2 generaciones, el mismo CSV dos veces sin ventana y una con ventana.
+  Experimento A: 370 s (10 corridas a la vez; la semilla 1 sin evolución terminó en la generación 6,
+  con el cofre).
+- **Parada de la decisión 22: no se dispara.** Con evolución, ninguna semilla corrió sin muertes (hay
+  muertes en 17 o 18 de las 20 generaciones de cada una), y las generaciones cortadas desde la 5 son 4
+  de 80, ninguna semilla con la mayoría. Los valores de energía quedan. La presión es fuerte: desde la
+  generación 5 quedan vivos entre 0 y 16 de 60, y las cortadas aparecen desde la 17 (1.680 ticks).
+- **Desvíos del spec, y por qué:**
+  - Un test más que los de la decisión 31: `test_no_quedan_los_contadores_de_obstaculos` (DIAG-09),
+    porque el DoD pide un test por DIAG. Su control corrió contra `22caa39` en un worktree aparte: los
+    11 tests fallan ahí.
+  - La ubicación mide estanque y perímetro con una caja centrada en el agente, no con la del genético
+    (`collides_with(x, y, 35, 35)`, que solo mira hacia abajo y a la derecha): con la heredada, 10 de
+    1.260 agentes arrancaban con medio cuerpo en el agua. Es más estricta que la de antes, en la
+    dirección de "fuera del estanque" de la decisión 23. El movimiento usa la misma caja corrida:
+    DIAG-30, a mejoras futuras (cambiarlo cambia la simulación).
+  - La grilla de respaldo de la ubicación aplica todos los criterios (antes, solo el estanque). No
+    corrió en ninguna verificación.
+- **A medias o bloqueado:** nada del bloque A. El README de DIAG-11 queda para los docs del bloque C,
+  como dice su DoD.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión:** bloque B (decisión 32).
+  - **Primer paso:** `tests/test_puzzle.py` (decisión 31, bloque B) contra el código de hoy. Los tests
+    de comportamiento tienen que fallar por su aserción: la puerta que abre A sigue frenando a B, sin
+    golpear no se abre nada, la recompensa es de quien dio el paso. Los que usan algo que todavía no
+    existe (la etapa, golpear, la brújula) fallan por `AttributeError` o `KeyError`: se anota cuáles.
+  - **Después, en orden:** `config.py` (`INPUT_SIZE = 11`, `OUTPUT_SIZE = 5`, `HIT_ENERGY_COST`);
+    etapa, hacha y golpes por puerta en el agente; las siete funciones de `world.py` reciben al agente,
+    y `reset_food()` reinicia el puzzle y sortea llave roja y hacha después de regenerar el mapa; la
+    puerta, pared para cada agente según su etapa; brújula (sensores 8, 9 y 11); golpear (quinta
+    salida, `HIT_ENERGY_COST`); la guía adaptada (decisión 6); `main.py` (los `_try_*` dependen de
+    golpear, sale la salida por el cofre, columnas `agentes_*`); consola, popup, panel y pantalla
+    final; el resumen del puzzle en `experimento.py`; determinismo con ventana y sin ella; mirarlo con
+    ventana (MODOS-18); el experimento B en segundo plano, registrado contra el A.
+  - **Trampa:** `tests/test_reglas.py` llama a `decide()` y `perceive()` reales con un mundo de mentira
+    (`_mundo()`) sin llaves, puertas ni cofre, y `QUIETO` tiene 4 salidas. Con la brújula y golpear,
+    hay que sumarle al `_mundo()` lo que lea la brújula y a `QUIETO` la quinta salida, y los 11 tienen
+    que seguir verdes.
+  - **Trampa:** la llave roja hoy la genera el loop de `main.py` (`world._generate_red_key(generation)`
+    cuando no hay llave), no `reset_food()`. Con la decisión 10 se sortea en `reset_food()`, y como
+    queda en el mapa para los demás (decisión 8), recogerla ya no la saca.
+  - **Trampa:** `tests/test_reportes.py` arma un mundo con `red_key_collected` y puertas abiertas para
+    la pantalla final; con agentes por etapa (MODOS-17), cambia.
+  - **Trampa:** CRLF en casi todo lo que toca el bloque. Las ediciones por script, como en esta sesión:
+    texto viejo único, finales de línea conservados y las líneas que no cambian devueltas tal cual
+    (LEC-005, LEC-007).

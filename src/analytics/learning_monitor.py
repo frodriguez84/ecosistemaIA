@@ -122,7 +122,6 @@ class LearningMonitor:
             'explorers': 0,          # Agentes que exploran mucho
             'survivors': 0,         # Agentes que sobreviven mucho tiempo
             'efficient_movers': 0,  # Agentes con movimiento eficiente
-            'obstacle_avoiders': 0  # Agentes que evitan obstáculos
         }
         
         for agent in agents:
@@ -143,10 +142,6 @@ class LearningMonitor:
                 efficiency = agent.distance_traveled / agent.total_moves
                 if efficiency > 0.8:
                     behaviors['efficient_movers'] += 1
-                    
-            # Obstacle avoiders: evitan más de 3 obstáculos
-            if agent.obstacles_avoided > 3:
-                behaviors['obstacle_avoiders'] += 1
         
         # Convertir a porcentajes
         total_agents = len(agents)
@@ -183,7 +178,6 @@ class LearningMonitor:
             print(f"      - Exploradores: {behaviors['explorers']:.1f}%")
             print(f"      - Supervivientes: {behaviors['survivors']:.1f}%")
             print(f"      - Movimiento eficiente: {behaviors['efficient_movers']:.1f}%")
-            # print(f"      - Evasión de obstáculos: {behaviors['obstacle_avoiders']:.1f}%")
         
         # Análisis de clustering
         if gen_data.get('cluster_stats'):

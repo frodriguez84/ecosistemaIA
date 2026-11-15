@@ -41,7 +41,7 @@ class Obstacle:
         """Obtiene el efecto del obstáculo."""
         if self.type == "water":
             from config import SimulationConfig
-            return {"energy_loss": 0.05, "speed_reduction": 0.8, "fitness_loss": SimulationConfig.WATER_FITNESS_PENALTY}
+            return {"energy_loss": SimulationConfig.WATER_ENERGY_LOSS, "speed_reduction": 0.8, "fitness_loss": SimulationConfig.WATER_FITNESS_PENALTY}
         return {"energy_loss": 0, "speed_reduction": 1.0}
     
     def draw(self, screen, sprite_manager, tick):
