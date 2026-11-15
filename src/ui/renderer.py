@@ -300,8 +300,8 @@ def dibujar_mundo(surface, world, sprite_manager, tick):
     for pond_obj in world.pond_obstacles:  # Estanque móvil
         pond_obj.draw(surface, sprite_manager, tick)
 
-    # Hacha, si nadie la agarró
-    if SimulationConfig.TREE_CUTTING_ENABLED and world.axe and not world.axe['picked_up']:
+    # Hacha: queda en el mapa, cada agente agarra la suya (decisión 8)
+    if SimulationConfig.TREE_CUTTING_ENABLED and world.axe:
         axe_sprite = sprite_manager.get_environment_sprite('axe')
         if axe_sprite:
             x, y = world.axe['x'], world.axe['y']

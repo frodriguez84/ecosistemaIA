@@ -4,6 +4,8 @@ Popup de resumen de generación.
 
 import pygame
 
+from ..agents.advanced_agent import PASOS_DEL_PUZZLE
+
 
 class SummaryPopup:
     """Cuadro de resumen de generación."""
@@ -125,12 +127,10 @@ class SummaryPopup:
         popup_surface.blit(puzzle_title, (right_x, y_offset))
         y_offset += 25
         
-        # Obtener datos del puzzle del mundo (si están disponibles)
+        # Cuántos agentes de la generación llegaron a cada paso del puzzle (decisión 11)
         puzzle_stats = [
-            f"Llaves rojas: {'SI' if self.generation_data.get('red_key_collected', False) else 'NO'}",
-            f"Llaves doradas: {'SI' if self.generation_data.get('gold_key_collected', False) else 'NO'}",
-            f"Puertas abiertas: {self.generation_data.get('doors_opened', 0)}/2",
-            f"Cofre abierto: {'SI' if self.generation_data.get('chest_opened', False) else 'NO'}"
+            f"{nombre}: {cantidad} agentes"
+            for nombre, cantidad in zip(PASOS_DEL_PUZZLE, self.generation_data['agentes_por_paso'])
         ]
         
         for stat in puzzle_stats:

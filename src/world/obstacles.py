@@ -235,19 +235,14 @@ class Door:
         self.x = x
         self.y = y
         self.door_type = door_type  # "door" o "door_iron"
-        self.is_open = False
-        self.hit_count = 0
-        self.last_hit_tick = 0
+        self.is_open = False  # Solo para el dibujo: algún agente de la generación la abrió
+        self.hit_count = 0  # Solo para el dibujo: los golpes del agente que más avanzó
         self.width = 20  # Mismo tamaño que otros elementos
         self.height = 20
     
     def collides_with(self, x, y, radius):
-        """Verifica si hay colisión con la puerta."""
-        if self.is_open:
-            # Cuando la puerta está abierta, NO hay colisión - los agentes pueden pasar libremente
-            return False
-        
-        # Puerta cerrada: colisión normal
+        """Verifica si hay colisión con la puerta. Si para ese agente está abierta lo decide el
+        agente, según su etapa (decisión 9)."""
         dx = abs(x - (self.x + self.width // 2))
         dy = abs(y - (self.y + self.height // 2))
         
@@ -258,24 +253,25 @@ class Door:
         
         return True
     
-    def hit(self, current_tick, cooldown):
-        """Registra un golpe a la puerta."""
-        if self.is_open:
+    def hit(self, agent, current_tick, cooldown):
+        """Registra un golpe del agente. Los golpes y el cooldown son de cada agente (decisión 8):
+        devuelve True cuando el agente completa sus golpes y la abre para él."""
+        golpes, ultimo_golpe = agent.golpes_puerta.get(self.door_type, (0, 0))
+
+        # Cooldown entre golpes del mismo agente
+        if current_tick - ultimo_golpe < cooldown:
             return False
         
-        # Cooldown entre golpes
-        if current_tick - self.last_hit_tick < cooldown:
-            return False
-        
-        self.hit_count += 1
-        self.last_hit_tick = current_tick
+        golpes += 1
+        agent.golpes_puerta[self.door_type] = (golpes, current_tick)
+        self.hit_count = max(self.hit_count, golpes)
         
         from config import SimulationConfig
         max_hits = SimulationConfig.DOOR_HITS_TO_OPEN if self.door_type == "door" else SimulationConfig.DOOR_IRON_HITS_TO_OPEN
         
-        if self.hit_count >= max_hits:
-            self.is_open = True
-            return True  # Puerta abierta
+        if golpes >= max_hits:
+            self.is_open = True  # Para el dibujo
+            return True  # Puerta abierta para este agente
         
         return False
     

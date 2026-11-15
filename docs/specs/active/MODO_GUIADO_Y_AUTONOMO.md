@@ -1,6 +1,6 @@
 # Spec: Modo guiado y modo autónomo
 
-**Estado:** 🟢 Activo — Parcial: bloque A ✅ (2026-11-14); bloques B y C pendientes
+**Estado:** 🟢 Activo — Parcial: bloque A ✅ (2026-11-14), bloque B ✅ (2026-11-15); bloque C pendiente
 **Prioridad:** Alta — es el rumbo del proyecto: que los agentes aprendan de verdad y medir ese
 aprendizaje. Hoy no se sabe si aprenden a comer (puede ser la guía escrita a mano), y el puzzle no lo
 pueden aprender: no lo ven ni lo pueden accionar.
@@ -169,23 +169,23 @@ para jugar con ellos después.
   lectura contra el experimento de cinco semillas. La parada de la decisión 22 está evaluada en la
   bitácora.
 
-**Bloque B — El puzzle por agente**
-- [ ] El puzzle es por agente (decisiones 7 a 10): etapa y hacha propias; la puerta, pared para cada uno
+**Bloque B — El puzzle por agente** (✅ 2026-11-15, sesión 2)
+- [x] El puzzle es por agente (decisiones 7 a 10): etapa y hacha propias; la puerta, pared para cada uno
   hasta que la abre; todo vuelve a 0 en cada generación.
-- [ ] Abrir el cofre no termina la corrida; no hay filas parciales en el CSV.
-- [ ] La red tiene 11 entradas y 5 salidas; la brújula sigue la decisión 13; golpear gasta
+- [x] Abrir el cofre no termina la corrida; no hay filas parciales en el CSV.
+- [x] La red tiene 11 entradas y 5 salidas; la brújula sigue la decisión 13; golpear gasta
   `HIT_ENERGY_COST`.
-- [ ] La guía apunta al próximo paso del agente y aprieta golpear al alinearse, con sus umbrales,
+- [x] La guía apunta al próximo paso del agente y aprieta golpear al alinearse, con sus umbrales,
   probabilidades y empujes de hoy (decisión 6).
-- [ ] El CSV tiene las cinco columnas `agentes_*` en lugar de las del estado del mundo; el resumen de
+- [x] El CSV tiene las cinco columnas `agentes_*` en lugar de las del estado del mundo; el resumen de
   `experimento.py` usa esas columnas.
-- [ ] La consola, el popup, el panel y la pantalla final muestran cuántos agentes llegaron a cada etapa,
+- [x] La consola, el popup, el panel y la pantalla final muestran cuántos agentes llegaron a cada etapa,
   no el estado del mundo.
-- [ ] `tests/test_puzzle.py` verde, con su control. Misma semilla, mismo CSV; con ventana, el mismo que
+- [x] `tests/test_puzzle.py` verde, con su control. Misma semilla, mismo CSV; con ventana, el mismo que
   sin ventana.
-- [ ] Mirado con ventana: las puertas se dibujan abiertas cuando algún agente las abrió, la llave roja y el
+- [x] Mirado con ventana: las puertas se dibujan abiertas cuando algún agente las abrió, la llave roja y el
   hacha quedan en el mapa.
-- [ ] Experimento B corrido (5 × 20, guiado) y registrado en `AnalisisQA.md`, con su lectura contra el A.
+- [x] Experimento B corrido (5 × 20, guiado) y registrado en `AnalisisQA.md`, con su lectura contra el A.
 
 **Bloque C — El switch**
 - [ ] `MODO` en `config.py` (por defecto `"guiado"`) y `--modo guiado|autonomo` en `main.py`, que aparece
@@ -447,3 +447,89 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
   - **Trampa:** CRLF en casi todo lo que toca el bloque. Las ediciones por script, como en esta sesión:
     texto viejo único, finales de línea conservados y las líneas que no cambian devueltas tal cual
     (LEC-005, LEC-007).
+
+### Sesión 2 — 2026-11-15 — Bloque B
+- **Hecho:** primero `tests/test_puzzle.py`, contra el código de antes: los 10 tests de la decisión 31
+  fallaron. Cinco por su aserción (la puerta que abre A frena a B, sin golpear o sin llave no hay
+  golpe, el cofre sin golpear, el costo de golpear, el hacha ajena) y cinco por lo que todavía no
+  existía: `AttributeError` en cuatro (el mundo nuevo no traía llave roja, y el agente no tenía
+  `etapa`) y `KeyError: 'hit'` en el de la guía. Después: `config.py` (`INPUT_SIZE = 11`,
+  `OUTPUT_SIZE = 5`, `HIT_ENERGY_COST`); el agente con etapa, hacha y golpes por puerta, la brújula
+  (sensores 8, 9 y 11, con `_proximo_paso`), golpear (quinta salida; el costo en `act()`; los `_try_*`
+  que golpean miran `golpeando`), la puerta como pared según su etapa (salió el bloque de puertas
+  repetido de `act()`) y la guía adaptada; en `world.py`, las funciones del puzzle reciben al agente y
+  `reset_food(generacion)` reinicia el puzzle y sortea hacha y llave roja con el mapa ya regenerado;
+  `Door` cuenta los golpes de cada agente; `main.py` sin salida por el cofre (cuenta la primera
+  generación y los agentes que lo abrieron) y con las columnas `agentes_*`; consola, popup, panel y
+  pantalla final por paso; el resumen de `experimento.py` con agentes con llave roja (últimas 5), etapa
+  máxima y primera generación con cofre. Experimento B registrado en
+  [AnalisisQA § experimento del bloque B](../../qa/AnalisisQA.md#experimento-modos-b), DIAG-02 a
+  DIAG-04 ✅ y LEC-008. Commit: `modos: el puzzle por agente, la brújula y golpear (bloque B)`.
+- **Estados:** DoD del bloque B completo. DIAG-02, DIAG-03 y DIAG-04 ✅. `python -m pytest -q`: 42
+  passed en 20 s; los 12 de `test_puzzle.py` fallan contra `cc9126b` (corridos en un worktree aparte).
+  Determinismo: semilla 7, 2 generaciones, el mismo CSV dos veces sin ventana y una con ventana.
+  MODOS-18 mirado con ventana en una escena armada con el mundo, el dibujo y la API reales, porque en
+  20 generaciones nadie de la evolución pasa de la llave roja: con un golpe la puerta sigue cerrada y
+  su barra lo marca, con el segundo se dibuja abierta; la llave roja y el hacha siguen en el mapa
+  después de agarrarlas. Experimento B: 327 s (10 corridas a la vez).
+- **Decidido con Fer en la sesión:**
+  - **La ubicación evita la llave roja y el hacha a 35 px**, como las manzanas (desvío de la decisión
+    23, que no lo preveía). Ahora se sortean antes de ubicar a los agentes, y en ~25% de las
+    generaciones alguien arrancaba encima y se las llevaba sin buscarlas (LEC-008). Test con su
+    control (la ubicación vieja deja a un agente sobre la llave en la generación 2). La primera
+    corrida del experimento, con la suerte de arranque, queda como referencia en la lectura.
+  - **`HIT_ENERGY_COST` queda en 0,05**, aunque rompe la premisa de la decisión 15 ("nadie muere en
+    las generaciones 1 a 4"): ahora en esas generaciones quedan vivos entre 21 y 37 de 60, porque
+    cerca de un tercio de los cerebros al azar golpea en más de la mitad de los ticks. Es lo que pide
+    la decisión 14, y el C compara los modos con los mismos valores. La parada de la decisión 22 no se
+    dispara (cortadas desde la 5: de 2 a 7 de 16 por corrida).
+- **Desvíos del spec, y por qué:**
+  - Tests de más en `test_puzzle.py`: `reset_food` reinicia el puzzle (MODOS-13), abrir el cofre no
+    termina la corrida (MODOS-14; con el código de antes deja una sola fila, parcial), la ubicación, y
+    el de la guía que la decisión 31 pone en `test_modos.py` del C: ya está, con su control contra el
+    código de antes del B.
+  - `update_tree_cutting_status()` no recibe al agente (las pistas decían que sí): deja de esperar a
+    que alguien tenga el hacha, y el hacha la pide cada golpe.
+  - `reset_food()` recibe la generación que empieza, para respetar `RED_KEY_SPAWN_GEN` (y
+    `FORTRESSES_ENABLED`), que antes se miraban en el loop de `main.py`.
+  - La brújula y la guía apuntan al centro de las puertas y del cofre, desde donde se mide el golpe;
+    la guía de antes apuntaba a la esquina de la puerta (10 px).
+  - La pantalla final ya dice cuántos agentes abrieron el cofre y en qué generación pasó la primera
+    vez (decisión 11). De la decisión 25 le quedan al C: "LA CORRIDA", el `->` y el TOP AGENTE.
+  - El panel pasa a 22 px por renglón: con el hacha y los cinco pasos son hasta 11 renglones en 300 px.
+  - Salieron funciones que quedaron sin uso: `_find_nearest_door` y `_find_nearest_key` (agente),
+    `_clean_small_fortress` e `_is_inside_small_fortress` (mundo) y `Door.last_hit_tick`. `Key.collect`
+    y `Key.collected` quedan sin uso (las llaves no se recogen más), como la clase `Axe`, que ya lo
+    estaba: no se tocaron.
+- **A medias o bloqueado:** nada del bloque B.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión:** bloque C (decisión 32).
+  - **Primer paso:** `tests/test_modos.py` (decisión 31, bloque C) contra el código de hoy: en
+    autónomo, `decide()` devuelve la salida de la red recortada a [0, 1], y el estado de `random` y
+    de `np.random` es el mismo antes y después de `decide()` + `act()`. Tiene que fallar: hoy no existe
+    el modo (`AttributeError` o `KeyError`, se anota cuál) y la guía consume azar. El caso del guiado
+    que pide la decisión 31 ya está en `test_puzzle.py` (`test_la_guia_apunta_...`): no se repite.
+  - **Después, en orden:** `MODO = "guiado"` en `config.py` y `--modo guiado|autonomo` en `main.py`,
+    pisado en la clase y en `--help` en español; `decide()` y `act()` consultan el modo y en autónomo
+    no corre nada de la decisión 3; la columna `modo` después de `evolucion` y la ruta
+    `results/corrida_s<semilla>_<modo>_<evolucion|sin_evolucion>.csv`; `test_humo.py` con corridas
+    `--modo autonomo`; `experimento.py --modos` (por defecto `guiado autonomo`), con el modo en el
+    nombre de cada CSV y log, grupos por modo × evolución y las tres comparaciones de la decisión 29,
+    con `test_resumen.py`; las decisiones 25 y 26; el determinismo por modo, con y sin ventana; los
+    docs del DoD (README, `CLAUDE.md`, DIAG-01, DIAG-11 y DIAG-28 ✅); el experimento de cierre en
+    segundo plano, registrado contra el B, con la respuesta a las tres preguntas del Objetivo.
+  - **Trampa:** las líneas que cita la decisión 3 son de antes de los bloques A y B. Se buscan por
+    contenido: en `decide()`, las ramas de comida y árboles (`fitness > 30`), el temporizador de
+    exploración (su `else`), las dos ramas del puzzle (`fitness > 65` y `random.random() < 0.4`), el
+    ruido de ±0,02 y el rumbo al azar del 2%; en `act()`, el reflejo que anula los giros
+    (`total_angle_change > 3.0`) y el `random.uniform(-0.02, 0.02)` del giro. Lo común (decisión 4)
+    queda en los dos modos: el giro × 0,12, la reducción × 0,6 si pasa de 0,08 (sin ruido en el
+    autónomo), la regla de los dos giros por encima de 0,3, avanzar con > 0,5, comer y golpear con > 0,5.
+  - **Trampa:** las dos ramas del puzzle consumen `random.random()` con fitness > 65 aunque el paso no
+    les toque. En autónomo no corren, así que no consumen; en guiado quedan como están.
+  - **Trampa:** con ventana, la corrida espera ESC o ENTER en la pantalla final. Para hacerlo sin
+    intervención, un script envuelve `pygame.event.get` y agrega un `KEYDOWN` de ESC desde que se entra
+    a `mostrar_pantalla_final` (LEC-004); el de esta sesión estaba en el scratchpad y no queda.
+  - **Trampa:** el experimento de cierre (5 semillas × 30 generaciones × 2 modos × 2) son 20 corridas;
+    con 11 a la vez van en dos tandas. Las generaciones 21 a 30 duran entre 1.860 y 2.220 ticks:
+    estimado, ~20 min. Lanzarlo con `run_in_background`.

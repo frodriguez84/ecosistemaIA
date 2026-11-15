@@ -27,35 +27,44 @@ RAIZ = Path(__file__).resolve().parent
 # Se comparan las primeras y las últimas VENTANA generaciones; con menos de dos ventanas se pisarían
 VENTANA = 5
 MINIMO_GENERACIONES = 2 * VENTANA
-COLUMNAS_PUZZLE = ["llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre"]
+# Cuántos agentes de la generación llegaron al menos a cada paso del puzzle, en orden
+COLUMNAS_PUZZLE = ["agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
+                   "agentes_puerta_hierro", "agentes_cofre"]
 
 # Los números del resumen por corrida que se promedian entre semillas (decisiones 13 y 14;
-# supervivencia: spec MODO_GUIADO_Y_AUTONOMO, decisión 29)
+# supervivencia y puzzle: spec MODO_GUIADO_Y_AUTONOMO, decisión 29)
 CLAVES = ["fitness_inicio", "fitness_final", "fitness_dif",
           "manzanas_inicio", "manzanas_final", "manzanas_dif",
-          "supervivencia", "etapa_puzzle", "generacion_cofre"]
+          "supervivencia", "llave_roja", "etapa_maxima", "generacion_cofre"]
 
 
 # --- Resumen ------------------------------------------------------------------------------------
 
+def _etapa(fila):
+    """La etapa más alta a la que llegó algún agente en esa generación, de 0 a 5."""
+    return max((etapa for etapa, columna in enumerate(COLUMNAS_PUZZLE, start=1)
+                if int(fila[columna]) > 0), default=0)
+
+
 def resumir_corrida(ruta_csv):
-    """Resume el CSV de una corrida (decisión 13).
+    """Resume el CSV de una corrida (decisión 13; el puzzle, spec MODO_GUIADO_Y_AUTONOMO, decisión 29).
 
     fitness y manzanas: promedio de la columna *_prom en las generaciones 1-5 (inicio), en las
     últimas 5 (final) y su diferencia. supervivencia: promedio de edad_prom (ticks vividos) en las
-    últimas 5. Si la corrida tiene menos de 10 generaciones (se abrió el cofre antes), todos
-    quedan en None. etapa_puzzle: cuántas de las cinco columnas del puzzle valen 1 en
-    la última generación. generacion_cofre: la generación en que se abrió, o None.
+    últimas 5. llave_roja: promedio de agentes_llave_roja en las últimas 5. Si la corrida tiene
+    menos de 10 generaciones, todos quedan en None. etapa_maxima: la etapa más alta a la que llegó
+    algún agente en cualquier generación. generacion_cofre: la primera generación en que algún
+    agente abrió el cofre, o None.
     """
     with open(ruta_csv, newline="", encoding="utf-8") as archivo:
         filas = list(csv.DictReader(archivo))
     ultima = filas[-1]
-    con_cofre = [int(fila["generacion"]) for fila in filas if fila["cofre"] == "1"]
+    con_cofre = [int(fila["generacion"]) for fila in filas if int(fila["agentes_cofre"]) > 0]
     resumen = {
         "semilla": int(ultima["semilla"]),
         "evolucion": ultima["evolucion"] == "1",
         "generaciones": len(filas),
-        "etapa_puzzle": sum(int(ultima[columna]) for columna in COLUMNAS_PUZZLE),
+        "etapa_maxima": max(_etapa(fila) for fila in filas),
         "generacion_cofre": con_cofre[0] if con_cofre else None,
     }
     for nombre, columna in (("fitness", "fitness_prom"), ("manzanas", "manzanas_prom")):
@@ -66,9 +75,9 @@ def resumir_corrida(ruta_csv):
                             f"{nombre}_dif": final - inicio})
         else:
             resumen.update(dict.fromkeys([f"{nombre}_inicio", f"{nombre}_final", f"{nombre}_dif"]))
-    resumen["supervivencia"] = (
-        statistics.mean(float(fila["edad_prom"]) for fila in filas[-VENTANA:])
-        if len(filas) >= MINIMO_GENERACIONES else None)
+    for clave, columna in (("supervivencia", "edad_prom"), ("llave_roja", "agentes_llave_roja")):
+        resumen[clave] = (statistics.mean(float(fila[columna]) for fila in filas[-VENTANA:])
+                          if len(filas) >= MINIMO_GENERACIONES else None)
     return resumen
 
 
@@ -143,9 +152,9 @@ def resumen_markdown(corridas, fallidas, comando):
               "**Por modo** (promedio ± desvío muestral entre semillas):", "",
               _fila_md(["Modo", "Corridas", "Fitness prom., gens 1-5", "Fitness prom., últimas 5",
                         "Diferencia", "Manzanas por agente, gens 1-5", "Manzanas por agente, últimas 5",
-                        "Diferencia", "Edad prom. (ticks), últimas 5", "Etapa del puzzle (0-5)",
-                        "Cofre abierto"]),
-              _fila_md(["---"] * 11)]
+                        "Diferencia", "Edad prom. (ticks), últimas 5",
+                        "Agentes con llave roja, últimas 5", "Etapa máxima (0-5)", "Cofre abierto"]),
+              _fila_md(["---"] * 12)]
     for evolucion in (True, False):
         del_modo = [corrida for corrida in corridas if corrida["evolucion"] == evolucion]
         if not del_modo:
@@ -157,8 +166,8 @@ def resumen_markdown(corridas, fallidas, comando):
         lineas.append(_fila_md(
             [_modo(evolucion), str(len(del_modo))]
             + [_promedio_desvio(modo[clave]) for clave in CLAVES[:6]]
-            + [_promedio_desvio(modo["supervivencia"], 0),
-               _promedio_desvio(modo["etapa_puzzle"], 1), cofre]))
+            + [_promedio_desvio(modo["supervivencia"], 0), _promedio_desvio(modo["llave_roja"]),
+               _promedio_desvio(modo["etapa_maxima"], 1), cofre]))
 
     comparacion = comparar_por_semilla(corridas)
     fitness_k, fitness_n = comparacion["fitness"]
@@ -172,21 +181,16 @@ def resumen_markdown(corridas, fallidas, comando):
                _fila_md(["Semilla", "Modo", "Generaciones", "Fitness prom., gens 1-5",
                          "Fitness prom., últimas 5", "Diferencia", "Manzanas por agente, gens 1-5",
                          "Manzanas por agente, últimas 5", "Diferencia", "Edad prom., últimas 5",
-                         "Etapa del puzzle", "Cofre en la gen."]),
-               _fila_md(["---"] * 12)]
+                         "Agentes con llave roja, últimas 5", "Etapa máxima", "Cofre en la gen."]),
+               _fila_md(["---"] * 13)]
     for corrida in sorted(corridas, key=lambda c: (c["semilla"], not c["evolucion"])):
         lineas.append(_fila_md(
             [str(corrida["semilla"]), _modo(corrida["evolucion"]), str(corrida["generaciones"])]
             + [_numero(corrida[clave]) for clave in CLAVES[:6]]
-            + [_numero(corrida["supervivencia"], 0), str(corrida["etapa_puzzle"]),
+            + [_numero(corrida["supervivencia"], 0), _numero(corrida["llave_roja"]),
+               str(corrida["etapa_maxima"]),
                "—" if corrida["generacion_cofre"] is None else str(corrida["generacion_cofre"])]))
 
-    cortas = [corrida for corrida in corridas if corrida["generaciones"] < MINIMO_GENERACIONES]
-    if cortas:
-        lineas += ["", f"Las corridas de menos de {MINIMO_GENERACIONES} generaciones (abrieron el "
-                       f"cofre antes) quedan fuera de los promedios de fitness y manzanas: "
-                       + ", ".join(f"semilla {c['semilla']} {_modo(c['evolucion']).lower()}"
-                                   for c in cortas) + "."]
     if fallidas:
         lineas += ["", "**Corridas que fallaron** (fuera del resumen):", ""]
         lineas += [f"- Semilla {f['semilla']}, {_modo(f['evolucion']).lower()}: salió con código "

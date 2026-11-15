@@ -46,6 +46,19 @@ estado en el BACKLOG.
 > alcanza para 1.000 ticks sin comer. En el [experimento del bloque A](#experimento-modos-a), desde
 > la generación 5 quedan vivos entre 0 y 16 de 60 al final de cada generación.
 > `tests/test_reglas.py` lo prueba con otros valores, y fallaba con el código de antes.
+>
+> ✅ DIAG-02, DIAG-03 y DIAG-04 (2026-11-15, spec *Aprendizaje*, bloque B). `tests/test_puzzle.py`
+> los prueba, y sus 12 tests fallaron con el código de antes:
+> - DIAG-02: la red tiene 11 sensores. El 8 es la etapa del puzzle del propio agente (0 a 5); el 9 y
+>   el 11 son la brújula, dirección y distancia a su próximo paso (la llave roja, la puerta de madera,
+>   la llave dorada, la puerta de hierro o el cofre), calculadas como las de la comida. El hacha y los
+>   árboles no tienen brújula.
+> - DIAG-03: golpear es la quinta salida, y cuesta `HIT_ENERGY_COST` (0,05) por tick, golpee algo o
+>   no. Las puertas, el cofre, los árboles y las casitas piden golpear; las llaves y el hacha siguen
+>   por contacto.
+> - DIAG-04: cada agente tiene su etapa y su hacha, y arranca en la etapa 0 y sin hacha. La puerta es
+>   pared para cada uno hasta que él la abre, y la recompensa es del que dio el paso. En cada
+>   generación se cierran puertas y cofre, y la llave roja y el hacha se sortean en un lugar nuevo.
 
 ### Bugs
 
@@ -481,3 +494,88 @@ todos antes del final son 4 de 80 desde la generación 5 (semilla 2: la 18; semi
 semilla 4: la 17 y la 19), y ninguna semilla tiene la mayoría cortada. Los valores de energía quedan
 como están. Para tener en cuenta: la presión es fuerte, y las generaciones cortadas aparecen desde
 la 17, cuando duran 1.680 ticks.
+
+---
+
+<a id="experimento-modos-b"></a>
+## Modo guiado y modo autónomo — experimento del bloque B (2026-11-15, MODOS-19)
+
+**Qué cambió** (bloque B del [spec](../specs/active/MODO_GUIADO_Y_AUTONOMO.md)): el puzzle es de
+cada agente y se reinicia en cada generación (DIAG-04); la red tiene 11 sensores, con la etapa propia
+y una brújula a su próximo paso (DIAG-02), y 5 salidas: golpear, que cuesta 0,05 de energía por tick
+(DIAG-03). Las puertas, el cofre, los árboles y las casitas piden golpear; las llaves y el hacha
+siguen por contacto y quedan en el mapa. La guía apunta al próximo paso del agente y golpea al
+alinearse. Abrir el cofre ya no termina la corrida. El modo sigue siendo el guiado (el switch es del
+bloque C). La ubicación evita la llave roja y el hacha a 35 px, como las manzanas (decidido con Fer
+en la sesión: ver la nota del final).
+
+**Cómo se corrió:** las 10 corridas a la vez, en 12 núcleos: 327 s. Carpeta
+`results/experimento_20261115-102446`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 20`
+
+**Por modo** (promedio ± desvío muestral entre semillas):
+
+| Modo | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Con evolución | 5 | 23.87 ± 0.80 | 34.81 ± 0.60 | 10.94 ± 0.92 | 0.67 ± 0.05 | 1.11 ± 0.04 | 0.44 ± 0.06 | 992 ± 23 | 4.24 ± 1.38 | 1.0 ± 0.0 | 0 de 5 |
+| Sin evolución | 5 | 20.81 ± 1.02 | 21.39 ± 0.65 | 0.58 ± 1.41 | 0.54 ± 0.06 | 0.59 ± 0.05 | 0.05 ± 0.11 | 914 ± 8 | 1.44 ± 0.65 | 1.4 ± 0.5 | 0 de 5 |
+
+**Comparación pareada por semilla:** la evolución subió más que la línea base en 5 de 5 semillas en fitness, y en 5 de 5 en manzanas por agente.
+
+**Por corrida:**
+
+| Semilla | Modo | Generaciones | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom., últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima | Cofre en la gen. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Con evolución | 20 | 24.71 | 35.11 | 10.40 | 0.73 | 1.15 | 0.42 | 1017 | 4.40 | 1 | — |
+| 1 | Sin evolución | 20 | 21.57 | 21.12 | -0.45 | 0.58 | 0.59 | 0.01 | 925 | 2.40 | 1 | — |
+| 2 | Con evolución | 20 | 23.34 | 34.13 | 10.79 | 0.65 | 1.06 | 0.41 | 979 | 4.00 | 1 | — |
+| 2 | Sin evolución | 20 | 20.07 | 22.04 | 1.97 | 0.51 | 0.62 | 0.11 | 914 | 1.60 | 2 | — |
+| 3 | Con evolución | 20 | 24.01 | 35.59 | 11.58 | 0.64 | 1.11 | 0.47 | 1016 | 6.40 | 1 | — |
+| 3 | Sin evolución | 20 | 22.15 | 21.35 | -0.81 | 0.62 | 0.52 | -0.10 | 905 | 0.60 | 1 | — |
+| 4 | Con evolución | 20 | 24.49 | 34.30 | 9.81 | 0.73 | 1.08 | 0.36 | 975 | 2.60 | 1 | — |
+| 4 | Sin evolución | 20 | 20.49 | 20.47 | -0.01 | 0.52 | 0.55 | 0.03 | 919 | 1.20 | 1 | — |
+| 5 | Con evolución | 20 | 22.78 | 34.91 | 12.13 | 0.62 | 1.13 | 0.51 | 971 | 3.80 | 1 | — |
+| 5 | Sin evolución | 20 | 19.75 | 21.98 | 2.23 | 0.46 | 0.65 | 0.19 | 909 | 1.40 | 2 | — |
+
+**Lectura, contra el [experimento del bloque A](#experimento-modos-a):**
+- **Primera señal en el puzzle: con evolución, más agentes llegan a la llave roja.** Con evolución
+  pasan de 1,9 agentes por generación en las generaciones 1 a 5 a 4,2 en las últimas 5; sin
+  evolución se quedan igual (1,6 y 1,4). En las últimas 5, la evolución tiene más agentes con llave
+  roja que la línea base en las 5 semillas (de 2,6 contra 1,2 a 6,4 contra 0,6). Todavía no se sabe
+  cuánto es de la red y cuánto de la guía: la rama de llaves pide fitness > 65 y el fitness máximo de
+  las últimas 5 está en ~62, así que la guía del puzzle corre poco, pero la de la comida puede pasar
+  cerca de la llave. Lo separa el bloque C.
+- **Nadie de la evolución pasa la puerta de madera; la línea base, tres veces.** Con evolución la
+  etapa máxima es 1 en las 5 semillas. Sin evolución, un agente abrió la puerta de madera en la
+  semilla 2 (generaciones 9 y 11) y en la 5 (generación 18): un cerebro al azar que golpea seguido y
+  pasa por la puerta con la llave. Ninguno siguió a la llave dorada. El cofre no se abrió.
+- **Sigue aprendiendo a comer más que la línea base, en todas las semillas:** subió más en 5 de 5,
+  en fitness y en manzanas. La peor semilla con evolución (+9,8 de fitness) sube más que la mejor sin
+  ella (+2,2).
+- **Golpear rompe la premisa de la decisión 15.** La decisión 15 calculaba que nadie muere en las
+  generaciones 1 a 4 (la energía alcanza para 1.000 ticks). Con el costo de golpear no es así: entre
+  60 cerebros al azar, la mitad casi no golpea, pero 19 golpean en más de la mitad de los ticks
+  (medido en 300 ticks, semilla 3), y golpeando siempre se gastan 0,15 por tick, que alcanzan para
+  667. En las generaciones 1 a 4 quedan vivos entre 21 y 37 de 60 (en el A, 58 o más). Desde la 5 quedan entre 0 y 11, y en las
+  últimas 5, 0,6 en promedio en los dos modos. La edad de las últimas 5 baja de 1.169 a 992 con
+  evolución y de 1.052 a 914 sin ella.
+- **Los números absolutos bajan otra vez:** con evolución, el fitness de las últimas 5 pasa de 40,0 a
+  34,8 y las manzanas por agente de 2,50 a 1,11. Viven menos ticks, y la red ahora tiene que manejar
+  una quinta salida que cuesta.
+- **La distancia sube como en el A:** de ~465 a ~1.110 con evolución (×2,4; en el A, ×2,7) y de ~360 a
+  ~400 sin ella. Se cortaron 1,2 árboles por corrida con evolución y ninguno sin ella.
+- **La población converge igual:** diversidad en la generación 20 entre 0,083 y 0,133 con evolución;
+  la línea base, en 0,23.
+
+**La parada de la decisión 22 no se dispara,** aunque era para el bloque A: ninguna semilla corrió sin
+muertes, y las generaciones cortadas desde la 5 son entre 2 y 7 de 16 por corrida (la que más, la
+semilla 4 con evolución), ninguna con la mayoría. Sobre la premisa rota de la decisión 15, Fer
+decidió el 2026-11-15 dejar `HIT_ENERGY_COST` en 0,05: es lo que pide la decisión 14 ("golpear
+siempre acorta la vida"), y el bloque C compara los dos modos con los mismos valores.
+
+**Primera corrida, antes de corregir la ubicación** (`results/experimento_20261115-101003`): con los
+agentes arrancando a veces sobre la llave roja o el hacha (LEC-008). Mismas conclusiones: 5 de 5 en
+fitness y en manzanas, etapa máxima 1 en todas. Los agentes con llave roja de las generaciones 1 a 5
+eran 2,8 con evolución y 2,0 sin ella: la suerte de arrancar encima ponía entre medio agente y uno
+por generación.

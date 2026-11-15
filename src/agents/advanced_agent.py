@@ -14,6 +14,14 @@ from collections import deque
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from config import SimulationConfig
 
+# Los cinco pasos del puzzle, en orden: el agente en la etapa k dio los pasos 1 a k (decisión 7)
+PASOS_DEL_PUZZLE = ["Llave roja", "Puerta madera", "Llave dorada", "Puerta hierro", "Cofre"]
+
+
+def agentes_por_paso(agents):
+    """Cuántos agentes llegaron al menos a cada paso del puzzle, en el orden de PASOS_DEL_PUZZLE."""
+    return [len([agent for agent in agents if agent.etapa >= etapa]) for etapa in range(1, 6)]
+
 
 class AdvancedAgent:
     """Agente avanzado con cerebro, sensores y actuadores."""
@@ -61,6 +69,12 @@ class AdvancedAgent:
         # Actuadores
         self.moving = False
         self.eating = False
+        self.golpeando = False  # golpear > 0,5 en este tick (decisión 14)
+
+        # Puzzle del agente (decisión 7): etapa de 0 a 5, hacha propia y golpes a cada puerta
+        self.etapa = 0
+        self.tiene_hacha = False
+        self.golpes_puerta = {}  # tipo de puerta -> (golpes, tick del último golpe)
         
         # Estadísticas
         self.food_eaten = 0
@@ -95,7 +109,7 @@ class AdvancedAgent:
         self.tree_hit_cooldown = 120  # 120 ticks entre golpes (2 segundos a 60 FPS)
     
     def perceive(self, world, other_agents):
-        """Recopila información del entorno (10 sensores)."""
+        """Recopila información del entorno (11 sensores)."""
         perceptions = []
         
         # 1. Energía normalizada
@@ -145,24 +159,49 @@ class AdvancedAgent:
         # 7. Ángulo actual normalizado a [0, 1): el ángulo se acumula sin límite (DIAG-10)
         perceptions.append((self.angle % (2 * np.pi)) / (2 * np.pi))
         
-        # 8. Estado combinado de llaves (0=ninguna, 0.5=una, 1=ambas)
-        red_key_collected = 1.0 if (hasattr(world, 'red_key_collected') and world.red_key_collected) else 0.0
-        gold_key_collected = 1.0 if (hasattr(world, 'gold_key_collected') and world.gold_key_collected) else 0.0
-        key_status = (red_key_collected + gold_key_collected) / 2.0
-        perceptions.append(key_status)
+        # 8. Etapa del puzzle del agente (0 a 5), normalizada
+        perceptions.append(self.etapa / 5.0)
         
-        # 9. Estado combinado de puertas (0=cerradas, 1=abiertas)
-        door_open = 1.0 if (hasattr(world, 'door') and world.door and world.door.is_open) else 0.0
-        door_iron_open = 1.0 if (hasattr(world, 'door_iron') and world.door_iron and world.door_iron.is_open) else 0.0
-        door_status = max(door_open, door_iron_open)  # Al menos una abierta
-        perceptions.append(door_status)
+        # 9. Dirección al próximo paso del puzzle (la brújula, decisión 13), como el sensor 3
+        proximo_paso = self._proximo_paso(world)
+        if proximo_paso:
+            dx = proximo_paso[0] - float(self.x)
+            dy = proximo_paso[1] - float(self.y)
+            angle_diff = float(np.arctan2(dy, dx)) - self.angle
+            while angle_diff > np.pi:
+                angle_diff -= 2 * np.pi
+            while angle_diff < -np.pi:
+                angle_diff += 2 * np.pi
+            perceptions.append(angle_diff / np.pi)  # Normalizar a [-1, 1]
+            distancia_al_paso = float(np.sqrt(dx * dx + dy * dy))
+        else:
+            # Con etapa 5 no hay próximo paso: dirección 0 y distancia 1, como sin comida
+            perceptions.append(0.0)
+            distancia_al_paso = self.vision_range
         
         # 10. Ratio de comida disponible
         available_food = len([f for f in world.food_items if not f['eaten']])
         food_ratio = available_food / SimulationConfig.FOOD_COUNT if SimulationConfig.FOOD_COUNT > 0 else 0.0
         perceptions.append(min(food_ratio, 1.0))
         
+        # 11. Distancia al próximo paso del puzzle, como el sensor 2
+        perceptions.append(min(distancia_al_paso / self.vision_range, 1.0))
+
         return np.array(perceptions, dtype=np.float32)
+
+    def _proximo_paso(self, world):
+        """Dónde está el próximo paso del puzzle del agente (decisión 13): la llave roja (etapa 0), la
+        puerta de madera (1), la llave dorada (2), la puerta de hierro (3) o el cofre (4). Las puertas
+        y el cofre, por su centro, que es desde donde se mide el golpe. None con etapa 5, o si el paso
+        no está en el mapa."""
+        if self.etapa == 0 and world.red_key:
+            return (world.red_key.x, world.red_key.y)
+        if self.etapa == 2 and world.gold_key:
+            return (world.gold_key.x, world.gold_key.y)
+        objeto = {1: world.door, 3: world.door_iron, 4: world.chest}.get(self.etapa)
+        if objeto:
+            return (objeto.x + objeto.width // 2, objeto.y + objeto.height // 2)
+        return None
     
     def decide(self, world, other_agents, sprite_manager):
         """Toma decisiones basadas en percepciones."""
@@ -173,7 +212,7 @@ class AdvancedAgent:
         if self.fitness > 30:  # Agentes con fitness medio-alto
             # Verificar si hay poca comida y puede cortar árboles
             food_ratio = perceptions[9] if len(perceptions) > 9 else 1.0  # Sensor 10: ratio de comida
-            has_axe = 1.0 if (hasattr(world, 'axe_picked_up') and world.axe_picked_up) else 0.0
+            has_axe = 1.0 if self.tiene_hacha else 0.0  # el hacha propia, no la de cualquiera (decisión 6)
             
             # Si hay poca comida (<60%) y tiene hacha, buscar árboles para cortar
             if food_ratio < 0.6 and has_axe > 0.5:
@@ -188,9 +227,10 @@ class AdvancedAgent:
                     while angle_diff < -np.pi:
                         angle_diff += 2 * np.pi
                     
-                    # Movimiento hacia árbol
+                    # Movimiento hacia árbol; alineado, golpea (decisión 6)
                     if abs(angle_diff) < 0.3:
                         decisions['move_forward'] = max(decisions['move_forward'], 0.7)
+                        decisions['hit'] = 0.9
                     elif angle_diff > 0:
                         decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.4)
                         decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.4)
@@ -273,11 +313,13 @@ class AdvancedAgent:
         # Esto evita que todos converjan al mismo punto
         puzzle_guidance_probability = 0.4  # Solo 40% de los agentes siguen la guía hardcodeada
         
-        # Buscar puertas para golpear (guía probabilística y menos agresiva)
+        # La guía del puzzle apunta al próximo paso del agente, el mismo de la brújula (decisión 6)
+        proximo_paso = self._proximo_paso(world)
+
+        # Ir a la puerta que le toca y golpearla (guía probabilística y menos agresiva)
         if self.fitness > puzzle_threshold_door and random.random() < puzzle_guidance_probability:
-            nearest_door = self._find_nearest_door(world)
-            if nearest_door:
-                target_angle = float(np.arctan2(nearest_door[1] - float(self.y), nearest_door[0] - float(self.x)))
+            if proximo_paso and self.etapa in (1, 3):  # el próximo paso es una puerta
+                target_angle = float(np.arctan2(proximo_paso[1] - float(self.y), proximo_paso[0] - float(self.x)))
                 angle_diff = target_angle - self.angle
                 
                 # Normalizar ángulo
@@ -286,9 +328,10 @@ class AdvancedAgent:
                 while angle_diff < -np.pi:
                     angle_diff += 2 * np.pi
                 
-                # Movimiento hacia puerta (menos agresivo: solo influencia sutil)
+                # Movimiento hacia puerta (menos agresivo: solo influencia sutil); alineado, golpea
                 if abs(angle_diff) < 0.3:
                     decisions['move_forward'] = max(decisions['move_forward'], 0.6)  # Reducido de 0.8 a 0.6
+                    decisions['hit'] = 0.9
                 elif angle_diff > 0:
                     decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.2)  # Reducido de 0.5 a 0.2
                     decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.2)
@@ -297,11 +340,10 @@ class AdvancedAgent:
                     decisions['turn_right'] = max(0.0, decisions['turn_right'] - 0.2)
                 self.target_food = None
         
-        # Buscar llaves y cofre (guía probabilística y menos agresiva)
+        # Ir a la llave que le toca o al cofre (guía probabilística y menos agresiva)
         if self.fitness > puzzle_threshold_key and random.random() < puzzle_guidance_probability:
-            nearest_key = self._find_nearest_key(world)
-            if nearest_key:
-                target_angle = float(np.arctan2(nearest_key[1] - float(self.y), nearest_key[0] - float(self.x)))
+            if proximo_paso and self.etapa in (0, 2, 4):  # el próximo paso es una llave o el cofre
+                target_angle = float(np.arctan2(proximo_paso[1] - float(self.y), proximo_paso[0] - float(self.x)))
                 angle_diff = target_angle - self.angle
                 
                 # Normalizar ángulo
@@ -310,9 +352,10 @@ class AdvancedAgent:
                 while angle_diff < -np.pi:
                     angle_diff += 2 * np.pi
                 
-                # Movimiento hacia llave/cofre (menos agresivo: solo influencia sutil)
+                # Movimiento hacia llave/cofre (menos agresivo: solo influencia sutil); alineado, golpea
                 if abs(angle_diff) < 0.3:
                     decisions['move_forward'] = max(decisions['move_forward'], 0.7)  # Reducido de 0.9 a 0.7
+                    decisions['hit'] = 0.9
                 elif angle_diff > 0:
                     decisions['turn_right'] = min(1.0, decisions['turn_right'] + 0.3)  # Reducido de 0.6 a 0.3
                     decisions['turn_left'] = max(0.0, decisions['turn_left'] - 0.3)
@@ -339,6 +382,7 @@ class AdvancedAgent:
         decisions['turn_left'] = max(0, min(1, decisions['turn_left']))
         decisions['turn_right'] = max(0, min(1, decisions['turn_right']))
         decisions['eat'] = max(0, min(1, decisions['eat']))
+        decisions['hit'] = max(0, min(1, decisions['hit']))
         
         return decisions
     
@@ -356,6 +400,12 @@ class AdvancedAgent:
         
         # Consumir energía
         self.energy -= SimulationConfig.AGENT_ENERGY_CONSUMPTION
+
+        # Golpear (decisión 14): este tick golpea lo que tenga a su alcance (lo prueban los _try_* que
+        # llama main.py) y lo paga golpee algo o no
+        self.golpeando = decisions['hit'] > 0.5
+        if self.golpeando:
+            self.energy -= SimulationConfig.HIT_ENERGY_COST
         
         # ===== NORMALIZACIÓN DE GIROS (Evitar turn_left y turn_right simultáneos) =====
         # Si ambos están activos, elegir solo el más fuerte (evita círculos)
@@ -409,7 +459,7 @@ class AdvancedAgent:
             new_x = self.x + dx
             new_y = self.y + dy
             
-            # Verificar colisiones con obstáculos y puertas
+            # Verificar colisiones con obstáculos y con las puertas que el agente no abrió
             can_move = not self._check_obstacle_collision(new_x, new_y, world.obstacles)
             if can_move:
                 can_move = not self._check_door_collision(new_x, new_y, world)
@@ -420,14 +470,6 @@ class AdvancedAgent:
                     if perimeter_obj.collides_with(new_x, new_y, self.radius, self.radius):
                         can_move = False
                         break
-            
-            # Verificar colisión con puertas
-            if can_move:
-                # Verificar puertas temporalmente
-                if world.door and world.door.collides_with(new_x, new_y, self.radius):
-                    can_move = False
-                if world.door_iron and world.door_iron.collides_with(new_x, new_y, self.radius):
-                    can_move = False
             
             # Verificar colisión con estanque
             if can_move:
@@ -488,13 +530,14 @@ class AdvancedAgent:
         return False
     
     def _check_door_collision(self, x, y, world):
-        """Verifica colisión con puertas (incluyendo el espacio reducido cuando están abiertas)."""
+        """Una puerta es pared para el agente hasta que él la abre (decisión 9): la de madera hasta la
+        etapa 2, la de hierro hasta la 4. Que otro agente la haya abierto no cambia nada."""
         # Verificar colisión con door
-        if world.door and world.door.collides_with(x, y, self.radius):
+        if world.door and self.etapa < 2 and world.door.collides_with(x, y, self.radius):
             return True
         
         # Verificar colisión con door_iron
-        if world.door_iron and world.door_iron.collides_with(x, y, self.radius):
+        if world.door_iron and self.etapa < 4 and world.door_iron.collides_with(x, y, self.radius):
             return True
         
         return False
@@ -539,18 +582,21 @@ class AdvancedAgent:
         return False
     
     def _try_pickup_axe(self, world):
-        """Intenta agarrar el hacha."""
-        if world.check_axe_pickup(self.x, self.y):
+        """Intenta agarrar el hacha, por contacto: queda en el mapa para los demás."""
+        if world.check_axe_pickup(self):
             return True
         return False
     
     def _try_cut_tree(self, world, current_tick):
-        """Intenta cortar un árbol."""
+        """Intenta cortar un árbol o una casita: hace falta golpear y tener hacha propia."""
+        if not self.golpeando:
+            return False
+
         # Verificar cooldown del agente
         if current_tick - self.last_tree_hit_tick < self.tree_hit_cooldown:
             return False
         
-        if world.process_tree_hit(self.x, self.y, current_tick):
+        if world.process_tree_hit(self, current_tick):
             # Recompensa por cortar árbol, al acumulador que suma _calculate_fitness (DIAG-08)
             self.cut_rewards += SimulationConfig.TREE_CUT_REWARD
             # Actualizar cooldown del agente
@@ -558,7 +604,7 @@ class AdvancedAgent:
             return True
         
         # Intentar golpear huts
-        if world.process_hut_hit(self.x, self.y, current_tick):
+        if world.process_hut_hit(self, current_tick):
             # Recompensa por destruir hut
             self.cut_rewards += SimulationConfig.HUT_CUT_REWARD
             # Actualizar cooldown del agente
@@ -567,9 +613,9 @@ class AdvancedAgent:
         
         return False
     
-    def _try_pickup_key(self, world, generation):
-        """Intenta recoger una llave."""
-        key_type = world.check_key_pickup(self.x, self.y, generation)
+    def _try_pickup_key(self, world):
+        """Intenta recoger la llave que le toca, por contacto: queda en el mapa para los demás."""
+        key_type = world.check_key_pickup(self)
         if key_type == "red_key":
             self.puzzle_rewards += SimulationConfig.RED_KEY_REWARD
             return True
@@ -579,12 +625,15 @@ class AdvancedAgent:
         return False
     
     def _try_hit_door(self, world, current_tick):
-        """Intenta golpear una puerta."""
+        """Intenta golpear la puerta que le toca abrir: hace falta golpear."""
+        if not self.golpeando:
+            return False
+
         # Verificar cooldown del agente
         if current_tick - self.last_tree_hit_tick < self.tree_hit_cooldown:
             return False
         
-        door_type = world.process_door_hit(self.x, self.y, current_tick)
+        door_type = world.process_door_hit(self, current_tick)
         if door_type == "door":
             self.puzzle_rewards += SimulationConfig.DOOR_OPEN_REWARD
             self.last_tree_hit_tick = current_tick
@@ -596,8 +645,10 @@ class AdvancedAgent:
         return False
     
     def _try_open_chest(self, world):
-        """Intenta abrir el cofre."""
-        if world.check_chest_open(self.x, self.y):
+        """Intenta abrir el cofre: hace falta golpear, con la puerta de hierro abierta."""
+        if not self.golpeando:
+            return False
+        if world.check_chest_open(self):
             self.puzzle_rewards += SimulationConfig.CHEST_REWARD
             return True
         return False
@@ -634,8 +685,8 @@ class AdvancedAgent:
         return nearest_food
     
     def _find_nearest_cuttable_tree(self, world):
-        """Encuentra el árbol más cercano que se puede cortar."""
-        if not hasattr(world, 'trees') or not hasattr(world, 'axe_picked_up') or not world.axe_picked_up:
+        """Encuentra el árbol más cercano que se puede cortar, si el agente tiene hacha."""
+        if not hasattr(world, 'trees') or not self.tiene_hacha:
             return None
         
         min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
@@ -652,72 +703,6 @@ class AdvancedAgent:
                     nearest_tree = (tree.x, tree.y)
         
         return nearest_tree
-    
-    def _find_nearest_door(self, world):
-        """Encuentra la puerta más cercana que se puede golpear."""
-        doors = []
-        
-        # Verificar puerta de madera
-        if hasattr(world, 'door') and world.door and not world.door.is_open:
-            doors.append((world.door.x, world.door.y))
-        
-        # Verificar puerta de hierro
-        if hasattr(world, 'door_iron') and world.door_iron and not world.door_iron.is_open:
-            doors.append((world.door_iron.x, world.door_iron.y))
-        
-        if not doors:
-            return None
-        
-        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
-        nearest_door = None
-        
-        for door_x, door_y in doors:
-            # Comparar usando distancia² (más rápido, sin sqrt)
-            dx = float(self.x) - door_x
-            dy = float(self.y) - door_y
-            distance_sq = dx*dx + dy*dy
-            if distance_sq < min_distance_sq:
-                min_distance_sq = distance_sq
-                nearest_door = (door_x, door_y)
-        
-        return nearest_door
-    
-    def _find_nearest_key(self, world):
-        """Encuentra la llave o cofre más cercano."""
-        targets = []
-        
-        # Verificar red_key
-        if hasattr(world, 'red_key') and world.red_key and not world.red_key.collected:
-            targets.append((world.red_key.x, world.red_key.y))
-        
-        # Verificar gold_key SOLO si la puerta de madera está abierta (igual que el pickup)
-        if hasattr(world, 'gold_key') and world.gold_key and not world.gold_key.collected:
-            # Solo incluir gold_key si la puerta de madera está abierta
-            if hasattr(world, 'door') and world.door and world.door.is_open:
-                targets.append((world.gold_key.x, world.gold_key.y))
-        
-        # Verificar cofre SOLO si la puerta de hierro está abierta (igual que el pickup)
-        if hasattr(world, 'chest') and world.chest and not world.chest.is_open:
-            # Solo incluir cofre si la puerta de hierro está abierta
-            if hasattr(world, 'door_iron') and world.door_iron and world.door_iron.is_open:
-                targets.append((world.chest.x, world.chest.y))
-        
-        if not targets:
-            return None
-        
-        min_distance_sq = float('inf')  # Usar distancia² para comparación (sin sqrt)
-        nearest_target = None
-        
-        for target_x, target_y in targets:
-            # Comparar usando distancia² (más rápido, sin sqrt)
-            dx = float(self.x) - target_x
-            dy = float(self.y) - target_y
-            distance_sq = dx*dx + dy*dy
-            if distance_sq < min_distance_sq:
-                min_distance_sq = distance_sq
-                nearest_target = (target_x, target_y)
-        
-        return nearest_target
     
     def _calculate_fitness(self):
         """Calcula el fitness del agente basado en rendimiento. Los pesos están en config.py."""
@@ -969,7 +954,7 @@ class SimpleNeuralNetwork:
             b = np.random.randn(out_dim) * 0.1
             
             # Ajustar sesgos de la capa de salida para favorecer movimiento recto
-            # Índices: 0=move_forward, 1=turn_left, 2=turn_right, 3=eat
+            # Índices: 0=move_forward, 1=turn_left, 2=turn_right, 3=eat, 4=hit (golpear)
             if layer_idx == len(layer_dims) - 2:  # Es la última capa (antes de la salida)
                 # Sesgos negativos para turn_left (1) y turn_right (2) -> movimiento recto inicial
                 if out_dim >= 3:  # Asegurar que hay al menos 3 salidas
@@ -1007,7 +992,8 @@ class SimpleNeuralNetwork:
             'move_forward': float(a_out[0]),
             'turn_left': float(a_out[1]),
             'turn_right': float(a_out[2]),
-            'eat': float(a_out[3])
+            'eat': float(a_out[3]),
+            'hit': float(a_out[4])  # golpear (decisión 14)
         }
     
     def mutate(self, mutation_rate=0.1):

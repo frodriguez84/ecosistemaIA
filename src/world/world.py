@@ -47,16 +47,14 @@ class World:
         self.trees = []  # Lista de árboles para corte
         self.perimeter_obstacles = []  # Obstáculos del perímetro decorativo
         self.pond_obstacles = []  # Obstáculos del estanque móvil
-        self.axe = None  # Hacha del sistema
-        self.axe_picked_up = False  # Si alguien agarró el hacha
+        self.axe = None  # Hacha: queda en el mapa, cada agente agarra la suya (decisión 8)
         self.last_tree_cut_tick = 0  # Último tick que se cortó un árbol
         self.tick = 0
         
-        # Sistema de fortalezas
+        # Sistema de fortalezas. El puzzle es de cada agente (decisión 7): el mundo solo tiene los
+        # objetos, que quedan en el mapa
         self.red_key = None
         self.gold_key = None
-        self.red_key_collected = False
-        self.gold_key_collected = False
         self.door = None
         self.door_iron = None
         self.chest = None
@@ -84,8 +82,9 @@ class World:
         # Generar comida inicial DESPUÉS del estanque (evitando superposición)
         self._generate_food(self.food_count)  # Usar cantidad configurable
         
-        # Generar hacha al inicio
+        # Generar hacha y llave roja al inicio, con el mapa listo (decisión 10)
         self._generate_axe()
+        self._generate_red_key(1)
         
         # Generar perímetro decorativo
         self._generate_perimeter()
@@ -374,8 +373,9 @@ class World:
         self.tick += 1
         # NO regenerar comida - solo la inicial por generación
     
-    def reset_food(self):
-        """Resetea toda la comida y regenera obstáculos, preservando objetos manuales."""
+    def reset_food(self, generacion):
+        """Prepara el mundo de la generación `generacion`: regenera obstáculos y comida, preservando
+        los objetos manuales, y reinicia el puzzle (decisión 10)."""
         self.food_items = []
         
         # Preservar objetos manuales
@@ -410,13 +410,8 @@ class World:
             self._generate_fortress_walls(small_pos['x'], small_pos['y'], small_pos['size'], tile_size, door_x, door_y)
             self._generate_fortress_walls(large_pos['x'], large_pos['y'], large_pos['size'], tile_size, door_iron_x, door_iron_y)
         
-        # Limpiar obstáculos dentro de las fortalezas SOLO si se completó el puzzle
-        if self.gold_key_collected:
-            # Solo limpiar fortaleza pequeña si se completó el puzzle
-            self._clean_small_fortress()
-        else:
-            # Limpiar ambas fortalezas si no se completó el puzzle
-            self._clean_fortresses()
+        # Limpiar obstáculos dentro de las fortalezas
+        self._clean_fortresses()
         
         # Limpiar obstáculos frente a las puertas
         self._clear_area_around_doors()
@@ -427,41 +422,25 @@ class World:
         # Generar perímetro decorativo
         self._generate_perimeter()
         
-        # NO regenerar hacha - se mantiene entre generaciones
-        # Solo resetear cooldown de corte
+        # Resetear cooldown de corte
         self.last_tree_cut_tick = 0
         
-        # NO resetear llaves si ya se recogieron (persistencia entre generaciones)
-        # Solo resetear si no se han recogido
-        if not self.red_key_collected:
-            self.red_key = None
-        if not self.gold_key_collected:
-            self.gold_key = None
-            self.gold_key_collected = False
-        else:
-            # Mantener gold_key_collected = True
-            pass
-        
-        # Regenerar gold_key si no se ha recogido (con nueva posición - movida 2 tiles a la derecha)
-        if not self.gold_key_collected and small_pos:
-            gold_key_x = small_pos['x'] + 60  # col 4 (cuarta columna) - movida 2 tiles a la derecha
-            gold_key_y = small_pos['y'] + 40  # fila 3 (tercera fila)
-            self.gold_key = Key(gold_key_x, gold_key_y, "gold_key")
-        
-        # Resetear puertas SOLO si no se han abierto antes (persistencia del puzzle)
-        if self.door and not self.door.is_open:
-            # Solo resetear si la puerta nunca se abrió
-            self.door.hit_count = 0
-        if self.door_iron and not self.door_iron.is_open:
-            # Solo resetear si la puerta nunca se abrió
-            self.door_iron.hit_count = 0
-        
-        # Resetear cofre
+        # El puzzle vuelve a empezar (decisión 10): nada pasa a la generación siguiente. Puertas y
+        # cofre cerrados; la llave dorada queda en su lugar
+        for door in (self.door, self.door_iron):
+            if door:
+                door.is_open = False
+                door.hit_count = 0
         if self.chest:
             self.chest.is_open = False
+            self.chest.opened_by = None
         
         # Regenerar comida (evitando superposición con TODOS los obstáculos)
         self._generate_food(self.food_count)  # Usar cantidad configurable
+
+        # Hacha y llave roja en una posición nueva, con el mapa ya regenerado (decisión 10)
+        self._generate_axe()
+        self._generate_red_key(generacion)
     
     def _initialize_trees(self):
         """Inicializa el sistema de árboles."""
@@ -506,11 +485,11 @@ class World:
                                 free_space += 1
                 
                 if free_space >= 4:  # Al menos 4 direcciones libres
-                    self.axe = {'x': x, 'y': y, 'picked_up': False}
+                    self.axe = {'x': x, 'y': y}
                     return
         
         # Fallback: posición segura conocida
-        self.axe = {'x': 100, 'y': 100, 'picked_up': False}
+        self.axe = {'x': 100, 'y': 100}
     
     def _generate_fortresses(self):
         """Genera las dos fortalezas con muros, puertas y contenido."""
@@ -676,40 +655,6 @@ class World:
         
         # print(f"🧹 Limpieza de fortalezas: {len(obstacles_to_remove)} obstáculos eliminados")
     
-    def _clean_small_fortress(self):
-        """Elimina todos los obstáculos dentro de la fortaleza pequeña (solo después de completar el puzzle)."""
-        obstacles_to_remove = []
-        
-        for obstacle in self.obstacles:
-            # Verificar si el obstáculo está dentro de la fortaleza pequeña
-            obstacle_center_x = obstacle.x + obstacle.width // 2
-            obstacle_center_y = obstacle.y + obstacle.height // 2
-            
-            if self._is_inside_small_fortress(obstacle_center_x, obstacle_center_y):
-                # NO eliminar muros (son parte de las fortalezas)
-                if obstacle.type != "wall":
-                    obstacles_to_remove.append(obstacle)
-        
-        # Eliminar obstáculos
-        for obstacle in obstacles_to_remove:
-            if obstacle in self.obstacles:
-                self.obstacles.remove(obstacle)
-        
-        if obstacles_to_remove:
-            pass  # print(f"🧹 Limpieza de fortaleza pequeña: {len(obstacles_to_remove)} obstáculos eliminados")
-    
-    def _is_inside_small_fortress(self, x, y):
-        """Verifica si un punto está dentro de la fortaleza pequeña."""
-        if not hasattr(self, 'small_fortress_pos') or not self.small_fortress_pos:
-            return False
-        
-        small_x = self.small_fortress_pos['x']
-        small_y = self.small_fortress_pos['y']
-        small_size = self.small_fortress_pos['size']
-        
-        return (small_x <= x <= small_x + small_size * 20 and 
-                small_y <= y <= small_y + small_size * 20)
-    
     def _clear_area_around_doors(self):
         """Elimina obstáculos (INCLUYENDO WALLS) en el área alrededor de las puertas."""
         from config import SimulationConfig
@@ -767,53 +712,53 @@ class World:
         if obstacles_to_remove:
             pass  # print(f"🚪 Limpieza alrededor de puertas: {len(obstacles_to_remove)} obstáculos eliminados (incluye walls)")
     
-    def check_axe_pickup(self, agent_x, agent_y):
-        """Verifica si un agente agarró el hacha."""
-        if self.axe and not self.axe['picked_up']:
-            distance = ((agent_x - self.axe['x'])**2 + (agent_y - self.axe['y'])**2)**0.5
+    def check_axe_pickup(self, agent):
+        """Verifica si el agente agarró el hacha. Es suya: el hacha queda en el mapa (decisión 8)."""
+        if self.axe and not agent.tiene_hacha:
+            distance = ((agent.x - self.axe['x'])**2 + (agent.y - self.axe['y'])**2)**0.5
             if distance < 30:  # Rango para agarrar hacha
-                self.axe['picked_up'] = True
-                self.axe_picked_up = True
+                agent.tiene_hacha = True
                 return True
         return False
     
     def update_tree_cutting_status(self):
-        """Actualiza el estado de corte de árboles y huts."""
-        if self.axe_picked_up:
-            # Contar manzanas no comidas
-            available_food = len([f for f in self.food_items if not f['eaten']])
+        """Actualiza el estado de corte de árboles y huts. Ya no espera a que alguien tenga el hacha:
+        cada golpe pide el hacha del agente que golpea (decisión 8)."""
+        # Contar manzanas no comidas
+        available_food = len([f for f in self.food_items if not f['eaten']])
             
-            # Activar/desactivar corte según umbral
-            from config import SimulationConfig
-            can_cut_trees = available_food <= SimulationConfig.TREE_CUTTING_THRESHOLD
-            can_cut_huts = SimulationConfig.HUT_CUTTING_ENABLED and available_food <= SimulationConfig.HUT_CUTTING_THRESHOLD
+        # Activar/desactivar corte según umbral
+        from config import SimulationConfig
+        can_cut_trees = available_food <= SimulationConfig.TREE_CUTTING_THRESHOLD
+        can_cut_huts = SimulationConfig.HUT_CUTTING_ENABLED and available_food <= SimulationConfig.HUT_CUTTING_THRESHOLD
             
-            # Actualizar árboles
-            for tree in self.trees:
-                tree.can_be_cut = can_cut_trees
-                tree.obstacle.can_be_cut = can_cut_trees  # Actualizar obstáculo también
+        # Actualizar árboles
+        for tree in self.trees:
+            tree.can_be_cut = can_cut_trees
+            tree.obstacle.can_be_cut = can_cut_trees  # Actualizar obstáculo también
+            # NO resetear contador cuando se desactiva - mantener estado
+            # if not can_cut_trees:
+            #     tree.hit_count = 0  # Resetear contador
+            #     tree.obstacle.collision_count = 0  # Resetear obstáculo también
+        
+        # Actualizar huts
+        for obstacle in self.obstacles:
+            if obstacle.type == "hut" and not obstacle.is_cut:
+                obstacle.can_be_cut = can_cut_huts
                 # NO resetear contador cuando se desactiva - mantener estado
-                # if not can_cut_trees:
-                #     tree.hit_count = 0  # Resetear contador
-                #     tree.obstacle.collision_count = 0  # Resetear obstáculo también
+                # if not can_cut_huts:
+                #     obstacle.collision_count = 0  # Resetear contador
             
-            # Actualizar huts
-            for obstacle in self.obstacles:
-                if obstacle.type == "hut" and not obstacle.is_cut:
-                    obstacle.can_be_cut = can_cut_huts
-                    # NO resetear contador cuando se desactiva - mantener estado
-                    # if not can_cut_huts:
-                    #     obstacle.collision_count = 0  # Resetear contador
-    
-    def process_hut_hit(self, agent_x, agent_y, current_tick):
-        """Procesa un golpe a un hut."""
+    def process_hut_hit(self, agent, current_tick):
+        """Procesa un golpe del agente a un hut: hace falta su propia hacha (decisión 8)."""
         from config import SimulationConfig
         
         if not SimulationConfig.HUT_CUTTING_ENABLED:
             return False
             
-        if not self.axe_picked_up:
+        if not agent.tiene_hacha:
             return False
+        agent_x, agent_y = agent.x, agent.y
         
         # Cooldown global de 30 ticks entre golpes
         if current_tick - self.last_tree_cut_tick < 30:
@@ -880,10 +825,11 @@ class World:
             
             attempts += 1
 
-    def process_tree_hit(self, agent_x, agent_y, current_tick):
-        """Procesa un golpe a un árbol."""
-        if not self.axe_picked_up:
+    def process_tree_hit(self, agent, current_tick):
+        """Procesa un golpe del agente a un árbol: hace falta su propia hacha (decisión 8)."""
+        if not agent.tiene_hacha:
             return False
+        agent_x, agent_y = agent.x, agent.y
         
         # Cooldown global de 30 ticks entre cortes para ver mejor el proceso
         if current_tick - self.last_tree_cut_tick < 30:
@@ -957,93 +903,84 @@ class World:
             
             attempts += 1
     
-    def check_key_pickup(self, agent_x, agent_y, generation):
-        """Verifica si un agente recogió una llave."""
-        from config import SimulationConfig
-        
-        # Verificar red_key (desde gen 11)
+    def check_key_pickup(self, agent):
+        """Verifica si el agente recogió la llave que le toca, por contacto (decisión 8): la roja con
+        etapa 0 y la dorada con etapa 2. Las dos quedan en el mapa para los demás."""
         # Radio aumentado: agente (8) + margen generoso (12) = 20 px total
-        if not self.red_key_collected and generation >= SimulationConfig.RED_KEY_SPAWN_GEN:
-            if self.red_key and not self.red_key.collected:
-                if self.red_key.collides_with(agent_x, agent_y, 12):  # Aumentado de 8 a 12
-                    if self.red_key.collect(None):
-                        self.red_key_collected = True
-                        return "red_key"
+        if agent.etapa == 0 and self.red_key:
+            if self.red_key.collides_with(agent.x, agent.y, 12):  # Aumentado de 8 a 12
+                agent.etapa = 1
+                return "red_key"
         
-        # Verificar gold_key SOLO si la puerta de madera está abierta
-        # Radio aumentado: agente (8) + margen generoso (12) = 20 px total
-        if not self.gold_key_collected and self.gold_key and not self.gold_key.collected:
-            # Verificar que la puerta de madera esté abierta
-            if self.door and self.door.is_open:
-                if self.gold_key.collides_with(agent_x, agent_y, 12):  # Aumentado de 8 a 12
-                    if self.gold_key.collect(None):
-                        self.gold_key_collected = True
-                        return "gold_key"
+        # La dorada está adentro de la fortaleza chica: con etapa 2, el agente ya abrió su puerta
+        if agent.etapa == 2 and self.gold_key:
+            if self.gold_key.collides_with(agent.x, agent.y, 12):  # Aumentado de 8 a 12
+                agent.etapa = 3
+                return "gold_key"
         
         return None
     
-    def process_door_hit(self, agent_x, agent_y, current_tick):
-        """Procesa un golpe a una puerta."""
+    def process_door_hit(self, agent, current_tick):
+        """Procesa un golpe del agente a la puerta que le toca (decisión 8): la de madera con etapa 1
+        (tiene la llave roja), la de hierro con etapa 3 (tiene la dorada). Los golpes son del agente,
+        y la puerta se abre para él."""
         from config import SimulationConfig
-        
-        # Verificar si el agente tiene la llave requerida
-        red_key_available = self.red_key_collected  # ✅ CORRECTO
-        gold_key_available = self.gold_key_collected  # ✅ CORRECTO
         
         # Golpear door
-        # Umbral aumentado: radio agente (8) + margen generoso (27) = 35 px total
-        if self.door and not self.door.is_open:
-            if red_key_available:  # ✅ CORRECTO - Agente tiene red_key
-                distance = ((agent_x - (self.door.x + self.door.width // 2))**2 + 
-                           (agent_y - (self.door.y + self.door.height // 2))**2)**0.5
-                if distance < 25:  # Aumentado de 25 a 35 para mayor margen
-                    if self.door.hit(current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
-                        return "door"
+        if self.door and agent.etapa == 1:
+            distance = ((agent.x - (self.door.x + self.door.width // 2))**2 +
+                       (agent.y - (self.door.y + self.door.height // 2))**2)**0.5
+            if distance < 25:
+                if self.door.hit(agent, current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
+                    agent.etapa = 2
+                    return "door"
         
         # Golpear door_iron
-        # Umbral aumentado: radio agente (8) + margen generoso (27) = 35 px total
-        if self.door_iron and not self.door_iron.is_open:
-            if gold_key_available:  # ✅ CORRECTO - Agente tiene gold_key
-                distance = ((agent_x - (self.door_iron.x + self.door_iron.width // 2))**2 + 
-                           (agent_y - (self.door_iron.y + self.door_iron.height // 2))**2)**0.5
-                if distance < 25:  # Aumentado de 25 a 35 para mayor margen
-                    if self.door_iron.hit(current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
-                        return "door_iron"
+        if self.door_iron and agent.etapa == 3:
+            distance = ((agent.x - (self.door_iron.x + self.door_iron.width // 2))**2 +
+                       (agent.y - (self.door_iron.y + self.door_iron.height // 2))**2)**0.5
+            if distance < 25:
+                if self.door_iron.hit(agent, current_tick, SimulationConfig.DOOR_HIT_COOLDOWN):
+                    agent.etapa = 4
+                    return "door_iron"
         
         return None
     
-    def check_chest_open(self, agent_x, agent_y):
-        """Verifica si un agente abrió el cofre."""
-        if self.chest and not self.chest.is_open:
-            if self.chest.collides_with(agent_x, agent_y, 8):
-                if self.chest.open(None):
-                    return True
+    def check_chest_open(self, agent):
+        """Verifica si el agente abrió el cofre (decisión 8): con etapa 4 y en contacto. El que golpea
+        lo mira el agente. is_open queda para el dibujo."""
+        if self.chest and agent.etapa == 4:
+            if self.chest.collides_with(agent.x, agent.y, 8):
+                agent.etapa = 5
+                self.chest.open(agent)  # para el dibujo; recuerda al primero que lo abrió
+                return True
         return False
     
     def _generate_red_key(self, generation):
-        """Genera la red_key en el mapa libremente"""
+        """Sortea la posición de la llave roja, fuera de las fortalezas y de los obstáculos: una nueva
+        en cada generación (decisión 10). Sin fortalezas, o antes de RED_KEY_SPAWN_GEN, no hay llave."""
         from config import SimulationConfig
         
-        if generation >= SimulationConfig.RED_KEY_SPAWN_GEN and not self.red_key_collected:
-            if not self.red_key:
-                # Generar posición aleatoria fuera de fortalezas
-                max_attempts = 1000
-                for _ in range(max_attempts):
-                    x = random.randint(50, self.screen_width - 50)
-                    y = random.randint(50, self.screen_height - 50)
+        self.red_key = None
+        if not SimulationConfig.FORTRESSES_ENABLED or generation < SimulationConfig.RED_KEY_SPAWN_GEN:
+            return
+        max_attempts = 1000
+        for _ in range(max_attempts):
+            x = random.randint(50, self.screen_width - 50)
+            y = random.randint(50, self.screen_height - 50)
                     
-                    # Verificar que no esté dentro de fortalezas
-                    if not self._is_inside_fortress(x, y):
-                        # Verificar que no esté en obstáculos
-                        safe_position = True
-                        for obstacle in self.obstacles:
-                            if obstacle.collides_with(x, y, 30):
-                                safe_position = False
-                                break
+            # Verificar que no esté dentro de fortalezas
+            if not self._is_inside_fortress(x, y):
+                # Verificar que no esté en obstáculos
+                safe_position = True
+                for obstacle in self.obstacles:
+                    if obstacle.collides_with(x, y, 30):
+                        safe_position = False
+                        break
                         
-                        if safe_position:
-                            self.red_key = Key(x, y, "red_key")
-                            return
+                if safe_position:
+                    self.red_key = Key(x, y, "red_key")
+                    return
     
     def _generate_perimeter(self):
         """Genera el perímetro decorativo del mapa."""

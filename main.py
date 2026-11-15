@@ -15,7 +15,7 @@ import numpy as np
 
 from config import SimulationConfig
 from src.world.world import World
-from src.agents.advanced_agent import AdvancedAgent
+from src.agents.advanced_agent import AdvancedAgent, PASOS_DEL_PUZZLE, agentes_por_paso
 from src.evolution.genetic_algorithm import GeneticAlgorithm
 from src.ui.renderer import SpriteManager, ParticleSystem, dibujar_mundo
 from src.ui.stats import StatsPanel
@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # Ubicación de los agentes (spec MODO_GUIADO_Y_AUTONOMO, decisión 23): los criterios que estaban
 # repartidos entre el algoritmo genético y tres funciones de este archivo, juntos
-RADIO_LIBRE = 35            # Distancia mínima a obstáculos, estanque, perímetro y manzanas
+RADIO_LIBRE = 35            # Distancia mínima a obstáculos, estanque, perímetro, manzanas, llave roja y hacha
 SEPARACION_AGENTES = 32     # Dos agentes no arrancan a menos de esto, en x y en y
 PASO_DIRECCION = 20         # Una dirección está libre si a esta distancia no hay obstáculo
 INTENTOS_POR_AGENTE = 500
@@ -37,7 +37,8 @@ GRILLA_DE_RESPALDO = [(x, y) for x in range(100, 801, 100) for y in range(100, 6
     
 def _lugar_libre(world, x, y, ubicados):
     """True si un agente puede arrancar en (x, y): fuera de fortalezas, obstáculos, perímetro y
-    estanque, lejos de los agentes ya ubicados y de las manzanas, y con una dirección libre."""
+    estanque, lejos de los agentes ya ubicados, de las manzanas, de la llave roja y del hacha, y con
+    una dirección libre."""
     if world._is_inside_fortress(x, y):
         return False
     if any(obstacle.collides_with(x, y, RADIO_LIBRE) for obstacle in world.obstacles):
@@ -52,6 +53,12 @@ def _lugar_libre(world, x, y, ubicados):
         return False
     if any(not food['eaten'] and ((x - food['x'])**2 + (y - food['y'])**2)**0.5 < RADIO_LIBRE
            for food in world.food_items):
+        return False
+    # La llave roja y el hacha se agarran por contacto: arrancar encima las daría sin buscarlas
+    # (desvío de la decisión 23, decidido con Fer en el bloque B)
+    premios = ([(world.red_key.x, world.red_key.y)] if world.red_key else []) + \
+              ([(world.axe['x'], world.axe['y'])] if world.axe else [])
+    if any(((x - px)**2 + (y - py)**2)**0.5 < RADIO_LIBRE for px, py in premios):
         return False
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
@@ -88,12 +95,13 @@ def _ubicar_agentes(world, agents):
 
 
 # Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6;
-# edad_prom: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
+# edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28)
 COLUMNAS_CSV = [
     "semilla", "evolucion", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
-    "arboles_cortados", "llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre",
+    "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
+    "agentes_puerta_hierro", "agentes_cofre",
 ]
 
 
@@ -127,7 +135,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
     Hace las mismas cuentas que el reporte por consola del final de generación. Los decimales van
     redondeados a 4 para que dos corridas con la misma semilla den el mismo archivo byte a byte.
-    Las columnas del puzzle son el estado del mundo, que se acumula entre generaciones.
+    Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso.
     """
     fitness = [float(agent.fitness) for agent in agents]
     manzanas = [agent.food_eaten for agent in agents]
@@ -148,11 +156,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
         sum(agent.distance_traveled for agent in agents) / len(agents),
         learning_monitor.calculate_diversity(agents),
         arboles_cortados,
-        int(bool(world.red_key_collected)),
-        int(bool(world.door and world.door.is_open)),
-        int(bool(world.gold_key_collected)),
-        int(bool(world.door_iron and world.door_iron.is_open)),
-        int(bool(world.chest and world.chest.is_open)),
+        *agentes_por_paso(agents),
     ]
     return [round(float(valor), 4) if isinstance(valor, float) else valor for valor in fila]
 
@@ -180,19 +184,10 @@ def _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, l
     print(f"   - Agentes vivos: {len(alive_agents)}")
     print(f"   - Segundos: {tick/60:.1f}")
 
-    # Contar árboles cortados (estado del mundo, que se acumula entre generaciones)
+    # Contar árboles cortados (los árboles se regeneran con el mapa en cada generación)
     trees_cut_this_generation = 0
     if hasattr(world, 'trees'):
         trees_cut_this_generation = len([tree for tree in world.trees if tree.is_cut])
-
-    # Estadísticas de puzzle (llaves, puertas, cofre)
-    red_key_status = "LLAVE RECOGIDA" if world.red_key_collected else "NO RECOGIDA"
-    gold_key_status = "LLAVE RECOGIDA" if world.gold_key_collected else "NO RECOGIDA"
-
-    door_status = "PUERTA ABIERTA" if world.door and world.door.is_open else "PUERTA CERRADA"
-    iron_door_status = "PUERTA ABIERTA" if world.door_iron and world.door_iron.is_open else "PUERTA CERRADA"
-
-    chest_status = "COFRE ABIERTO" if world.chest and world.chest.is_open else "COFRE CERRADO"
 
     alive_agents_for_stats = [a for a in agents if a.alive]
     avg_fitness = sum(agent.fitness for agent in agents) / len(agents)
@@ -217,12 +212,9 @@ def _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, l
     print(f"      - Tasa: {len(alive_agents_for_stats)/len(agents)*100:.1f}%")
     print(f"      - Tiempo promedio: {avg_age/60/60:.1f} min")
     print(f"   🧬 DIVERSIDAD GENÉTICA: {diversity:.4f}")
-    print(f"   🧩 PUZZLE:")
-    print(f"      - Llave roja: {red_key_status}")
-    print(f"      - Llave dorada: {gold_key_status}")
-    print(f"      - Puerta madera: {door_status}")
-    print(f"      - Puerta hierro: {iron_door_status}")
-    print(f"      - Cofre: {chest_status}")
+    print(f"   🧩 PUZZLE (agentes que llegaron a cada paso):")
+    for nombre, cantidad in zip(PASOS_DEL_PUZZLE, agentes_por_paso(agents)):
+        print(f"      - {nombre}: {cantidad}")
     print(f"      - Árboles cortados: {trees_cut_this_generation}")
     print(f"   - ⏱️ Tiempo real acumulado: {elapsed_minutes}m {elapsed_seconds}s")
 
@@ -247,11 +239,8 @@ def _datos_del_popup(generation, tick, agents, alive_agents, world, learning_mon
         'avg_food_skill': sum(agent.get_food_skill() for agent in agents) / len(agents),
         'avg_energy_skill': sum(agent.get_energy_skill() for agent in agents) / len(agents),
         'trees_cut': trees_cut_this_generation,
-        # Datos del puzzle
-        'red_key_collected': world.red_key_collected,
-        'gold_key_collected': world.gold_key_collected,
-        'doors_opened': (1 if world.door and world.door.is_open else 0) + (1 if world.door_iron and world.door_iron.is_open else 0),
-        'chest_opened': world.chest.is_open if world.chest else False,
+        # Puzzle: cuántos agentes llegaron a cada paso
+        'agentes_por_paso': agentes_por_paso(agents),
         'total_agents': len(agents),
         'alive_count': len(alive_agents_for_stats),
         'diversity': learning_monitor.calculate_diversity(agents),
@@ -390,6 +379,8 @@ def _simular(semilla, evolucion, escribir_fila):
     print(f"🎮 Generación {generation} iniciada ⏱️ {max_ticks_per_generation} ticks")
     tick = 0
     ticks_totales = 0  # Tiempo simulado: los ticks de todas las generaciones (DIAG-15)
+    primera_generacion_cofre = None  # Generación en que un agente abrió el cofre por primera vez
+    agentes_con_cofre = 0  # Agentes que abrieron el cofre, sumando todas las generaciones
     
     # Sistema de comandos
     
@@ -452,7 +443,8 @@ def _simular(semilla, evolucion, escribir_fila):
                 decisions = agent.decide(world, alive_agents, sprite_manager)
                 agent.act(decisions, world, alive_agents, tick)
                 
-                # Sistema de corte de árboles
+                # Sistema de corte de árboles. Agarrar el hacha es por contacto; cortar pide golpear
+                # (lo mira el agente, decisión 8)
                 if config.TREE_CUTTING_ENABLED:
                     # Intentar agarrar hacha
                     agent._try_pickup_axe(world)
@@ -460,28 +452,22 @@ def _simular(semilla, evolucion, escribir_fila):
                     # Intentar cortar árbol
                     agent._try_cut_tree(world, tick)
                 
-                # Sistema de fortalezas/llaves/puertas/cofre
+                # Sistema de fortalezas/llaves/puertas/cofre: el puzzle de cada agente. Las llaves son
+                # por contacto; las puertas y el cofre piden golpear
                 if config.FORTRESSES_ENABLED:
                     # Intentar recoger llaves
-                    agent._try_pickup_key(world, generation)
+                    agent._try_pickup_key(world)
                     
                     # Intentar golpear puertas
                     agent._try_hit_door(world, tick)
                     
-                    # Intentar abrir cofre
+                    # Intentar abrir cofre. No termina la corrida (decisión 11): se cuenta y se sigue
                     if agent._try_open_chest(world):
-                        # Antes de salir, la fila de esta generación (parcial), con cofre = 1
-                        for otro in agents:
-                            otro._calculate_fitness()
-                        escribir_fila(_fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor))
-                        ticks_totales += tick  # La generación parcial también cuenta (DIAG-15)
-
-                        # ¡COFRE ABIERTO! Mostrar pantalla de FIN
-                        print(f"\n🏆 ¡¡¡COFRE ABIERTO!!! 🏆")
-                        print(f"🎯 Agente {agent.id} ha completado la misión en la generación {generation}")
-                        print(f"⏱️ Segundos: {tick/60:.1f}")
-                        mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, ticks_totales, cofre_abierto=True)
-                        return
+                        agentes_con_cofre += 1
+                        if primera_generacion_cofre is None:
+                            primera_generacion_cofre = generation
+                            print(f"\n🏆 ¡Cofre abierto por primera vez! Agente {agent.id}, generación "
+                                  f"{generation}, segundo {tick/60:.1f}")
         
         # Registrar tumbas para agentes que acaban de morir (sin colisión)
         if not paused:
@@ -493,10 +479,6 @@ def _simular(semilla, evolucion, escribir_fila):
         # Actualizar sistema de corte de árboles (solo si no está pausado)
         if not paused and config.TREE_CUTTING_ENABLED:
             world.update_tree_cutting_status()
-        
-        # Generar red_key en gen 11+ si no existe (solo una vez por generación)
-        if config.FORTRESSES_ENABLED and generation >= config.RED_KEY_SPAWN_GEN and not world.red_key:
-            world._generate_red_key(generation)
         
         # Actualizar mundo (solo si no está pausado)
         if not paused:
@@ -538,8 +520,8 @@ def _simular(semilla, evolucion, escribir_fila):
             summary_popup.show(generation_data, fitness_history)
             
             if generation >= max_generations:
-                print("🏁 Límite de generaciones alcanzado sin abrir el cofre. Mostrando resumen final...")
-                mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, ticks_totales, cofre_abierto=False)
+                print("🏁 Límite de generaciones alcanzado. Mostrando resumen final...")
+                mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor, screen_width, screen_height, display_screen, sprite_manager, particle_system, ticks_totales, primera_generacion_cofre, agentes_con_cofre)
                 return
 
             # Evolucionar. La línea base (--sin-evolucion) arranca de cero: cerebros al azar, sin herencia
@@ -548,8 +530,8 @@ def _simular(semilla, evolucion, escribir_fila):
             else:
                 agents = ga._create_random_population()
             
-            # El mapa se regenera y recién ahí se ubican los agentes (DIAG-29)
-            world.reset_food()
+            # El mapa se regenera con el puzzle reiniciado, y recién ahí se ubican los agentes (DIAG-29)
+            world.reset_food(generation + 1)
             _ubicar_agentes(world, agents)
             world.tick = 0
             tick = 0

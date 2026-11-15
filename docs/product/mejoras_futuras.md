@@ -30,3 +30,4 @@ Decidido con Fer al escribir el [spec](../specs/active/MODO_GUIADO_Y_AUTONOMO.md
 ## Aparecido al ejecutar el spec Modo guiado y modo autónomo
 
 - [ ] **Colisión centrada con el estanque y el perímetro (DIAG-30):** al moverse, el agente mira una caja que va de su posición hacia abajo y a la derecha, y puede meterse medio cuerpo en el estanque. Apareció el 2026-11-14 en el bloque A, al verificar la ubicación de agentes (que ya usa una caja centrada). Cambiarlo cambia la simulación: va con una medición.
+- [ ] **Código sin uso en `obstacles.py`:** la clase `Axe` (el hacha es un dict de `world.py`) y, desde el bloque B (2026-11-15), `Key.collect` y `Key.collected`: las llaves quedan en el mapa y nadie las recoge. El dibujo todavía mira `collected`. Sacarlo no cambia la simulación.

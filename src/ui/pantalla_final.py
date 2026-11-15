@@ -6,6 +6,7 @@ Pantalla final: el resumen de la corrida. Sin ventana, por consola; con ventana,
 import pygame
 
 from config import SimulationConfig
+from ..agents.advanced_agent import agentes_por_paso
 from ..analytics.clustering import BehaviorClusterer
 from .renderer import dibujar_mundo
 
@@ -21,10 +22,15 @@ def minutos_simulados(ticks_totales):
 
 def mostrar_pantalla_final(render_surface, generation, tick, agents, world, learning_monitor,
                            screen_width, screen_height, display_screen, sprite_manager,
-                           particle_system, ticks_totales, cofre_abierto):
-    """Muestra el resumen final. Lee SimulationConfig.HEADLESS_MODE de la clase: main.py lo pisa ahí."""
+                           particle_system, ticks_totales, primera_generacion_cofre, agentes_con_cofre):
+    """Muestra el resumen final. Lee SimulationConfig.HEADLESS_MODE de la clase: main.py lo pisa ahí.
+
+    primera_generacion_cofre es None si ningún agente abrió el cofre; agentes_con_cofre suma los de
+    todas las generaciones (abrirlo no termina la corrida, decisión 11).
+    """
     if SimulationConfig.HEADLESS_MODE:
-        imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales, cofre_abierto)
+        imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales,
+                               primera_generacion_cofre, agentes_con_cofre)
         return
 
     learning_monitor.create_learning_report()
@@ -37,8 +43,9 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
             agent.draw(render_surface, tick, sprite_manager, particle_system)
     particle_system.draw(render_surface)
 
-    textos = textos_del_cuadro(generation, agents, world, learning_monitor, ticks_totales, cofre_abierto)
-    cuadro = _dibujar_cuadro(textos, learning_monitor, cofre_abierto)
+    textos = textos_del_cuadro(generation, agents, learning_monitor, ticks_totales,
+                               primera_generacion_cofre, agentes_con_cofre)
+    cuadro = _dibujar_cuadro(textos, learning_monitor, primera_generacion_cofre is not None)
     panel_x = (render_surface.get_width() - cuadro.get_width()) // 2 - 113
     panel_y = (render_surface.get_height() - cuadro.get_height()) // 2
     render_surface.blit(cuadro, (panel_x, panel_y))
@@ -59,8 +66,10 @@ def mostrar_pantalla_final(render_surface, generation, tick, agents, world, lear
     pygame.quit()
 
 
-def imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales, cofre_abierto):
+def imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales,
+                           primera_generacion_cofre, agentes_con_cofre):
     """El resumen final por consola, para las corridas sin ventana."""
+    cofre_abierto = primera_generacion_cofre is not None
     # Recalcular fitness de todos los agentes antes de mostrar estadísticas
     for agent in agents:
         agent._calculate_fitness()
@@ -87,23 +96,31 @@ def imprimir_resumen_final(generation, agents, learning_monitor, ticks_totales, 
     print(f"Tiempo simulado: {minutos_simulados(ticks_totales):.1f} minutos")
     print(f"Agentes vivos: {len(alive_agents)}")
     print(status_subtitle)
+    print(_texto_del_cofre(primera_generacion_cofre, agentes_con_cofre))
     print(f"Fitness promedio (últimas 3 gen): {avg_fitness:.1f}")
     print(f"Fitness máximo: {max_fitness:.1f}")
 
 
-def textos_del_cuadro(generation, agents, world, learning_monitor, ticks_totales, cofre_abierto):
+def _texto_del_cofre(primera_generacion_cofre, agentes_con_cofre):
+    """Cuántos agentes abrieron el cofre en la corrida y cuándo pasó la primera vez (decisión 11)."""
+    if primera_generacion_cofre is None:
+        return "Ningún agente abrió el cofre"
+    return (f"Cofre: lo abrieron {agentes_con_cofre} agentes en la corrida; la primera vez, en la "
+            f"generación {primera_generacion_cofre}")
+
+
+def textos_del_cuadro(generation, agents, learning_monitor, ticks_totales, primera_generacion_cofre,
+                      agentes_con_cofre):
     """Arma los textos del cuadro final sin dibujar nada, así se pueden probar (DIAG-16).
 
     Devuelve un dict con titulo, subtitulo, encabezado (generación y tiempo), secciones (lista de
     (título, [(texto, color), ...])) y mensaje_final.
     """
+    cofre_abierto = primera_generacion_cofre is not None
     datos = learning_monitor.generation_data
     fitness_values = [a.fitness for a in agents]
     avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
     minutos = minutos_simulados(ticks_totales)
-
-    def si_no(valor):
-        return "SI" if valor else "NO"
 
     if cofre_abierto:
         titulo = "¡MISIÓN COMPLETADA!"
@@ -120,13 +137,12 @@ def textos_del_cuadro(generation, agents, world, learning_monitor, ticks_totales
         ("Resultado: Completado", (200, 255, 200)) if cofre_abierto else ("Resultado: No logrado", GRIS),
     ]))
 
-    # 2) Pasos clave del reto
-    puerta_madera = world.door and world.door.is_open
-    puerta_hierro = world.door_iron and world.door_iron.is_open
+    # 2) Pasos clave del reto: cuántos agentes de la última generación llegaron a cada uno
+    roja, madera, dorada, hierro, cofre = agentes_por_paso(agents)
     secciones.append(("PASOS CLAVE", [
-        (f"Llave roja: {si_no(world.red_key_collected)}   Llave dorada: {si_no(world.gold_key_collected)}", GRIS),
-        (f"Puerta madera: {si_no(puerta_madera)}   Puerta hierro: {si_no(puerta_hierro)}", GRIS),
-        (f"Cofre: {si_no(cofre_abierto)}", GRIS),
+        ("Agentes de la última generación que llegaron a cada paso:", GRIS),
+        (f"Llave roja: {roja}   Puerta madera: {madera}   Llave dorada: {dorada}", GRIS),
+        (f"Puerta hierro: {hierro}   Cofre: {cofre}", GRIS),
     ]))
 
     # 3) ¿Aprendieron? Compara contra la generación 1, no contra la línea base: queda para el ítem 3
@@ -154,13 +170,13 @@ def textos_del_cuadro(generation, agents, world, learning_monitor, ticks_totales
         (f"Exploraron más: {explored_more_flag}", GRIS),
     ]))
 
-    # 4) Línea de tiempo. La simulación termina al abrir el cofre: si se abrió, fue en esta generación
+    # 4) Línea de tiempo. Abrir el cofre no termina la corrida (decisión 11): la primera vez y cuántos
     if cofre_abierto:
-        primera_vez = f"Primera vez con cofre abierto: Gen {generation}"
+        renglones_cofre = [(f"Primera vez con cofre abierto: Gen {primera_generacion_cofre}", GRIS),
+                           (f"Agentes que abrieron el cofre en la corrida: {agentes_con_cofre}", GRIS)]
     else:
-        primera_vez = "El cofre no se abrió en ninguna generación"
-    secciones.append(("LÍNEA DE TIEMPO", [
-        (primera_vez, GRIS),
+        renglones_cofre = [("El cofre no se abrió en ninguna generación", GRIS)]
+    secciones.append(("LÍNEA DE TIEMPO", renglones_cofre + [
         (f"Tiempo simulado: {minutos:.1f} min", GRIS),
     ]))
 

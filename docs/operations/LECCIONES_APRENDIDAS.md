@@ -5,6 +5,21 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-008 — 2026-11-15 — Lo que se agarra por contacto no puede estar donde arranca un agente
+
+**Qué pasó.** En el bloque B de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),
+la llave roja y el hacha pasaron a sortearse en `reset_food()`, antes de ubicar a los agentes (antes,
+la llave aparecía después del primer tick). La ubicación evitaba las manzanas a 35 px, pero no la
+llave ni el hacha, que se agarran por contacto: en la primera captura con ventana, en el tick 1, el
+panel ya decía "Con hacha: 1" y "Llave roja: 1". Un agente que arranca encima se lleva el premio sin
+buscarlo, en ~25% de las generaciones; los tests verdes y el CSV byte a byte no lo mostraban. Se
+decidió con Fer evitarlas a 35 px, como las manzanas, con un test cuyo control usa la ubicación vieja.
+
+**Regla.** Cuando un cambio mueve un objeto a antes de ubicar a los agentes, revisar todo lo que ese
+objeto da por contacto: la ubicación tiene que evitarlo. Se controla mirando el tick 1 (el panel con
+ventana, o las etapas de los agentes): nadie tiene que haber avanzado sin moverse. Aplicada en
+`_lugar_libre` (`main.py`) y en `tests/test_puzzle.py`.
+
 ## LEC-007 — 2026-11-14 — Un script de edición escrito con Write pierde los espacios de sus líneas en blanco
 
 **Qué pasó.** En el bloque A de [Modo guiado y modo autónomo](../specs/active/MODO_GUIADO_Y_AUTONOMO.md),

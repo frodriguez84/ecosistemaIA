@@ -4,6 +4,8 @@ Panel de estadísticas en tiempo real.
 
 import pygame
 
+from ..agents.advanced_agent import PASOS_DEL_PUZZLE, agentes_por_paso
+
 
 class StatsPanel:
     """Panel de estadísticas en tiempo real."""
@@ -67,19 +69,17 @@ class StatsPanel:
             f"Comida: {len([f for f in world.food_items if not f['eaten']])}"
         ]
         
-        # Añadir texto de corte de árboles si está activo
-        if hasattr(world, 'axe_picked_up') and world.axe_picked_up:
-            stats.append("* Pueden cortar árboles!")
+        # Agentes con hacha y agentes que llegaron a cada paso del puzzle: solo los que tienen alguno
+        con_hacha = len([a for a in agents if a.tiene_hacha])
+        if con_hacha:
+            stats.append(f"* Con hacha: {con_hacha}")
+        for nombre, cantidad in zip(PASOS_DEL_PUZZLE, agentes_por_paso(agents)):
+            if cantidad:
+                stats.append(f"* {nombre}: {cantidad}")
         
-        # Añadir texto de llaves recogidas
-        if hasattr(world, 'red_key_collected') and world.red_key_collected:
-            stats.append("* Pueden abrir puerta madera!")
-        if hasattr(world, 'gold_key_collected') and world.gold_key_collected:
-            stats.append("* Pueden abrir puerta hierro!")
-        
-        # Dibujar estadísticas
+        # Dibujar estadísticas (22 px por renglón: entran los 11 en los 300 px del panel)
         y_offset = 50
         for stat in stats:
             text = self.font.render(stat, True, (200, 200, 200))
             screen.blit(text, (self.x + 10, self.y + y_offset))
-            y_offset += 25
+            y_offset += 22

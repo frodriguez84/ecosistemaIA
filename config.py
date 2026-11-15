@@ -33,9 +33,9 @@ class SimulationConfig:
     IMMIGRATION_COUNT = 3           # Cuántos agentes nuevos aleatorios introducir
     
     # === RED NEURONAL ===
-    INPUT_SIZE = 10              # 10 sensores esenciales (simplificados)
+    INPUT_SIZE = 11              # 11 sensores, con la etapa del puzzle y la brújula a su próximo paso
     HIDDEN_SIZE = [24, 16]       # Capas ocultas (soporta lista o entero)
-    OUTPUT_SIZE = 4              # 4 acciones
+    OUTPUT_SIZE = 5              # 5 acciones: avanzar, girar a la izquierda, a la derecha, comer y golpear
     
     # === AGENTE ===
     AGENT_SPEED = 3.0            # Velocidad de movimiento
@@ -44,6 +44,7 @@ class SimulationConfig:
     AGENT_ENERGY_CONSUMPTION = 0.10  # Consumo de energía por tick 
     AGENT_ENERGY_GAIN_FOOD = 8      # Energía ganada al comer 
     AGENT_RADIUS = 6             # Tamaño del agente
+    HIT_ENERGY_COST = 0.05       # Energía extra que gasta golpear, golpee algo o no
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)

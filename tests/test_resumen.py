@@ -20,16 +20,19 @@ COLUMNAS = [
     "semilla", "evolucion", "generacion", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
-    "arboles_cortados", "llave_roja", "puerta_madera", "llave_dorada", "puerta_hierro", "cofre",
+    "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
+    "agentes_puerta_hierro", "agentes_cofre",
 ]
 
 
 def _escribir_corrida(carpeta, semilla, evolucion, fitness, manzanas, puzzle_final=(0, 0, 0, 0, 0),
-                      edades=None):
-    """Escribe un CSV como el de main.py. fitness, manzanas y edades traen un valor por generación.
+                      edades=None, puzzle=None):
+    """Escribe un CSV como el de main.py. fitness, manzanas, edades y puzzle traen un valor por
+    generación; cada valor de puzzle son las cinco columnas agentes_*.
 
-    El puzzle vale 0 en todas las generaciones menos la última, que lleva puzzle_final. Las
-    columnas que el resumen no mira van en 0, y edad_prom también si no se pasan edades.
+    Sin puzzle, las columnas agentes_* valen 0 en todas las generaciones menos la última, que lleva
+    puzzle_final. Las columnas que el resumen no mira van en 0, y edad_prom también si no se pasan
+    edades.
     """
     ruta = carpeta / f"s{semilla}_{int(evolucion)}.csv"
     with open(ruta, "w", newline="", encoding="utf-8") as archivo:
@@ -41,7 +44,9 @@ def _escribir_corrida(carpeta, semilla, evolucion, fitness, manzanas, puzzle_fin
                         fitness_prom=fit, manzanas_prom=manz)
             if edades:
                 fila.update(edad_prom=edades[i])
-            if i == len(fitness) - 1:
+            if puzzle:
+                fila.update(zip(COLUMNAS[-5:], puzzle[i]))
+            elif i == len(fitness) - 1:
                 fila.update(zip(COLUMNAS[-5:], puzzle_final))
             escritor.writerow(fila)
     return ruta
@@ -59,12 +64,15 @@ def _corrida(carpeta, semilla, evolucion, fitness_dif, manzanas_dif, edad_final=
 
 
 def test_resumen_de_una_corrida(tmp_path):
-    # 12 generaciones: si "las últimas 5" no fueran la 8 a la 12, los 100 de la 6 y la 7 se notarían
+    # 12 generaciones: si "las últimas 5" no fueran la 8 a la 12, los 100 de la 6 y la 7 se notarían.
+    # El puzzle llega más lejos en la 6 y la 7 (etapa 4) que al final (etapa 3): la etapa máxima es
+    # la de toda la corrida
     ruta = _escribir_corrida(tmp_path, semilla=3, evolucion=True,
                              fitness=[8, 9, 10, 11, 12, 100, 100, 18, 19, 20, 21, 22],
                              manzanas=[0, 0.5, 0.5, 0.5, 1, 9, 9, 1, 1.5, 1.5, 1.5, 2],
-                             puzzle_final=(1, 1, 1, 0, 0),
-                             edades=[100] * 5 + [5000, 5000, 900, 920, 940, 960, 980])
+                             edades=[100] * 5 + [5000, 5000, 900, 920, 940, 960, 980],
+                             puzzle=[(0, 0, 0, 0, 0)] * 5 + [(40, 9, 9, 2, 0)] * 2
+                             + [(8 + i, 2, 1, 0, 0) for i in range(5)])
     resumen = experimento.resumir_corrida(ruta)
 
     assert resumen["semilla"] == 3
@@ -77,20 +85,23 @@ def test_resumen_de_una_corrida(tmp_path):
     assert resumen["manzanas_final"] == pytest.approx(1.5)
     assert resumen["manzanas_dif"] == pytest.approx(1)
     assert resumen["supervivencia"] == pytest.approx(940)  # edad_prom de las últimas 5
-    assert resumen["etapa_puzzle"] == 3
+    assert resumen["llave_roja"] == pytest.approx(10)  # agentes_llave_roja de las últimas 5: 8 a 12
+    assert resumen["etapa_maxima"] == 4
     assert resumen["generacion_cofre"] is None
 
 
 def test_el_cofre_se_informa_y_con_10_generaciones_o_mas_las_ventanas_se_toman_igual(tmp_path):
+    # Algún agente abre el cofre en la 7 y en la 11: cuenta la primera
+    puzzle = [(0, 0, 0, 0, 0)] * 11
+    puzzle[6] = puzzle[10] = (3, 2, 2, 1, 1)
     ruta = _escribir_corrida(tmp_path, semilla=1, evolucion=False,
-                             fitness=[10] * 5 + [30] * 6, manzanas=[1] * 11,
-                             puzzle_final=(1, 1, 1, 1, 1))
+                             fitness=[10] * 5 + [30] * 6, manzanas=[1] * 11, puzzle=puzzle)
     resumen = experimento.resumir_corrida(ruta)
 
     assert resumen["evolucion"] is False
     assert resumen["generaciones"] == 11
-    assert resumen["etapa_puzzle"] == 5
-    assert resumen["generacion_cofre"] == 11
+    assert resumen["etapa_maxima"] == 5
+    assert resumen["generacion_cofre"] == 7
     assert resumen["fitness_dif"] == pytest.approx(20)
 
 
@@ -101,7 +112,7 @@ def test_con_menos_de_10_generaciones_queda_fuera_de_las_ventanas(tmp_path):
 
     assert resumen["generacion_cofre"] == 8
     for clave in ("fitness_inicio", "fitness_final", "fitness_dif",
-                  "manzanas_inicio", "manzanas_final", "manzanas_dif", "supervivencia"):
+                  "manzanas_inicio", "manzanas_final", "manzanas_dif", "supervivencia", "llave_roja"):
         assert resumen[clave] is None, clave
 
 
@@ -119,7 +130,8 @@ def test_resumen_por_modo_promedio_y_desvio_entre_semillas(tmp_path):
     assert modo["manzanas_dif"]["promedio"] == pytest.approx(0.5)
     assert modo["supervivencia"]["promedio"] == pytest.approx(1000)
     assert modo["supervivencia"]["desvio"] == pytest.approx(100)
-    assert modo["etapa_puzzle"]["promedio"] == pytest.approx(3)
+    assert modo["llave_roja"]["promedio"] == pytest.approx(0.2)  # 1 agente en la última de las 5
+    assert modo["etapa_maxima"]["promedio"] == pytest.approx(3)
     assert modo["generacion_cofre"]["n"] == 0
     assert modo["generacion_cofre"]["promedio"] is None
 
@@ -160,7 +172,9 @@ def test_el_markdown_trae_la_comparacion_las_corridas_y_las_que_fallaron(tmp_pat
     assert "subió más que la línea base en 1 de 1 semillas en fitness" in texto
     assert "y en 1 de 1 en manzanas por agente" in texto
     assert "| 1 | Con evolución | 10 | 20.00 | 30.00 | 10.00 |" in texto
-    # Por modo y por corrida, la edad promedio de las últimas 5, entre las manzanas y el puzzle
-    assert "| Con evolución | 1 | 20.00 | 30.00 | 10.00 | 1.00 | 2.00 | 1.00 | 950 | 3.0 | 0 de 1 |" in texto
-    assert "| 1.00 | 2.00 | 1.00 | 950 | 3 | — |" in texto
+    # Por modo y por corrida: la edad promedio de las últimas 5, los agentes con llave roja de las
+    # últimas 5, la etapa máxima y el cofre
+    assert ("| Con evolución | 1 | 20.00 | 30.00 | 10.00 | 1.00 | 2.00 | 1.00 | 950 | 0.20 | 3.0 "
+            "| 0 de 1 |") in texto
+    assert "| 1.00 | 2.00 | 1.00 | 950 | 0.20 | 3 | — |" in texto
     assert "results/x/corrida_s2_sin_evolucion.log" in texto

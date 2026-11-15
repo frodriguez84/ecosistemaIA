@@ -23,8 +23,8 @@ from src.agents.advanced_agent import AdvancedAgent  # noqa: E402
 from src.analytics.learning_monitor import LearningMonitor  # noqa: E402
 from src.world.obstacles import Obstacle  # noqa: E402
 
-# Un tick sin moverse, sin girar y sin comer
-QUIETO = {"move_forward": 0.0, "turn_left": 0.0, "turn_right": 0.0, "eat": 0.0}
+# Un tick sin moverse, sin girar, sin comer y sin golpear
+QUIETO = {"move_forward": 0.0, "turn_left": 0.0, "turn_right": 0.0, "eat": 0.0, "hit": 0.0}
 
 
 def _pisar(monkeypatch, **valores):
@@ -38,9 +38,10 @@ def _pisar(monkeypatch, **valores):
 
 
 def _mundo(**cambios):
-    """Un mundo vacío, con lo que leen perceive(), decide() y act()."""
+    """Un mundo vacío, con lo que leen perceive() (también la brújula), decide() y act()."""
     mundo = SimpleNamespace(obstacles=[], food_items=[], perimeter_obstacles=[], pond_obstacles=[],
-                            door=None, door_iron=None, screen_width=960, screen_height=800)
+                            door=None, door_iron=None, red_key=None, gold_key=None, chest=None,
+                            screen_width=960, screen_height=800)
     for nombre, valor in cambios.items():
         setattr(mundo, nombre, valor)
     return mundo
@@ -106,15 +107,16 @@ def test_la_recompensa_por_arbol_y_por_casita_sobrevive_a_calculate_fitness(monk
     # DIAG-08: se sumaba a self.fitness, y _calculate_fitness() la pisaba
     _pisar(monkeypatch, TREE_CUT_REWARD=7, HUT_CUT_REWARD=4)
     agente = AdvancedAgent(100, 100)  # recién creado: el resto del fitness vale 0
+    agente.golpeando = True  # cortar pide golpear (bloque B)
 
-    arbol = SimpleNamespace(process_tree_hit=lambda x, y, tick: True,
-                            process_hut_hit=lambda x, y, tick: False)
+    arbol = SimpleNamespace(process_tree_hit=lambda agente, tick: True,
+                            process_hut_hit=lambda agente, tick: False)
     assert agente._try_cut_tree(arbol, 1000)
     agente._calculate_fitness()
     assert agente.fitness == pytest.approx(7)
 
-    casita = SimpleNamespace(process_tree_hit=lambda x, y, tick: False,
-                             process_hut_hit=lambda x, y, tick: True)
+    casita = SimpleNamespace(process_tree_hit=lambda agente, tick: False,
+                             process_hut_hit=lambda agente, tick: True)
     assert agente._try_cut_tree(casita, 2000)
     agente._calculate_fitness()
     assert agente.fitness == pytest.approx(7 + 4)
