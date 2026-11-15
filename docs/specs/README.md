@@ -27,7 +27,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [Modo guiado y modo autónomo](planned/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | Sin gate. Tres bloques (A reglas, B puzzle, C switch), con bitácora |
 
 ## ⚫ Done (`done/`)
 

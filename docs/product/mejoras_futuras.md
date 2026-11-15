@@ -14,4 +14,15 @@ Convención: `- [ ]` abierta · `- [x]` pasó al BACKLOG o se descartó (con fec
 - [ ] **Enemigos.**
 - [ ] **Más objetos.**
 - [ ] **Transición de mapa, historia, storytelling.**
-- [ ] **Mecánicas nuevas para que aprendan otras cosas.** Se cruza con el modo autónomo (BACKLOG ítem 3): mirarla al escribir ese spec.
+- [ ] **Mecánicas nuevas para que aprendan otras cosas.** Se cruza con el modo autónomo (BACKLOG ítem 3): mirarla al escribir ese spec. *Mirada el 2026-11-14:* el spec [MODO_GUIADO_Y_AUTONOMO](../specs/planned/MODO_GUIADO_Y_AUTONOMO.md) suma golpear y el puzzle por agente, pero ninguna mecánica nueva; esta idea sigue abierta para después.
+
+## Fuera de alcance del spec Modo guiado y modo autónomo — 2026-11-14
+
+Decidido con Fer al escribir el [spec](../specs/planned/MODO_GUIADO_Y_AUTONOMO.md): primero la versión simple, y estas cuando haya una medición con qué compararlas.
+
+- [ ] **Un par de sensores (dirección y distancia) por objeto del puzzle,** más el inventario, en lugar de la brújula al próximo paso. La red tendría que aprender el orden del puzzle; es mucho más difícil.
+- [ ] **Visión por rayos:** N rayos con la distancia y el tipo de lo que tocan.
+- [ ] **Sensor de obstáculos con dirección:** hoy el sensor 4 da la distancia al obstáculo más cercano, sin dirección (DIAG-02).
+- [ ] **Brújula al hacha y a los árboles:** en el spec quedan sin brújula.
+- [ ] **Que comer cueste** (energía o quedarse quieto): hoy una red que siempre come no pierde nada, así que "aprender a comer" es aprender a llegar a la manzana.
+- [ ] **Los umbrales de la guía a `config.py`** (30, 65 y 40%): en el spec quedan en el código, comentados como guía.
