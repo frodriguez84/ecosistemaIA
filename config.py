@@ -121,6 +121,11 @@ class SimulationConfig:
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas
+    # Fortalezas móviles, en los dos modos (--fortalezas-moviles lo prende): desde la generación 2, las
+    # dos fortalezas van a un lugar al azar en cada generación, con sus puertas, la llave dorada y el
+    # cofre. Apagado, quedan siempre en las esquinas de la generación 1 (arriba a la izquierda la chica,
+    # abajo a la derecha la grande)
+    FORTALEZAS_MOVILES = False
     
     # Fortalezas
     SMALL_FORTRESS_SIZE = 5       # Tamaño de fortaleza pequeña (4x5 tiles)

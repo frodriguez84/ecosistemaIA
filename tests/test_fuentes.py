@@ -68,7 +68,8 @@ def _textos_de_las_pantallas():
         textos += avisos.textos_de_hito({"paso": paso, "generacion": 29, "tick": 1, "agente": 1})
     textos += [pantalla_final.TITULO_FITNESS, pantalla_final.TITULO_MANZANAS, pantalla_final.TITULO_MAPAS,
                pantalla_final.TITULO_EMBUDO, pantalla_final.TITULO_MEJOR, pantalla_final.HASTA_DONDE,
-               pantalla_final.NOTA_CALOR, *pantalla_final.LEYENDA_CALOR, *pantalla_final.SALIR]
+               pantalla_final.NOTA_CALOR, pantalla_final.NOTA_CALOR_MOVILES, *pantalla_final.LEYENDA_CALOR,
+               *pantalla_final.SALIR]
     textos += [nombre for nombre, _ in pantalla_final.LEYENDA]
     textos += [texto for _, texto in pantalla_final.marcas_del_grafico(_con_cofre())]
     textos += ["Máx. 64,7", "Prom. 39,7", "G1", "G30", "Gen 1", "Gen 15", "Gen 30"]

@@ -5,6 +5,21 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-020 — 2026-11-16 — Un test de una propiedad del mundo puede pasar de suerte
+
+**Qué pasó.** Con las [fortalezas móviles](../qa/AnalisisQA.md#fortalezas-moviles), los tests de "nada nace
+adentro de una fortaleza" y "el puzzle se puede completar" pasaban con el switch prendido en las 3 semillas
+elegidas. Corridos contra el código de antes del switch (su control), fallaban en la semilla 3, por dos bugs
+que no tienen que ver con el cambio: el agente que no encuentra lugar va a (100, 100), adentro de la chica
+fija (DIAG-33), y la llave roja puede caer en el medio del estanque (DIAG-34). Con el switch pasaban porque
+esas semillas no los pisaban: un cambio que moviera el azar los habría hecho fallar, y la culpa habría ido
+al switch.
+
+**Regla.** Un test de una propiedad del mundo (que algo se alcanza, que nada se pisa) se corre también
+contra el código de antes del cambio. Lo que falla allá es de antes: se registra como bug y el test lo deja
+afuera con su ID, así prueba solo lo que depende del cambio. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) §
+Convenciones de código.
+
 ## LEC-019 — 2026-11-16 — Un experimento que cambia dos cosas contra su comparación no dice cuál pesó
 
 **Qué pasó.** El [laboratorio de la brújula](../qa/AnalisisQA.md#laboratorio-brujula) cambiaba dos cosas

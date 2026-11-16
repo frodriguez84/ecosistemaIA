@@ -51,6 +51,9 @@ LEYENDA = (("Promedio", PROMEDIO), ("Máximo", MAXIMO))
 LEYENDA_CALOR = ("poco tiempo", "mucho")
 NOTA_CALOR = ("El calor es el tiempo que pasaron en cada lugar, por tick. Los recuadros grises son "
               "las dos fortalezas; el resto del mapa cambia en cada generación.")
+NOTA_CALOR_MOVILES = ("El calor es el tiempo que pasaron en cada lugar, por tick. Los recuadros grises son "
+                      "las dos fortalezas de esa generación: son móviles, cambian de lugar en cada una, "
+                      "como el resto del mapa.")
 COMANDO = "python experimento.py"
 SALIR = ("ESC", " o ", "ENTER", " para salir")
 # Cómo se nombra la primera vez de cada paso en el gráfico: "1ª llave roja · gen 2"
@@ -273,13 +276,14 @@ def _graficos(superficie, historia, marcas, x, y):
 
 
 def _mapas(superficie, registro, mapas, fortalezas, x, y, ancho):
-    """El mapa de calor de la generación 1 y el de la última, con la misma escala de color."""
+    """El mapa de calor de la generación 1 y el de la última, con la misma escala de color. Cada uno
+    con las fortalezas de su generación; si el registro no las tiene, las del mundo (fortalezas)."""
     y = _titulo_de_seccion(superficie, TITULO_MAPAS, x, y)
     grillas = [registro.calor_gen1] + ([registro.calor_ultima] if len(mapas) > 1 else [])
     maximo = max(max(registro.valores(grilla)) for grilla in grillas) or 1
     for i, (grilla, mapa) in enumerate(zip(grillas, mapas)):
         mx = x + i * (TAMANO_MAPA[0] + 16)
-        superficie.blit(mapa_de_calor(registro, grilla, maximo, fortalezas), (mx, y))
+        superficie.blit(mapa_de_calor(registro, grilla, maximo, grilla["fortalezas"] or fortalezas), (mx, y))
         pygame.draw.rect(superficie, BORDE_TARJETA, (mx, y, *TAMANO_MAPA), 1)
         _texto(superficie, mapa["texto"], "texto", 12, SECUNDARIO, mx, y + TAMANO_MAPA[1] + 6)
     y += TAMANO_MAPA[1] + 6 + fuentes.fuente("texto", 12).get_height() + 8
@@ -290,7 +294,8 @@ def _mapas(superficie, registro, mapas, fortalezas, x, y, ancho):
         pygame.draw.line(superficie, color_de_calor(i / 119), (lx + i, y + 5), (lx + i, y + 12))
     _texto(superficie, LEYENDA_CALOR[1], "texto", 12, APAGADO, lx + 128, y)
     y += fuentes.fuente("texto", 12).get_height() + 6
-    return _parrafo(superficie, NOTA_CALOR, 12, APAGADO, x, y, ancho)
+    nota = NOTA_CALOR_MOVILES if SimulationConfig.FORTALEZAS_MOVILES else NOTA_CALOR
+    return _parrafo(superficie, nota, 12, APAGADO, x, y, ancho)
 
 
 def _embudo(superficie, boletin, sprite_manager, x, y):

@@ -52,7 +52,7 @@ EcosistemaEvolutivo/
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
 ├── mediciones/          ← scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control byte a byte)
-├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, deslizar, reportes, resumen, registro, boletín, fuentes y pantallas
+├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, deslizar, fortalezas móviles, reportes, resumen, registro, boletín, fuentes y pantallas
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── assets/fonts/        ← Pixelify Sans e Inter, TTF estáticos con licencia OFL (origen en su LEEME.md)
@@ -110,6 +110,13 @@ EcosistemaEvolutivo/
   del paso entero (`_choca`, con la caja descentrada del estanque y el perímetro de DIAG-30). No es
   columna del CSV, así que apagado el CSV es el de antes byte a byte: va en el nombre del archivo, el
   panel, el boletín y el resumen del experimento ([medición](docs/qa/AnalisisQA.md#deslizar-al-chocar)).
+- **Fortalezas móviles** (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`; apagado por defecto, en los dos
+  modos): desde la generación 2, `reset_food` sortea un lugar para las dos fortalezas antes del estanque
+  y del resto del mapa, que las esquivan, y lleva con ellas las puertas, la llave dorada y el cofre; la
+  gen 1 es la de siempre. Apagado, están en las mismas esquinas en todas las semillas: la chica en
+  (50, 50) y la grande en (718, 558). Como deslizar, no es columna del CSV y apagado no consume azar: va
+  en el nombre del archivo, el panel, el boletín y el resumen del experimento
+  ([medición](docs/qa/AnalisisQA.md#fortalezas-moviles)).
 - **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso del
   agente.
 
@@ -125,7 +132,9 @@ EcosistemaEvolutivo/
   `--fix`/`--write` (regla global): reformatearían archivos enteros.
 - **Tests con pytest,** en `tests/`: `python -m pytest -q` (el gate pre-commit los corre). Una
   corrida que se quiera comparar con otra lleva semilla fija (`--semilla`): la misma semilla da el
-  mismo CSV byte a byte.
+  mismo CSV byte a byte. Un test de una propiedad del mundo (que algo se alcanza, que nada se pisa) se
+  corre también contra el código de antes del cambio: lo que falla allá es de antes, va como bug y el
+  test lo deja afuera con su ID (LEC-020).
 - **Una mejora del aprendizaje se demuestra contra la línea base sin evolución,** con la misma
   semilla y con varias semillas. Si la línea base mejora igual, no es aprendizaje (LEC-001 en
   [docs/operations/LECCIONES_APRENDIDAS.md](docs/operations/LECCIONES_APRENDIDAS.md)).
@@ -167,9 +176,11 @@ EcosistemaEvolutivo/
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
-  sin guía, `--acercarse` y `--curriculo` prenden las ayudas y `--deslizar`, el deslizamiento). El
+  sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento y
+  `--fortalezas-moviles`, las fortalezas móviles). El
   experimento con los dos modos, con evolución y sin ella, en varias semillas es `python experimento.py`
-  (`--modos` elige los modos; `--acercarse`, `--curriculo` y `--deslizar` pasan a todas las corridas).
+  (`--modos` elige los modos; `--acercarse`, `--curriculo`, `--deslizar` y `--fortalezas-moviles` pasan a
+  todas las corridas).
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select

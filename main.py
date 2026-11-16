@@ -152,9 +152,14 @@ def _leer_argumentos(argv):
     parser.add_argument("--deslizar", action="store_true",
                         help="Si el paso choca, el agente se mueve por el eje libre (primero solo en x, "
                              "después solo en y), en los dos modos. Pisa DESLIZAR de config.py.")
+    parser.add_argument("--fortalezas-moviles", action="store_true",
+                        help="Desde la generación 2, las dos fortalezas van a un lugar al azar en cada "
+                             "generación, con sus puertas, la llave dorada y el cofre, en los dos modos. "
+                             "Pisa FORTALEZAS_MOVILES de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
-                             "[_acercarse][_curriculo][_deslizar]_<evolucion|sin_evolucion>.csv.")
+                             "[_acercarse][_curriculo][_deslizar][_fortalezas_moviles]"
+                             "_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -202,14 +207,16 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 
 def _ruta_csv_por_defecto(semilla, evolucion):
-    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar]_<evolucion|sin_evolucion>.csv,
-    con el modo y los switches de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11). Deslizar no
-    es una columna del CSV: va solo en el nombre."""
+    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar][_fortalezas_moviles]
+    _<evolucion|sin_evolucion>.csv, con el modo y los switches de SimulationConfig (spec
+    PUZZLE_APRENDIBLE, decisión 11). Deslizar y las fortalezas móviles no son columnas del CSV: van
+    solo en el nombre."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
     curriculo = "_curriculo" if SimulationConfig.CURRICULO else ""
     deslizar = "_deslizar" if SimulationConfig.DESLIZAR else ""
+    moviles = "_fortalezas_moviles" if SimulationConfig.FORTALEZAS_MOVILES else ""
     return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}"
-                                   f"{deslizar}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+                                   f"{deslizar}{moviles}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
 def _ticks_de_generacion(config, generacion):
@@ -291,6 +298,8 @@ def main(argv=None):
         SimulationConfig.CURRICULO = True
     if args.deslizar:
         SimulationConfig.DESLIZAR = True
+    if args.fortalezas_moviles:
+        SimulationConfig.FORTALEZAS_MOVILES = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
@@ -520,7 +529,9 @@ def _simular(semilla, evolucion, escribir_fila):
             # fila, por columna, va al registro: las pantallas muestran los números del CSV
             fila = _fila_csv(semilla, evolucion, generation, tick, agents, world, learning_monitor)
             escribir_fila(fila)
-            registro.cerrar_generacion(dict(zip(COLUMNAS_CSV, fila)), max_ticks_per_generation, agents)
+            # Con las fortalezas de la generación: el mapa de calor las dibuja (las móviles cambian)
+            registro.cerrar_generacion(dict(zip(COLUMNAS_CSV, fila)), max_ticks_per_generation, agents,
+                                       (world.small_fortress_pos, world.large_fortress_pos))
 
             # Registrar datos en el monitor de aprendizaje
             gen_data = learning_monitor.record_generation(generation, agents, world)

@@ -1,6 +1,6 @@
 """Si usan la brújula y si la selección la empuja, a partir de los agentes_*.csv de medir_puerta.py.
 
-Por condición (acercarse, deslizar, evolución) de las que estén en la carpeta:
+Por condición (acercarse, deslizar, fortalezas móviles, evolución) de las que estén en la carpeta:
 - El criterio "usa la brújula": en las generaciones 11 a 15, (camino hacia la puerta − camino hacia el
   control) con evolución, mayor que en su línea base, por semilla.
 - La sensibilidad de la red a la brújula (sensor 9) y a la comida (sensor 3, control positivo): el
@@ -26,7 +26,10 @@ parte de la condición; la línea base sin evolución lo ignora, porque nunca se
 otro cruce se compara además contra la misma con el de siempre (docs/qa/AnalisisQA.md#laboratorio-menos-cruce).
 Los pesos (columna pesos, de pesos=) también: la línea base los ignora, porque sin evolución el fitness no
 cambia lo que hacen (lo que mira el fitness sin evolución es con el de su corrida), y una condición con
-pesos se compara contra la misma sin ellos (docs/qa/AnalisisQA.md#rebalance-fitness).
+pesos se compara contra la misma sin ellos (docs/qa/AnalisisQA.md#rebalance-fitness). Las fortalezas móviles
+(columna fortalezas_moviles, de medir_puerta.py con fortalezas-moviles) son parte de la condición también
+para la línea base, porque cambian lo que hacen los agentes; y una condición con ellas se compara además
+contra la misma con las fortalezas fijas (docs/qa/AnalisisQA.md#fortalezas-moviles).
 
 Uso: python mediciones/analizar_brujula.py SALIDA [SALIDA ...]
 """
@@ -66,9 +69,10 @@ for dir_med in sys.argv[1:]:
             filas.extend(csv.DictReader(f))
 for f in filas:
     f["deslizar"] = f.get("deslizar") or 0
+    f["fortalezas_moviles"] = f.get("fortalezas_moviles") or 0
     f["laboratorio"] = f.get("laboratorio") or 0
     for k in ("semilla", "evolucion", "generacion", "id", "lugar", "en_pool", "abrio", "golpes", "acercarse", "deslizar",
-              "laboratorio"):
+              "laboratorio", "fortalezas_moviles"):
         f[k] = int(f[k])
     # El currículo hasta la 30: el laboratorio (sin la columna) y su control, curriculo30
     f["c30"] = int(f["laboratorio"] == 1 or f.get("curriculo_hasta") == "30")
@@ -99,18 +103,20 @@ NOMBRES = {(0, 0, 0, 0): "B", (1, 0, 0, 0): "C", (0, 1, 0, 0): "B deslizando", (
 
 
 def cond(f):
-    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"], f["cruce"], f["pesos"]
+    """(acercarse, deslizar, laboratorio, c30, fortalezas móviles, cruce, pesos). La línea base mira los
+    cinco primeros: el cruce y los pesos no cambian lo que hacen los agentes sin evolución."""
+    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"], f["fortalezas_moviles"], f["cruce"], f["pesos"]
 
 
 def nombre(c):
-    return (NOMBRES.get(c[:4], str(c[:4])) + (f", cruce {c[4]}" if c[4] != CRUCE_DE_SIEMPRE else "")
-            + (f", pesos {c[5]}" if c[5] else ""))
+    return (NOMBRES.get(c[:4], str(c[:4])) + (", fortalezas móviles" if c[4] else "")
+            + (f", cruce {c[5]}" if c[5] != CRUCE_DE_SIEMPRE else "") + (f", pesos {c[6]}" if c[6] else ""))
 
 
 # Las condiciones salen de las corridas con evolución: sin evolución no hay cruce, y la línea base de
 # cada cruce y cada peso es la misma (de() la busca sin mirar el cruce ni los pesos)
 conds = sorted({cond(f) for f in filas if f["evolucion"] == 1}) or sorted({cond(f) for f in filas})
-ULTIMA = {c: max(f["generacion"] for f in filas if cond(f)[:4] == c[:4]) for c in conds}
+ULTIMA = {c: max(f["generacion"] for f in filas if cond(f)[:5] == c[:5]) for c in conds}
 
 
 def ventanas(c):
@@ -126,8 +132,8 @@ def tramos(c):
 
 
 def de(c, evo, desde=1, hasta=99, semilla=None):
-    """Las filas de la condición c; sin evolución, sin mirar el cruce (nunca se cruza)."""
-    return [f for f in filas if (cond(f) == c if evo else cond(f)[:4] == c[:4]) and f["evolucion"] == evo
+    """Las filas de la condición c; sin evolución, sin mirar el cruce (nunca se cruza) ni los pesos."""
+    return [f for f in filas if (cond(f) == c if evo else cond(f)[:5] == c[:5]) and f["evolucion"] == evo
             and desde <= f["generacion"] <= hasta and (semilla is None or f["semilla"] == semilla)]
 
 
@@ -162,7 +168,7 @@ for c in conds:
 con_sens = [f for f in filas if f["sb"] is not None]
 if not con_sens:
     sys.exit("\n(sin columnas de sensibilidad: CSV de antes de esta medición)")
-conds_sens = [c for c in conds if any(cond(f)[:4] == c[:4] for f in con_sens)]
+conds_sens = [c for c in conds if any(cond(f)[:5] == c[:5] for f in con_sens)]
 
 print("\n### Sensibilidad del giro (rad/tick, +90° contra −90°), promedio por agente: brújula | comida")
 for c in conds_sens:
@@ -217,11 +223,11 @@ for c in conds_sens:
     if n:
         print(f"  {nombre(c)}, gens {u - 4}-{u}: principal {k1} de {n}, secundario {k2} de {n}  ({'; '.join(partes)})")
 
-print("\n### Contra el cruce de siempre (la misma condición con CROSSOVER_RATE 0,95) y contra los pesos de siempre "
-      "(la misma sin pesos=), últimas 5 generaciones: sensibilidad a la brújula con evolución, por semilla, y los "
-      "promedios")
+print("\n### Contra el cruce de siempre (la misma condición con CROSSOVER_RATE 0,95), contra los pesos de siempre "
+      "(la misma sin pesos=) y contra las fortalezas fijas (la misma sin fortalezas-moviles), últimas 5 generaciones: "
+      "sensibilidad a la brújula con evolución, por semilla, y los promedios")
 for c in conds_sens:
-    for base in (c[:4] + (CRUCE_DE_SIEMPRE,) + c[5:], c[:5] + ("",)):
+    for base in (c[:5] + (CRUCE_DE_SIEMPRE,) + c[6:], c[:6] + ("",), c[:4] + (0,) + c[5:]):
         if base == c or base not in conds_sens:
             continue
         u = ULTIMA[c]
@@ -339,7 +345,7 @@ for c in conds_sens:
               f"(en {len(dif)} generaciones); lugar mediano de los < 50 px: {st.median(lug):.0f} de 60")
 
 con_terminos = [f for f in filas if f["f_comida"] is not None]
-conds_t = [c for c in conds if any(cond(f)[:4] == c[:4] for f in con_terminos)]
+conds_t = [c for c in conds if any(cond(f)[:5] == c[:5] for f in con_terminos)]
 if conds_t:
     print("\n### Qué mueve el fitness: por término, promedio; desvío dentro de la generación (mediana); "
           "Spearman con el fitness (mediana)")

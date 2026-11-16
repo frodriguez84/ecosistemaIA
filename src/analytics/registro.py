@@ -22,7 +22,7 @@ class RegistroDeLaCorrida:
     historia: una entrada por generación terminada, con la fila del CSV tal cual (por columna) y
     'ticks_max', los ticks que podía durar. hitos: la primera vez que un agente llegó a cada paso.
     mejor: el récord de la corrida. calor_gen1 y calor_ultima: las grillas de la generación 1 y de la
-    última terminada, cada una con su generación, sus ticks y la cuenta de cada celda.
+    última terminada, cada una con su generación, sus ticks, la cuenta de cada celda y sus fortalezas.
     """
 
     def __init__(self, ancho, alto, celda=None):
@@ -69,8 +69,9 @@ class RegistroDeLaCorrida:
             self._pasos_con_hito.add(paso)
         return nuevos
 
-    def cerrar_generacion(self, fila, ticks_max, agents):
-        """Guarda la fila del CSV de la generación (un dict por columna), el récord y su mapa de calor.
+    def cerrar_generacion(self, fila, ticks_max, agents, fortalezas=()):
+        """Guarda la fila del CSV de la generación (un dict por columna), el récord y su mapa de calor,
+        con las fortalezas de la generación (las posiciones del mundo; con FORTALEZAS_MOVILES cambian).
 
         Espera el fitness ya calculado en cada agente: el mismo de la fila (decisión 6).
         """
@@ -92,7 +93,8 @@ class RegistroDeLaCorrida:
                 "etapa_inicial": mejor.etapa_inicial,
             }
 
-        grilla = {"generacion": fila["generacion"], "ticks": fila["ticks"], "cuentas": self._en_curso}
+        grilla = {"generacion": fila["generacion"], "ticks": fila["ticks"], "cuentas": self._en_curso,
+                  "fortalezas": [dict(fortaleza) for fortaleza in fortalezas if fortaleza]}
         if fila["generacion"] == 1:
             self.calor_gen1 = grilla
         self.calor_ultima = grilla

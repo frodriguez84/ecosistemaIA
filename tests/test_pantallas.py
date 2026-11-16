@@ -225,6 +225,30 @@ def test_la_pantalla_final_se_dibuja_sin_pisar_el_pie(sprites, registro):
     assert abajo <= pie - 4
 
 
+def test_cada_mapa_dibuja_las_fortalezas_de_su_generacion(sprites, monkeypatch):
+    """Con las fortalezas móviles, el mapa de la generación 1 y el de la última tienen las suyas; un
+    registro que no las guardó usa las del mundo."""
+    from src.ui import pantalla_final
+    dibujadas = []
+    original = pantalla_final.mapa_de_calor
+
+    def mapa(registro, grilla, maximo, fortalezas):
+        dibujadas.append(fortalezas)
+        return original(registro, grilla, maximo, fortalezas)
+
+    monkeypatch.setattr(pantalla_final, "mapa_de_calor", mapa)
+    registro = _corrida(2)
+    primera, ultima = [{"x": 50, "y": 50, "size": 5}], [{"x": 300, "y": 200, "size": 5}]
+    registro.calor_gen1["fortalezas"], registro.calor_ultima["fortalezas"] = primera, ultima
+    dibujar_boletin(pygame.Surface((1200, 800)), registro, FORTALEZAS, sprites)
+    assert dibujadas == [primera, ultima]
+
+    dibujadas.clear()
+    dibujar_boletin(pygame.Surface((1200, 800)), _corrida(2), FORTALEZAS, sprites)
+    del_mundo = [FORTALEZAS.small_fortress_pos, FORTALEZAS.large_fortress_pos]
+    assert dibujadas == [del_mundo, del_mundo]
+
+
 def test_el_grafico_marca_cada_paso_alcanzado_en_su_primera_generacion():
     assert marcas_del_grafico(armar_boletin(_corrida(30))) == [(2, "1ª llave roja · gen 2")]
     assert marcas_del_grafico(armar_boletin(_corrida(30, cofre=True))) == [

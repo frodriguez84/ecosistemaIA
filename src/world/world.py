@@ -5,6 +5,12 @@ Mundo del ecosistema con obstáculos, comida y objetos.
 import random
 from .obstacles import Obstacle, Key, Door, Chest, PerimeterObstacle, PondObstacle
 
+# Fortalezas móviles (FORTALEZAS_MOVILES): a cuánto del borde del mapa queda cada fortaleza con el
+# frente de su puerta (lo que tienen en la generación 1), a cuánto una de otra, y cuántos sorteos
+MARGEN_FORTALEZAS = 50
+SEPARACION_FORTALEZAS = 40
+INTENTOS_FORTALEZAS = 1000
+
 
 class Tree:
     """Árbol con sistema de corte."""
@@ -381,6 +387,12 @@ class World:
         # Preservar objetos manuales
         manual_obstacles_backup = self.manual_obstacles.copy()
         
+        # Fortalezas móviles: un lugar nuevo, antes del estanque y del resto del mapa, que las esquivan.
+        # Apagado no consume azar
+        from config import SimulationConfig
+        if SimulationConfig.FORTALEZAS_MOVILES:
+            self._sortear_fortalezas()
+        
         # Guardar posiciones de fortalezas antes de regenerar
         small_pos = self.small_fortress_pos
         large_pos = self.large_fortress_pos
@@ -409,6 +421,15 @@ class World:
             
             self._generate_fortress_walls(small_pos['x'], small_pos['y'], small_pos['size'], tile_size, door_x, door_y)
             self._generate_fortress_walls(large_pos['x'], large_pos['y'], large_pos['size'], tile_size, door_iron_x, door_iron_y)
+            
+            # Fortalezas móviles: las puertas, la llave dorada y el cofre van con su fortaleza, al lugar
+            # que tienen en _generate_fortresses. Antes del despeje, que mira dónde están las puertas
+            if SimulationConfig.FORTALEZAS_MOVILES:
+                self.door.x, self.door.y = door_x, door_y
+                self.door_iron.x, self.door_iron.y = door_iron_x, door_iron_y
+                self.gold_key.x, self.gold_key.y = small_pos['x'] + 60, small_pos['y'] + 40
+                self.chest.x = large_pos['x'] + (large_pos['size'] * 20) // 2
+                self.chest.y = large_pos['y'] + (large_pos['size'] * 20) // 2
         
         # Limpiar obstáculos dentro de las fortalezas
         self._clean_fortresses()
@@ -544,6 +565,34 @@ class World:
         chest_x = large_x + (large_size * 20) // 2  # Centro horizontal
         chest_y = large_y + (large_size * 20) // 2  # Centro vertical
         self.chest = Chest(chest_x, chest_y)
+    
+    def _sortear_fortalezas(self):
+        """Fortalezas móviles (FORTALEZAS_MOVILES): un lugar al azar para cada fortaleza. La zona de
+        cada una son sus muros y el frente de su puerta que despeja _clear_area_around_doors (abajo de
+        la chica, arriba de la grande). Los muros y el frente quedan a MARGEN_FORTALEZAS del borde, como
+        en la generación 1: el perímetro no tapa la puerta. Las dos zonas quedan a SEPARACION_FORTALEZAS
+        una de otra: el despeje borra muros y no puede tocar los de la otra, y entre las dos se pasa. Si
+        no encuentra lugar, quedan donde estaban."""
+        from config import SimulationConfig
+        t = SimulationConfig.TILE_SIZE
+        chica = SimulationConfig.SMALL_FORTRESS_SIZE * 20
+        grande = SimulationConfig.LARGE_FORTRESS_SIZE * 20
+        m, g = MARGEN_FORTALEZAS, SEPARACION_FORTALEZAS
+        for _ in range(INTENTOS_FORTALEZAS):
+            # Las puertas, como en _generate_fortresses: la de la chica en (x + 40, y + 80), despejada
+            # hasta 3 tiles abajo; la de la grande en (x + 40, y), despejada hasta 3 tiles arriba. El
+            # despeje va de 2 tiles a la izquierda de la puerta a 3 a la derecha
+            sx = random.randint(m, self.screen_width - m - chica)
+            sy = random.randint(m, self.screen_height - m - (80 + 3 * t))
+            lx = random.randint(m, self.screen_width - m - grande)
+            ly = random.randint(m + 3 * t, self.screen_height - m - grande)
+            zona_chica = (min(sx, sx + 40 - 2 * t), sy, max(sx + chica, sx + 40 + 3 * t), sy + 80 + 3 * t)
+            zona_grande = (min(lx, lx + 40 - 2 * t), ly - 3 * t, max(lx + grande, lx + 40 + 3 * t), ly + grande)
+            if (zona_chica[2] + g <= zona_grande[0] or zona_grande[2] + g <= zona_chica[0]
+                    or zona_chica[3] + g <= zona_grande[1] or zona_grande[3] + g <= zona_chica[1]):
+                self.small_fortress_pos = {'x': sx, 'y': sy, 'size': SimulationConfig.SMALL_FORTRESS_SIZE}
+                self.large_fortress_pos = {'x': lx, 'y': ly, 'size': SimulationConfig.LARGE_FORTRESS_SIZE}
+                return
     
     def _generate_fortress_walls(self, start_x, start_y, size, tile_size, door_x=None, door_y=None):
         """Genera los muros de una fortaleza, evitando la posición de la puerta."""

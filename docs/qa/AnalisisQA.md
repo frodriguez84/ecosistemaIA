@@ -88,6 +88,8 @@ estado en el BACKLOG.
 | DIAG-29 | Al final de cada generación, los agentes se ubican contra el mapa viejo: `evolve` (con `_posicion_libre`), `fix_agent_positions` y `_reposicionar_agentes` corren antes de que `reset_food()` regenere obstáculos y estanque. El único chequeo que sirve es el segundo `fix_agent_positions`, contra el mapa nuevo. Explica por qué el reposicionamiento casi nunca mueve a nadie (DIAG-27). Encontrado el 2026-11-14 al escribir el spec *Aprendizaje*. | `main.py:641-668` | Aprendizaje |
 | DIAG-30 | La colisión con el estanque y con el perímetro mira una caja que arranca en la posición del agente y va hacia abajo y a la derecha (`collides_with(x, y, radio, radio)`), no una centrada en él: un agente que entra por la derecha o por abajo se mete en el estanque hasta la mitad del cuerpo. La ubicación de agentes del algoritmo genético usaba la misma caja; con ella, la ubicación nueva del bloque A del spec *Aprendizaje* dejaba 10 de 1.260 agentes arrancando con medio cuerpo en el agua (3 semillas × 7 generaciones). El bloque A la centró en la ubicación (0 de 1.260), pero el movimiento sigue igual. Encontrado el 2026-11-14 al verificar MODOS-08. | `advanced_agent.py:420` y `:435`; `obstacles.py:396` y `:428` | Mejoras futuras |
 | DIAG-32 | El popup de cada generación muestra dos datos que siempre valen 0: "Exploración: 0 m" lee la clave `avg_distance`, que `_datos_del_popup` no manda (manda `avg_exploration`), y "Tiempo gen: 0.0s" lee `generation_time`, fijo en 0. Además, queda abierto hasta hacer clic en "Cerrar", tapa casi todo el mundo mientras la generación siguiente ya corre (su título dice "Generación 2 completada" con el panel en la 3), y su gráfico tiene la escala fija de 0 a 100. Encontrado el 2026-11-15, en una captura. | `src/ui/popup.py:114` y `:180`; `main.py:247` y `:258` | Pantallas, bloque B |
+| DIAG-33 | Si `_ubicar_agentes` no encuentra lugar al azar (500 intentos) ni en la grilla de respaldo, el agente va a (100, 100) sin mirar nada: con las fortalezas fijas es adentro de la chica, y el agente nace encerrado (la puerta es pared hasta que la abre, y la abre desde afuera). Pasa en corridas reales: 49 agentes en 30 de los 130 logs de `results/`, y en una de las 6 referencias de la sesión. En 20 semillas × 30 generaciones de mapas (sin simular: el mapa y la ubicación de los agentes), 11 agentes nacen adentro con las fijas y 0 con las móviles, que casi nunca cubren ese punto. Arreglarlo cambia el CSV de las corridas donde pasa. Encontrado el 2026-11-16 con las [fortalezas móviles](#fortalezas-moviles). | `main.py:92-95` | Mejoras futuras |
+| DIAG-34 | `_generate_red_key` sortea la llave roja lejos de los obstáculos y fuera de las fortalezas, pero no mira el estanque (va en otra lista, `pond_obstacles`): la llave puede caer en el agua. En 20 semillas × 30 generaciones de mapas, en 3 de 600 no queda ningún lugar donde un agente pueda estar a menos de 27 px (el radio para agarrarla): esa generación nadie la puede agarrar, con las fortalezas fijas y con las móviles por igual. En otras 600 (sin ubicar agentes), cae sobre una baldosa del estanque en 13. Con el currículo pesa solo después del corte (antes nacen con ella). Arreglarlo cambia el CSV de las corridas donde pasa. Encontrado el 2026-11-16 con los tests de las [fortalezas móviles](#fortalezas-moviles). | `src/world/world.py:1008` (`_generate_red_key`) | Mejoras futuras |
 
 > ✅ DIAG-25 (2026-11-14, spec *Medir*): `main.py` y `experimento.py` reconfiguran `stdout` y
 > `stderr` a UTF-8 antes del primer `print`. `python main.py --sin-ventana > corrida.log` termina
@@ -2365,3 +2367,220 @@ el C30, la comida el doble).
   antes byte a byte apagado, y medido con estos mismos pesos, contra estos mismos pesos con la puerta fija.
 - **La alternativa, más barata y sin código:** acercarse más pesado que la comida (80, sin lo que paga caminar), contra
   esta tanda. Por la lectura 2 debería subir la selección de la brújula; el chico dice que el costo puede ser comida.
+
+---
+
+<a id="fortalezas-moviles"></a>
+
+## Fortalezas móviles: el switch y la medición con acercarse 40 sin caminar (2026-11-16)
+
+**La pregunta** (sugerida por [acercarse 40 sin caminar](#acercarse-sin-caminar), lectura 3): con la puerta fija,
+acercarse se cobra también con una ruta (la red ve x, y y el rumbo absoluto), y la selección no distingue la ruta de la
+brújula. Si las fortalezas cambian de lugar en cada generación, la brújula queda como la única forma de cobrar acercarse
+a la puerta. ¿Se aprende?
+
+**Las fortalezas eran más fijas de lo que decían los docs.** `_generate_fortresses` las pone en las mismas esquinas en
+todas las semillas: la chica en (50, 50) y la grande en (718, 558), abajo a la derecha (su lugar se calcula con
+`TILE_SIZE`, 32, aunque sus muros son de 20 px). `reset_food` las guarda al regenerar el mapa. La puerta de madera
+estuvo en (90, 130) en todas las corridas medidas hasta hoy.
+
+**El switch.** `FORTALEZAS_MOVILES` en `config.py` (`:128`), apagado por defecto, y `--fortalezas-moviles` en `main.py`
+y `experimento.py`; en `medir_puerta.py`, la palabra `fortalezas-moviles`. Prendido, `reset_food` sortea un lugar para
+las dos fortalezas antes de regenerar el estanque y el resto del mapa, que las esquivan (`world.py:393` y
+`_sortear_fortalezas`, `:569`). Las dos puertas, la llave dorada y el cofre van con ellas (`:427`). La generación 1
+queda como siempre: con el switch prendido, la gen 1 es la del control celda a celda.
+- **Dónde pueden ir.** La zona de cada fortaleza son sus muros y el frente de su puerta que despeja
+  `_clear_area_around_doors`: abajo de la chica y arriba de la grande, 3 tiles de 32 desde la fila de la puerta, de 2
+  tiles a la izquierda a 3 a la derecha. Muros y frente quedan a 50 px del borde (`MARGEN_FORTALEZAS`, lo que tienen en
+  la gen 1): el perímetro no tapa la puerta. Las dos zonas quedan a 40 px una de otra (`SEPARACION_FORTALEZAS`): el
+  despeje de una puerta borra todo lo que encuentra, muros incluidos, y no puede tocar los de la otra.
+- **Apagado no consume azar,** y no es columna del CSV: va en el nombre del archivo (`_fortalezas_moviles`), en el
+  panel, en el subtítulo del boletín y en el resumen del experimento. En el panel va en un renglón propio
+  ("Fortalezas: móviles"): en el de las ayudas, con las tres prendidas, no entra. El mapa de calor de la pantalla final
+  dibuja las fortalezas de su generación (el registro las guarda con cada grilla), y su nota lo dice.
+- **Qué más usa esas posiciones, y las lee de la generación en curso:** `_is_inside_fortress` (comida, árboles, llave
+  roja, ubicación de los agentes), `_clear_area_around_doors`, `_is_pond_position_valid`, la brújula y la guía
+  (`_proximo_paso` lee los objetos en cada tick), el renderer (dibuja los objetos), y la geometría y el seguidor de
+  `medir_puerta.py` (leen `world.door` al cerrar cada generación; `geometria_*.csv` ahora dice dónde está la puerta,
+  `puerta_x` y `puerta_y`). Nada guarda la posición vieja.
+
+**Cómo se verificó el switch.**
+- **Apagado, el CSV es el de antes byte a byte.** Antes de tocar el código, 6 corridas de 3 generaciones con semilla 1
+  desde 349a43f: guiado y autónomo con y sin evolución, y el autónomo con las tres ayudas, con y sin evolución. Después
+  del cambio, los 6 SHA-256 iguales. En el test, 4 SHA-256 de una corrida corta en proceso (semilla 7, 3 generaciones de
+  60 ticks, los dos modos con y sin evolución), calculados con el código de 349a43f. El control más fuerte, los 5 SHA-256
+  publicados de acercarse 40 sin caminar, va en la medición.
+- **Prendido,** `tests/test_fortalezas_moviles.py` (22 tests): la gen 1 es la de siempre y después cambian, con las
+  puertas, la llave dorada y el cofre en su lugar relativo; muros enteros, dentro de los márgenes y con las zonas
+  separadas; nada adentro (estanque, obstáculos, comida, llave roja, hacha, agentes); la puerta de madera alcanzable
+  desde donde nace cada agente, y el puzzle completable desde ahí con la llave roja, con los métodos del mundo, en 3
+  semillas. Lo alcanzable se mira con las componentes conexas de una grilla de 3 px con las colisiones de `act()` de
+  cada etapa: un camino en la grilla es un camino de verdad. Su control: con tres muros pegados al frente de la puerta,
+  ningún agente llega. Contra el código de 349a43f fallan los 8 tests que dependen del switch y pasan los 14 de
+  propiedades, que con las fortalezas fijas también se cumplen.
+- **El mundo, sin correr la simulación** (un script de la sesión: el mapa y la ubicación de los agentes, 10 semillas × 30
+  generaciones por condición): prendido, cambian de lugar en las 290 generaciones desde la 2, con los muros enteros y
+  nada encima; el 100% de los agentes puede llegar a menos de 25 px de la puerta de madera en los 300 mundos, igual que
+  con las fijas.
+- **Dos bugs de antes aparecieron al probarlo,** DIAG-33 y DIAG-34 (en la [tabla de bugs](#diagnostico-inicial)). No se
+  arreglan acá: cambiarían el CSV con el switch apagado.
+
+**La medición. Diseño** (cambia una sola cosa, LEC-019): acercarse 40 sin caminar, con evolución (`medir_puerta.py ...
+acercarse deslizar curriculo30 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`), con
+las fortalezas móviles (`fortalezas-moviles`) contra las fijas. La línea base sin evolución va con las móviles
+(`sin_evolucion ... acercarse deslizar curriculo30 fortalezas-moviles`): el switch cambia lo que hacen los agentes, así
+que la de la puerta fija no sirve. Sin evolución, el cruce y los pesos no cambian lo que hacen, como en las anteriores.
+15 corridas de 30 generaciones, semillas 1 a 5: las 5 fijas (regeneran el control: el scratchpad de la sesión anterior
+ya no está), 5 móviles y 5 de línea base con las móviles, en dos tandas (10 y 5). `analizar_brujula.py` ahora tiene las
+fortalezas móviles en la condición, también en la línea base, y compara una condición con móviles contra la misma con
+fijas.
+
+**Criterio, fijado antes de medir** (el del rebalance; gens 26-30, con evolución):
+1. **Aprende la brújula:** en 4 de 5 semillas, la sensibilidad a la brújula es ≥ 0,02 rad/tick, mayor que la línea base
+   (móviles, sin evolución) y mayor que las fijas de la misma semilla.
+2. **Sin dejar de comer:** manzanas por agente, promedio de las 5 semillas, al menos el 90% de las de las fijas (1,07 en
+   la tanda publicada).
+3. Pasa si cumple 1 y 2.
+- **Se lee con la selección** (LEC-018): la correlación sensibilidad ↔ fitness con evolución, gens 16-30, tiene que
+  subir desde la de las fijas (+0,110 en la tanda publicada). Si 1 se cumple sin que suba, no se atribuye al switch.
+- **Lo esperado:** sin la ruta, lo que paga acercarse a la puerta pasa por la brújula, y la selección debería verla más.
+  Pero la puerta en cualquier lado puede quedar más cerca o más lejos que en la esquina: no se sabe hacia dónde va lo que
+  se cobra acercándose.
+- **La ruta:** con las fijas, el uso (camino a la puerta − al control, con evolución menos sin) pasó 0,05 en una semilla
+  con sensibilidad < 0,02 (la 4: +0,12 con +0,001). Con las móviles no debería pasar en ninguna; si pasa, acercarse se
+  cobra por otro lado que todavía no se ve. Y el uso y la sensibilidad deberían ir juntos: dentro de cada generación, la
+  correlación (Spearman) entre el uso y la sensibilidad de cada agente, más alta con las móviles que con las fijas.
+- **Controles:**
+  - Las 5 fijas son byte a byte las publicadas (los 5 SHA-256 de [acercarse 40 sin caminar](#acercarse-sin-caminar)).
+  - La manipulación llegó: en la gen 1, el CSV de `main.py` y lo que mide `medir_puerta.py` de cada agente son los de
+    las fijas, celda a celda; desde la 2 difieren, y la puerta (`puerta_x`, `puerta_y` de `geometria_*.csv`) cambia de
+    lugar en cada generación con las móviles y queda en (100, 140) con las fijas.
+  - El seguidor de brújula perfecto sigue llegando: deslizando (la condición desliza), llega a menos de 25 px de la
+    puerta en todas las generaciones con las móviles, y en promedio desde al menos la mitad de los arranques que con las
+    fijas.
+  - Las 15 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+- La puerta (el criterio del ítem 5) se informa, sin criterio propio.
+
+**Cómo se corrió.** Primero las 5 fijas y las 5 móviles, a la vez; después las 5 de línea base. La salida, en
+`results/medicion_fortalezas_moviles_20261116/` (fuera del repo). El criterio, los controles y las tablas, con un
+script de la sesión sobre los CSV, cruzados con `analizar_brujula.py`: dan lo mismo (principal 3 de 5; contra las fijas,
+mayor en 4 de 5 y 1,55 veces el promedio).
+
+**Controles.**
+- **Las 15 corridas terminaron con `MEDICION inconsistencias=0`** (las 15 líneas contadas). Los logs con evolución dicen
+  `PESOS {'FITNESS_ACERCARSE': 40.0, 'FITNESS_EXPLORATION': 0.0, 'FITNESS_ANTI_CIRCLE': 0.0}` y `CROSSOVER_RATE=0.2`
+  (10 de 10).
+- **Las 5 fijas son byte a byte las publicadas** (5 de 5 SHA-256), y su sensibilidad es la de la tabla publicada.
+- **La manipulación llegó.** En la gen 1, el CSV de `main.py` y las 60 filas de agentes de las móviles son los de las
+  fijas, en las 5 semillas; en la gen 2 difieren las 5. La puerta tiene 30 lugares distintos por semilla con las móviles
+  (en la gen 1, (100, 140)) y uno solo con las fijas.
+- **El seguidor de brújula perfecto sigue llegando:** deslizando, a menos de 25 px en 150 de 150 generaciones con las
+  móviles, desde el 32,5% de los arranques en promedio (mínimo 3,5%); con las fijas, desde el 51,3%. Pedía al menos la
+  mitad (25,7%): cumple. Sin medir por qué llega desde menos arranques.
+- **La línea base no aprende:** +0,0007 de sensibilidad en las gens 26-30 (la de la puerta fija daba +0,0005).
+
+<details><summary>SHA-256 de las 10 corridas nuevas (se regeneran con medir_puerta.py desde el commit de esta sesión)</summary>
+
+| Semilla | Móviles, con evolución | Sin evolución (móviles) |
+|---|---|---|
+| 1 | `890c5d6d5536b0f376ce73cf6e1bcf88fc945e9f2b21de417f91e0587da707c2` | `7f01aa73b02f4fb5b9b1e6cf24ce504d543e17f92f4e1a610684eed5b0ce73d7` |
+| 2 | `2efaf6aa7256366d531ca996c10e8893839157555444c1d7dbd52fd01464d88e` | `54526ead9f67586e8222220e9c9d410d9b6c5c7cbe34a8cb8f6f1da9a2e51466` |
+| 3 | `5fd564a476731c6ede926dcfc6f65be2838d7bef87c155c001a08d3a9101fb1c` | `49843bc3ec74d8b5afc6af0aed91128bd3f7542a86dd68a1c0d3a0a0cdb918f4` |
+| 4 | `702cfc867ebdcb20741ef65095615a7f317e1fc974c5214c1df809e69ff723a2` | `29d675daa87ff162dc370e5d6d447fca789c2de999e69fd2bfc2248b89ca8d00` |
+| 5 | `971ed3e97ef86ce0a1183a8bd8a71b421b67aeb46f89111f4ce02ad5034cec66` | `00690daed1a49075971f8a6d7f3282e9b5722aca13a7adb45ed5c99376aff02c` |
+
+</details>
+
+**El criterio** (sensibilidad a la brújula con evolución, gens 26-30, rad/tick):
+
+| Semilla | Fijas | Móviles | Sin evolución (móviles) |
+|---|---|---|---|
+| 1 | +0,0108 | +0,0123 | +0,0010 |
+| 2 | +0,0390 | **+0,0620** | −0,0023 |
+| 3 | +0,0202 | **+0,0265** | +0,0034 |
+| 4 | +0,0012 | −0,0064 | +0,0015 |
+| 5 | +0,0152 | **+0,0398** | −0,0004 |
+| **Promedio** | +0,0173 | **+0,0268** (1,55 veces las fijas) | +0,0007 |
+| 1. ≥ 0,02, más que la línea base y más que las fijas | | **3 de 5** | |
+| Más que las fijas | | 4 de 5 | |
+| 2. Manzanas por agente (% de las fijas) | 1,07 | 1,09 (**102%**; 2 de 5 por encima) | 0,31 |
+
+**No pasa:** cumple el 2, pero el 1 da 3 de 5 (pedía 4). Es lo más alto medido en el juego: promedio +0,027 (el 43% del
+laboratorio con cruce 0,2, +0,0618), la mitad de los agentes por encima de 0,02 en las 26-30 (51%; con las fijas, 34%),
+y sin perder comida. La semilla 1 queda abajo del umbral (+0,012, 12 veces su línea base) y la 4 no aprende (−0,006).
+
+**Cuánto sube, y cuándo** (sensibilidad a la brújula | a la comida | % de agentes con más de 0,02 a la brújula):
+
+| | Gens 1-5 | Gens 11-15 | Gens 16-20 | Gens 21-25 | Gens 26-30 |
+|---|---|---|---|---|---|
+| Móviles | +0,0005 · −0,0006 · 19% | +0,0058 · +0,0118 · 24% | +0,0154 · +0,0169 · 36% | +0,0218 · +0,0216 · 45% | **+0,0268** · +0,0263 · 51% |
+| Fijas | +0,0023 · −0,0006 · 19% | +0,0094 · +0,0059 · 23% | +0,0070 · +0,0065 · 23% | +0,0132 · +0,0091 · 29% | +0,0173 · +0,0100 · 34% |
+| Sin evolución (móviles) | +0,0005 · +0,0014 · 19% | −0,0000 · +0,0006 · 18% | +0,0012 · −0,0003 · 17% | +0,0017 · −0,0004 · 20% | +0,0007 · +0,0009 · 19% |
+
+Con las móviles arranca más tarde (en las 11-15, +0,006 contra +0,009) y después sube más rápido, sin estancarse:
++0,0246 en la 26 y +0,0299 en la 30. La sensibilidad a la comida sube a la par (+0,026; con las fijas, +0,010). Sin
+medir por qué; una posibilidad es que la red aprenda a girar hacia donde marca un sensor de dirección, cualquiera.
+
+**Por qué** (con evolución; sin evolución, la selección no ve la brújula: −0,02 en los dos tramos):
+
+| | Fijas | Móviles |
+|---|---|---|
+| Selección: sensibilidad a la brújula ↔ fitness (Spearman, mediana), gens 1-15 / 16-30 | +0,048 / +0,110 | +0,073 / **+0,132** |
+| Ídem, a la comida | +0,101 / +0,167 | +0,139 / +0,164 |
+| Ídem, el uso (camino a la puerta − al control) | +0,152 / +0,376 | +0,191 / +0,336 |
+| Acercarse en el fitness, gens 26-30: promedio · desvío dentro de la generación (mediana) · Spearman con el fitness | 8,1 · 6,7 · +0,66 | 9,0 · 6,3 · +0,61 |
+| La comida, ídem | 7,6 · 6,9 · +0,73 | 7,4 · 7,4 · +0,76 |
+| Distancia a la puerta al nacer (mediana), gens 26-30 | 544 px | 419 px |
+
+La selección ve la brújula un poco más con las móviles (+0,13 contra +0,11 en las 16-30; el laboratorio, +0,27), y el uso
+pesa un poco menos en el fitness (+0,34 contra +0,38): con las fijas, parte de lo que se cobraba acercándose era la ruta.
+
+**La ruta.**
+- Uso con evolución menos sin y sensibilidad, gens 26-30, por semilla: la 1, +0,068 y +0,012; la 2, +0,168 y +0,062; la
+  3, +0,079 y +0,027; la 4, −0,026 y −0,006; la 5, +0,078 y +0,040. **La semilla 4, la que con las fijas se acercaba sin
+  la brújula** (+0,12 de uso con +0,001), con las móviles no se acerca ni gira hacia la brújula: su ruta no sobrevive a
+  la puerta que se mueve. Entre las 5 semillas, el uso y la sensibilidad van en el mismo orden (Spearman 0,9; con las
+  fijas, 0,5, con el uso sin restar la línea base, porque la de la puerta fija no se corrió en esta sesión).
+- **El control fijado marca la semilla 1:** uso +0,068 (≥ 0,05) con sensibilidad +0,012 (< 0,02). No puede ser una ruta
+  de memoria (la puerta cambia de lugar), y su sensibilidad es 12 veces la de su línea base: lo más probable es la
+  brújula por debajo del umbral, pero no está probado.
+- **Por agente, lo esperado no se cumplió:** dentro de cada generación, la correlación entre el uso y la sensibilidad de
+  cada agente no sube con las móviles (mediana +0,11 contra +0,13 en las 16-30; la línea base, +0,06). El uso de un
+  agente depende también de dónde nace y de qué tiene en el camino.
+
+**La puerta y el juego** (gens 16-30 para la puerta; 26-30 para el resto):
+
+| | Fijas | Móviles | Sin evolución (móviles) |
+|---|---|---|---|
+| Llegan a < 25 px · golpean ahí · la abren (por semilla) | 167 · 44 · 20 (0, 20, 0, 0, 0) | **277 · 94 · 46** (10, 35, 0, 0, 1) | 48 · 29 · 11 (4, 0, 2, 4, 1) |
+| Agentes con la puerta abierta, por generación | 0,40 | **1,20** | 0,28 |
+| Criterio del ítem 5 | 1 de 5 | 2 de 5 | — |
+| Fitness · manzanas · distancia (px) · edad | 23,0 · 1,07 · 1.327 · 964 | 22,8 · 1,09 · 1.288 · 942 | 20,1 · 0,31 · 327 · 894 |
+
+Con las móviles llegan más a la puerta y la abren más del doble, otra vez sobre todo donde más se aprende la brújula (la
+semilla 2: +0,062 y 35 de las 46 aperturas; es la quinta condición con cruce 0,2 en que la semilla con más sensibilidad
+es la que más abre). La puerta queda más cerca al nacer (419 px contra 544), pero la cercanía sola suma poco: sin
+evolución, a 375 px de mediana, llegan 48 (con la puerta fija, 44).
+
+**Lectura.**
+1. **No pasa** (3 de 5), pero es el mejor resultado del juego: la sensibilidad más alta fuera del laboratorio (+0,027,
+   1,55 veces las fijas, mayor en 4 de 5 semillas), la mitad de los agentes por encima del umbral, sigue subiendo en la
+   30, y sin perder comida (102%).
+2. **La ruta no sobrevive:** la semilla 4 se acercaba a la puerta fija sin la brújula y con la puerta que se mueve no se
+   acerca. Entre semillas, el uso y la sensibilidad ahora van juntos. Por agente, no se ve.
+3. **La selección ve la brújula un poco más** (+0,13 contra +0,11): sacar la ruta no la duplica. Acercarse y la comida
+   siguen pesando parejo en el fitness; lo que separa al juego del laboratorio (+0,27) sigue siendo cuánto pesa acercarse
+   contra la comida (lectura 2 de [acercarse 40 sin caminar](#acercarse-sin-caminar)).
+4. **La puerta se abre más del doble** (46 contra 20; criterio del ítem 5, 2 de 5), con la semilla que más aprende la
+   brújula poniendo la mayoría.
+
+**Qué sugiere** (para decidir):
+- **El switch queda apagado por defecto hasta que lo decida Fer.** Prenderlo cambia todas las corridas y deja atrás las
+  de referencia, como deslizar. A favor: es lo que pide el ítem 7 del BACKLOG ("aprender reglas, no un mapa"), saca la
+  ruta, y con los pesos de acercarse 40 sin caminar da lo mejor medido en el juego.
+- **Lo siguiente para la brújula, con las móviles:** acercarse más pesado que la comida (80, sin lo que paga caminar; ya
+  en [mejoras futuras](../product/mejoras_futuras.md#aparecido-en-el-laboratorio-de-la-brújula--2026-11-16)), contra
+  esta tanda: sin la ruta, lo que suba acercarse solo se cobra con la brújula. 5 corridas, unos 15 min.
+- **O más generaciones:** con las móviles la sensibilidad sigue subiendo en la 30; 60 generaciones dirían si llega al
+  umbral en 4 de 5. Más de 1 h.
+- **DIAG-33 y DIAG-34**, a mejoras futuras: arreglarlos cambia las corridas donde pasan, así que van con su propio control.

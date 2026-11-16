@@ -19,8 +19,10 @@ Envuelve, sin consumir azar:
   padres en la generación anterior (padre1, padre2), para medir si heredan la sensibilidad.
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...]
-acercarse y deslizar le pasan --acercarse y --deslizar a main.py. laboratorio es el laboratorio de la
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...]
+acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
+main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
+geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
 brújula (docs/qa/AnalisisQA.md#laboratorio-brujula): antes de main.main() pone en 0 los pesos de la
 comida, la exploración, el anti-círculo, la supervivencia, los cortes y el agua, así pagan solo
 acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube solo el currículo, con
@@ -46,6 +48,7 @@ import sys
 raiz, salida, semilla, tipo, generaciones = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
 acercarse = "acercarse" in sys.argv[6:]
 deslizar = "deslizar" in sys.argv[6:]
+moviles = "fortalezas-moviles" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 cruce = next((float(a[len("cruce="):]) for a in sys.argv[6:] if a.startswith("cruce=")), None)
@@ -347,7 +350,8 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
         FILA_DE[a] = f
     dmin, area = geometria(world)
     fin, fin_desliza = seguidor(world)
-    GEOM.append(dict(semilla=semilla_, evolucion=int(evolucion), generacion=generacion,
+    cx, cy = centro_puerta(world)
+    GEOM.append(dict(semilla=semilla_, evolucion=int(evolucion), generacion=generacion, puerta_x=cx, puerta_y=cy,
                      dmin_libre=round(dmin, 3), area_libre_25=round(area, 1), arranques=len(fin),
                      seguidor_25=int((fin < 25).sum()), seguidor_50=int((fin < 50).sum()),
                      seguidor_100=int((fin < 100).sum()), seguidor_mediana=round(float(np.median(fin)), 1),
@@ -443,6 +447,7 @@ if PESOS:
     print(f"PESOS {PESOS}")
 etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, v in PESOS.items()) + "_" if PESOS else ""
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
+          f"{'moviles_' if moviles else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
@@ -452,6 +457,8 @@ if acercarse:
     argv.append("--acercarse")
 if deslizar:
     argv.append("--deslizar")
+if moviles:
+    argv.append("--fortalezas-moviles")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
@@ -459,12 +466,14 @@ main.main(argv)
 for f in FILAS:
     f["acercarse"] = int(acercarse)
     f["deslizar"] = int(deslizar)
+    f["fortalezas_moviles"] = int(moviles)
     f["laboratorio"] = int(laboratorio)
     f["curriculo_hasta"] = SimulationConfig.CURRICULO_HASTA_GENERACION
     f["cruce"] = SimulationConfig.CROSSOVER_RATE
     f["pesos"] = pesos
 for g in GEOM:
     g["deslizar"] = int(deslizar)
+    g["fortalezas_moviles"] = int(moviles)
     g["laboratorio"] = int(laboratorio)
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))

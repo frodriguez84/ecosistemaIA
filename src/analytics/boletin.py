@@ -160,11 +160,13 @@ def armar_boletin(registro):
     poblacion = SimulationConfig.POPULATION_SIZE
 
     minutos = minutos_simulados(sum(fila["ticks"] for fila in historia))
-    # Deslizar no va en el CSV: se lee del switch, que main() pisa con --deslizar
+    # Deslizar y las fortalezas móviles no van en el CSV: se leen de los switches, que main() pisa con
+    # --deslizar y --fortalezas-moviles
     modo = nombre_del_modo(primera['modo'], primera['acercarse'], primera['etapa_inicial'] > 0,
                            SimulationConfig.DESLIZAR)
     subtitulo = " · ".join([
         f"Modo {modo}",
+        *(["fortalezas móviles"] if SimulationConfig.FORTALEZAS_MOVILES else []),
         "con evolución" if evolucion else "sin evolución (línea base)",
         f"semilla {primera['semilla']}",
         f"{generaciones} generación" if generaciones == 1 else f"{generaciones} generaciones",
