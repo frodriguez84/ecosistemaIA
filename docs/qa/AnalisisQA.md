@@ -2585,3 +2585,223 @@ evolución, a 375 px de mediana, llegan 48 (con la puerta fija, 44).
 - **O más generaciones:** con las móviles la sensibilidad sigue subiendo en la 30; 60 generaciones dirían si llega al
   umbral en 4 de 5. Más de 1 h.
 - **DIAG-33 y DIAG-34**, a mejoras futuras: arreglarlos cambia las corridas donde pasan, así que van con su propio control.
+
+---
+
+<a id="ruido-fitness"></a>
+
+## Cuánto del fitness es el cerebro y cuánto es suerte: cerebros congelados (2026-11-16)
+
+**La pregunta** (de una charla con Fer, después de las [fortalezas móviles](#fortalezas-moviles); en
+[mejoras futuras](../product/mejoras_futuras.md#de-una-charla-con-fer--2026-11-16)): con lo mejor medido en el juego, la
+brújula se aprende en 3 de 5 semillas y la selección la ve poco (+0,13; en el laboratorio, +0,27). Cada agente juega un
+solo episodio, en un mapa al azar, naciendo en un lugar al azar y compitiendo por la comida con los otros 59. Si el
+ranking de una generación es mayormente suerte, el AG elige casi al azar y ningún ajuste de pesos alcanza. Medición de
+una sesión, sin cambios en `src/`, `main.py` ni `config.py`.
+
+**Diseño.** Cerebros congelados: los mismos cerebros juegan 5 episodios. `medir_puerta.py` tiene un argumento nuevo,
+`congelar=G`: desde la generación G + 1, `evolve()` devuelve agentes nuevos (estado en cero) con los cerebros de la G,
+sin selección, cruce, mutación ni inmigrantes; esas generaciones duran lo que la G (envuelve `main._ticks_de_generacion`)
+y nacen con la etapa de la G (envuelve `main._fijar_etapa_inicial`: sin eso, con el currículo hasta la 30, desde la 31
+nacerían sin la llave). Cada generación congelada es un episodio, con mapa, fortalezas, lugar de nacimiento y rumbo
+nuevos. La condición es la de las [fortalezas móviles](#fortalezas-moviles) (`acercarse deslizar fortalezas-moviles
+curriculo30 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`), semillas 1 a 5:
+- **a) Al azar:** `congelar=1`, 6 generaciones: los cerebros de la gen 1 juegan las gens 2 a 6, de 960 ticks.
+- **b) Evolucionados:** `congelar=30`, 35 generaciones: 30 con evolución, y los cerebros de la 30 juegan las 31 a 35, de
+  2.220 ticks (los de la 30).
+
+10 corridas en una tanda. Los 5 episodios son las generaciones congeladas. La G (la 1 o la 30) queda afuera de las
+cuentas porque no es como las otras (en a, con las fortalezas fijas de la gen 1; en b, con la élite primera en la
+lista); se usa solo para un control de robustez, con 6 episodios.
+
+**Dos ajustes, al leer el código.**
+- **El orden de la lista se baraja.** En cada tick los agentes actúan en el orden de la lista (el primero come primero),
+  y `evolve` pone la élite adelante. Si el orden quedara fijo entre episodios, esa ventaja se repetiría y se contaría como
+  del cerebro. En cada episodio se baraja con un azar propio (`random.Random(semilla × 1000 + generación)`), que no toca
+  el de la corrida. Se mide si el orden pesa (Spearman orden ↔ fitness dentro del episodio).
+- **Hay clones.** Con cruce 0,2, el 80% de los hijos salen por copia (`copy_from`), y la mutación toca a una parte (al 30%
+  de los hijos; al 50% con poca diversidad): los demás quedan iguales a su padre peso a peso. Un hash de los pesos no
+  identifica a cada cerebro: se lo sigue por el objeto (`cerebro`, el id de su agente en la G), y el hash (`pesos_hash`)
+  es el control de que no cambió. Los clones dan además una **medida independiente** (LEC-018): dos clones en el mismo
+  episodio difieren solo por suerte.
+
+**Qué se mide** (por semilla y en conjunto, para a y para b; `mediciones/analizar_ruido.py`):
+- **El ranking que usa la selección:** Spearman del fitness entre pares de episodios, promedio de los 10 pares.
+- **Qué parte de la varianza es del cerebro:** ICC(1) con los 5 episodios (ANOVA de una vía, con el cerebro como grupo).
+- **El pool** (top 60%, 36 de 60, con el desempate de `evolve`: la columna `en_pool`): de los que quedan en el pool en
+  un episodio, qué fracción queda en otro (azar: 60%). **La élite** (`ELITISM` = 1): si el mejor de un episodio es el
+  mejor en otro (azar: 1 de 60) y si queda en el pool (azar: 60%).
+- **Por término** (`f_comida`, `f_acercarse`, `f_supervivencia`): Spearman e ICC, y cuánto ruido mete cada uno en puntos
+  de fitness (el desvío dentro del cerebro, √MSW).
+- **El control positivo:** la sensibilidad a la brújula (`sens_brujula / sens_ticks`), que es del cerebro.
+- **Informativo, sin corte:** la correlación sensibilidad ↔ fitness en un episodio (mediana de los 5) contra la del
+  promedio de los 5 episodios (cuánto más vería la brújula la selección con 5 evaluaciones); la proyección de
+  Spearman-Brown para 2, 3 y 5 evaluaciones; y la medida de los clones.
+
+**Criterio de lectura, fijado antes de medir** (un diagnóstico, no un pasa o no pasa). La variable es el **Spearman del
+fitness entre episodios de los evolucionados (b), promedio de las 5 semillas**:
+- **< 0,3: el fitness es mayormente suerte.** Lo siguiente es evaluar varias veces a cada agente (un switch, medido) antes
+  de tocar los pesos.
+- **≥ 0,6: el ruido no es el cuello.** Lo siguiente es el aprendiz (solo mutación) o acercarse 80.
+- **Entre 0,3 y 0,6: las dos cosas,** con el orden propuesto a partir de los números.
+- **La dispersión:** se informan el rango y el desvío de las 5 semillas. Si 2 o más semillas caen en otra banda que el
+  promedio, se dice, y la lectura se corre hacia el medio.
+- **Se cruza con el pool y la élite.** Equivalencias para un fitness normal con 60 agentes (simuladas): Spearman 0,3 ↔
+  el pool se repite en el 68% y el mejor sigue en el pool el 85%; 0,6 ↔ 77% y 98%. El fitness no es normal (tiene un piso
+  en 0): si el pool cae en otra banda que el Spearman, se informa, y manda el pool, que es lo que usa el AG.
+- **El control positivo tiene que funcionar:** en b, la sensibilidad a la brújula se repite más que el fitness (Spearman
+  entre episodios mayor) en al menos 4 de 5 semillas. Si no, la medición no separa cerebro de suerte y b no se lee.
+- **a es contexto:** cerebros al azar difieren mucho (algunos no caminan), así que lo esperado es que se repitan más que
+  los evolucionados. No decide.
+- **Ajuste a la propuesta, al leer el código: "mayormente suerte" no es "elige al azar".** Con un Spearman r entre
+  episodios, el ranking de un episodio se correlaciona ~√r con el valor del cerebro (con 0,3, ~0,55), y la respuesta a la
+  selección por generación es proporcional a eso. Con K evaluaciones sube a √(Kr / (1 + (K − 1)r)) (Spearman-Brown),
+  pero cada generación cuesta K veces más; por tick, la teoría simple dice que una evaluación gana siempre. Por eso, si
+  sale "varias evaluaciones", su medición lleva el control de igual costo: el mismo tiempo en más generaciones con una
+  evaluación (LEC-019: varias evaluaciones cambian la precisión y el costo a la vez).
+
+**Controles.**
+- En b, las primeras 30 filas del `corrida_*.csv` son byte a byte el CSV publicado de las móviles (SHA-256 en
+  [fortalezas móviles](#fortalezas-moviles)), y las filas de las gens 1-30 de `agentes_*.csv` son las publicadas en las
+  columnas comunes. La gen 1 de a es la gen 1 de ese mismo CSV.
+- En los episodios, cada cerebro está una vez, con el hash de la G (lo cuenta `medir_puerta.py` en `inconsistencias`),
+  y no corre ningún cruce, copia ni mutación (`llamadas_ag=0`). Duran lo que la G y nacen con la etapa 1.
+- Sin el argumento, `medir_puerta.py` da lo mismo que antes: dos corridas cortas (semilla 1 con la condición, 3
+  generaciones; semilla 2 sin evolución y sin flags, 2), con los 6 CSV iguales en SHA-256 antes y después del cambio.
+- Las 10 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+
+**Cómo se corrió.** Las 10 corridas en una tanda, en 15 min. La salida, en `results/medicion_ruido_fitness_20261116/`
+(fuera del repo). Las tablas, con `mediciones/analizar_ruido.py`; los controles, con un script de la sesión.
+
+**Controles.**
+- **Sin el argumento, lo mismo que antes:** los 6 CSV de las dos corridas cortas, con el mismo SHA-256 antes y después.
+  Una prueba con `congelar=4` y 6 generaciones mostró los dos envoltorios andando: la 5 y la 6 duraron 960 ticks (sin el
+  envoltorio, 1.140) y nacieron con la llave.
+- **Las 10 corridas terminaron con `MEDICION inconsistencias=0`** (las 10 líneas contadas), y sus logs dicen los pesos y
+  `CROSSOVER_RATE=0.2`. La línea `CONGELADO` de cada una: 5 episodios, 60 cerebros, `llamadas_ag=0`.
+- **b es la corrida publicada hasta la 30:** en las 5 semillas, la cabecera y las 30 primeras filas del `corrida_*.csv` son
+  byte a byte el CSV publicado de las móviles, y las 1.800 filas de las gens 1-30 de `agentes_*.csv` son las publicadas en
+  las 56 columnas. **La gen 1 de a** es la publicada, en el `corrida_*.csv` y en `agentes_*.csv` salvo `aporte`, que en
+  la publicada llena el `evolve` real y acá queda vacía (el congelado no hereda).
+- **Los episodios:** cada cerebro está una vez en cada uno de los 5, con un solo hash de pesos en todos (60 de 60, las 10
+  corridas). Los límites, en el log: 2.220 ticks en las gens 31-35 de b y 960 en las 2-6 de a; todos nacen con la etapa 1.
+  En b se mueren todos antes del límite: los episodios duraron de 1.061 a 1.630 ticks (la gen 30 publicada, igual).
+- **Los clones:** en la gen 30 hay 40 a 45 cerebros distintos de 60, y en cada episodio ~24 agentes tienen al menos un
+  clon. En a, 60 de 60.
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py ... congelar=1 o congelar=30 desde el commit de esta sesión)</summary>
+
+| Semilla | a, `corrida_*.csv` | a, `agentes_*.csv` |
+|---|---|---|
+| 1 | `2071891064b754e73175812cafd16802cf0398ab120be34e32634aeb33045c71` | `8a3dde444fd592040900b2bc07ef8871376227b8bff19dd31ecb971b6b2663c3` |
+| 2 | `bdd5300f7cb5d70bb38bd1a187a440861fa1dd76b318af84844f9b5f5cf26df3` | `cae7bab169fa33928626fcc101d608c68a3262d1606abc28e8eea4c991b45978` |
+| 3 | `199b2709d132ced1e992491392b500a70a6f9249793e472eb972814c48cb0faf` | `3e7a369c06495c141b9581a52123114bbfc7f6f3773f446fb69ac7cfa43d3e4c` |
+| 4 | `1c3ca362385dadce77608def254ac92476f9f1fdc9710a90e1b41b5d1b8e09cf` | `92b743ff745a2a619460191456288a64bff508ec23d0c3bded905f00ae288464` |
+| 5 | `25cb47b6a772acef4b3d7d093638245d0ca4fb30d738140e4dbfc01835880be2` | `7cabafcd97b6fdb1bf8a54b4f956248722ada592a2e2b022a2444fc562cf4d6f` |
+
+| Semilla | b, `corrida_*.csv` | b, `agentes_*.csv` |
+|---|---|---|
+| 1 | `66712feee9fa86b60a218363d4d4874fc43e44bf8354f0df8e272d60a68a8909` | `8f237dbc8f0053cd18baf7e62cc1cb6e5794dcc14b8b4f610026c4b76c54ff4a` |
+| 2 | `ec5ac6fb5b56301aa2b7c81afdd50bcb297831abfa84448832c5d4e17f4306cf` | `3ebb6ea9ff0869765ce531bf33eec704601cc77666ed00522a58fc6bd0f2065d` |
+| 3 | `014e790ddca387ca981d88ea27604efb1a4a72414872eb1c592de44c236aa6c0` | `1e716780543d3053932ed33b24843c91111955ff77b7840b25a98e1aeeceb32a` |
+| 4 | `ce428dee274f4b1206411938a33bbaf259d1cd25a5448c055ed67abd79e6a41b` | `ff25d9bdb665fa6d26703ebe40ac2d31b60871c8455be04e7add0acc8c4e8676` |
+| 5 | `4b40ae4714072c39b20ace192dfb149d7fc25a88175f499ed7b87e378d4b2537` | `6deb10ba53feb4c49db426c5dfa26656c78460ee7fe2fdc6b33fe132715c7096` |
+
+</details>
+
+**El criterio** (Spearman del fitness entre episodios, promedio de los 10 pares):
+
+| Semilla | a) Al azar (gen 1) | b) Evolucionados (gen 30) |
+|---|---|---|
+| 1 | 0,563 | 0,023 |
+| 2 | 0,479 | 0,027 |
+| 3 | 0,440 | −0,005 |
+| 4 | 0,517 | 0,156 |
+| 5 | 0,523 | 0,055 |
+| **Promedio (desvío)** | 0,505 (0,047) | **0,051** (0,062) |
+| Banda | entre 0,3 y 0,6 | **< 0,3, las 5 semillas** |
+
+**En los evolucionados, el fitness es casi todo suerte:** el ranking de un episodio no predice el del siguiente (0,05;
+la semilla más alta, 0,16). Las 5 semillas caen en la misma banda, lejos del corte. El control positivo funciona: la
+sensibilidad a la brújula se repite mucho más que el fitness, en 5 de 5 (0,44 contra 0,05). Al azar, el ranking se repite
+a medias (0,51).
+
+**Lo que usa el AG** (promedio de las 5 semillas):
+
+| | a) Al azar | b) Evolucionados | Azar puro |
+|---|---|---|---|
+| ICC(1) del fitness (parte de la varianza que es del cerebro) | 0,42 | **0,05** | 0 |
+| ICC(C,1), sin lo que cambia de un episodio a otro para todos | 0,42 | 0,05 | 0 |
+| Pool: de los que entran en un episodio, entran en otro | 77% | **61%** | 60% |
+| Élite: el mejor de un episodio es el mejor en otro | 6% | 2% | 1,7% |
+| Élite: el mejor de un episodio queda en el pool de otro | 90% | **60%** | 60% |
+| Élite: su lugar mediano en otro episodio (de 60) | 11 | **32** | 30,5 |
+| Robustez: Spearman con la G como sexto episodio | 0,51 | 0,05 | 0 |
+| Orden en la lista ↔ fitness (Spearman, dentro del episodio) | −0,00 | +0,05 | 0 |
+
+El pool de b se repite como el azar (61% contra 60%; la equivalencia de Spearman 0,3 era 68%), y la élite también: el
+mejor de un episodio queda en el pool de otro el 60% de las veces, y su lugar mediano es 32 de 60. Con la G como un
+episodio más da lo mismo, y el orden en la lista casi no pesa. **La medida independiente coincide:** entre clones, en un
+mismo episodio, la varianza del fitness es el 82% de la del episodio (de 63% a 118% según la semilla; arriba de 100% es
+error de estimación): casi toda es suerte, como dice el ICC con episodios distintos (95%).
+
+**Por qué cae tanto de a a b** (cuentas sobre el ICC y el ruido dentro del cerebro): el ruido crece y la diferencia entre
+cerebros se achica. El desvío dentro del cerebro pasa de 5,6 a 13,2 puntos de fitness (2,4 veces), y el desvío entre
+cerebros, de ~4,7 a ~3,0. La selección convergió (clones) y, a la vez, los evolucionados caminan, se acercan a la puerta y
+a veces la abren, que es donde está el ruido.
+
+**Por término** (b, promedio de las 5 semillas; a entre paréntesis):
+
+| | Spearman entre episodios | ICC(1) | Ruido dentro del cerebro, en puntos de fitness |
+|---|---|---|---|
+| Fitness | 0,05 (0,51) | 0,05 (0,42) | 13,2 (5,6) |
+| `f_acercarse` | 0,09 (0,47) | 0,09 (0,32) | **9,8** (2,9); en la semilla 2, 20,6 |
+| `f_comida` | 0,09 (0,45) | 0,09 (0,46) | **6,7** (3,9) |
+| `f_puzzle` (abrir la puerta; en a nadie la abre, y en b, sin las semillas que no la abren) | 0,05 (—) | 0,02 (—) | 2,9 (0); en la semilla 2, 9,3 |
+| `f_supervivencia` | 0,37 (0,67) | 0,38 (0,66) | 0,7 (0,7) |
+| Sensibilidad a la brújula (el control) | 0,44 (0,69) | 0,43 (0,60) | |
+| Sensibilidad a la comida | 0,46 (0,65) | 0,45 (0,61) | |
+
+**Acercarse mete más ruido, y la comida lo sigue.** Los dos se repiten igual de poco (0,09), así que cambiar cuánto pesa
+uno contra el otro casi no sube lo que se repite el fitness: con acercarse a 80, el término más ruidoso pesaría el doble.
+Abrir la puerta también es suerte para estos cerebros: la semilla 2, que la abre 6,6 veces por episodio, es la que más
+ruido tiene (abrirla paga el premio del puzzle y deja seguir sumando acercarse hacia la llave dorada). Lo único que se repite es la supervivencia, que pesa poco (0,7 puntos de
+ruido). La sensibilidad, a la brújula y a la comida, sí es del cerebro (0,44 y 0,46): los cerebros difieren en lo que
+importa, y el fitness casi no lo ve.
+
+**Informativo: varias evaluaciones** (b; proyección de Spearman-Brown con el 0,051 medido):
+
+| Evaluaciones por agente | 1 | 3 | 5 | 10 | 20 |
+|---|---|---|---|---|---|
+| Spearman del ranking entre dos evaluaciones | 0,05 | 0,14 | 0,21 | 0,35 | 0,52 |
+| Correlación del ranking con el valor del cerebro (~√) | 0,23 | 0,37 | 0,46 | 0,59 | 0,72 |
+| Costo de cada generación | 1× | 3× | 5× | 10× | 20× |
+
+**Lo que mide directo, sin proyectar:** la selección ve la brújula +0,15 en un episodio (mediana; la medición de las
+móviles dio +0,13 en las gens 16-30, con otro método) y +0,27 con el promedio de los 5 episodios, lo mismo que en el
+laboratorio con cruce 0,2 (+0,25 y +0,27), donde la brújula se aprendió en 5 de 5. Por semilla, de +0,12, +0,39, +0,16,
++0,07 y +0,02 a +0,07, +0,51, +0,36, +0,14 y +0,28: sube en 4 de 5.
+
+**Lectura.**
+1. **El fitness de los evolucionados es mayormente suerte** (Spearman 0,05, las 5 semillas < 0,3, el control positivo en 5
+   de 5). El AG elige el pool casi al azar (61% contra 60%) y la élite es el ganador de una lotería. Con un solo episodio,
+   el ranking se correlaciona ~0,23 con el valor del cerebro: la selección no es nula, pero sí muy débil. Encaja con
+   que la brújula suba despacio y no en todas las semillas.
+2. **Al azar, el ranking se repite a medias** (0,51): en las primeras generaciones la selección funciona, porque hay
+   cerebros que no caminan. No se midió en qué generación cae.
+3. **Ningún ajuste de pesos entre comida y acercarse alcanza:** los dos se repiten 0,09. Acercarse 80 duplicaría el término
+   que más ruido mete.
+4. **Con 5 evaluaciones, la selección vería la brújula como en el laboratorio** (+0,27). Pero el ranking seguiría lejos de
+   repetirse (0,21), y cada generación costaría 5 veces más.
+
+**Qué sugiere** (lo decide Fer):
+- **Primero, varias evaluaciones por agente** (lo que dice el criterio): un switch, apagado por defecto, con cada agente
+  jugando K episodios y la selección sobre el promedio. Con K = 5, la proyección dice +0,27 de selección de la brújula, el
+  nivel con que se aprendió en el laboratorio. Medido contra la tanda de las móviles, **con el control de igual costo**
+  fijado antes (LEC-019): el mismo tiempo en más generaciones con una evaluación. Ese control es parte del diseño (los
+  ticks por generación crecen con las generaciones: el costo se cuenta en ticks, no en generaciones). Unas 5 veces una
+  tanda de 30 generaciones, ~1 h.
+- **Después, el aprendiz** (solo mutación): cambiarlo no sirve mientras la selección elija casi al azar.
+- **Acercarse 80, no:** sube el término más ruidoso sin subir lo que se repite.
+- **Barato, si hace falta saber cuándo cae:** la misma medición con `congelar=10` o `congelar=15` (~10 min). Si a la mitad
+  de la corrida el ranking todavía se repite, varias evaluaciones hacen falta solo al final.

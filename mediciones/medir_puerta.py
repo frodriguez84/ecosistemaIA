@@ -18,8 +18,11 @@ Envuelve, sin consumir azar:
 - GeneticAlgorithm.evolve: el origen de cada agente (elite, copia, cruce o inmigrante) y el id de sus
   padres en la generación anterior (padre1, padre2), para medir si heredan la sensibilidad.
 
+- Con congelar=G, los cerebros de la generación G juegan las generaciones G + 1 a la última como
+  episodios: el ruido del fitness (docs/qa/AnalisisQA.md#ruido-fitness).
+
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -30,7 +33,13 @@ el fitness de siempre (el control del laboratorio). cruce=X fija CROSSOVER_RATE 
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
 fitness, docs/qa/AnalisisQA.md#rebalance-fitness); van después de los del laboratorio, y un nombre que
-config.py no tiene corta la corrida. Deja en SALIDA, por corrida:
+config.py no tiene corta la corrida. congelar=G (con evolucion; GENERACIONES mayor que G): desde la
+generación G + 1, evolve() devuelve agentes nuevos con los cerebros de la G, sin selección, cruce,
+mutación ni inmigrantes, en un orden barajado con un azar propio (el de la lista decide quién actúa
+primero en cada tick); esas generaciones duran lo que la G y nacen con la etapa de la G (el currículo).
+Cada una es un episodio: mapa, lugar de nacimiento y estado nuevos. agentes_*.csv suma pesos_hash (los
+pesos: los clones repiten hash), orden (lugar en la lista) y cerebro (desde la G, el id de su agente en
+la G); control: cada cerebro está una vez por episodio, con el hash de la G. Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
@@ -41,8 +50,10 @@ más de 10 corridas a la vez, y contar las líneas MEDICION de la tanda (LEC-017
 mediciones/analizar_puerta.py. Método y resultados: docs/qa/AnalisisQA.md#medicion-puerta-madera.
 """
 import csv
+import hashlib
 import math
 import os
+import random
 import sys
 
 raiz, salida, semilla, tipo, generaciones = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
@@ -53,6 +64,9 @@ laboratorio = "laboratorio" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 cruce = next((float(a[len("cruce="):]) for a in sys.argv[6:] if a.startswith("cruce=")), None)
 pesos = next((a[len("pesos="):] for a in sys.argv[6:] if a.startswith("pesos=")), "")
+congelar = next((int(a[len("congelar="):]) for a in sys.argv[6:] if a.startswith("congelar=")), None)
+if congelar is not None and (tipo != "evolucion" or int(generaciones) <= congelar):
+    sys.exit("congelar=G va con evolucion y con GENERACIONES mayor que G")  # sin evolución no se llama a evolve
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -77,6 +91,18 @@ GEOM = []         # geometría por generación
 CRUCES = {}       # id(cerebro hijo) -> (padre1, padre2) o (padre, None) en la copia
 ORIGEN = {}       # agente de la generación nueva -> (origen, id padre1, id padre2)
 INCONS = [0]      # predicción del golpe distinta de lo que pasó
+SLOT = {}         # con congelar=G: cerebro -> id de su agente en la generación G
+HASH_G = {}       # id del agente de la generación G -> hash de los pesos de su cerebro
+CONGELADO = [False]
+LLAMADAS_AG = [0]  # cruces, copias o mutaciones después de congelar: tiene que quedar en 0
+
+
+def hash_pesos(cerebro):
+    """Los primeros 16 hex del SHA-256 de los pesos y sesgos. Dos cerebros con el mismo son clones."""
+    h = hashlib.sha256()
+    for w in cerebro.weights + cerebro.biases:
+        h.update(np.ascontiguousarray(w).tobytes())
+    return h.hexdigest()[:16]
 
 # Laboratorio de la brújula: los pesos que van a 0, así pagan solo acercarse y el puzzle
 PESOS_LABORATORIO = dict(FITNESS_FOOD=0.0, FITNESS_EXPLORATION=0.0, FITNESS_ANTI_CIRCLE=0.0, FITNESS_SURVIVAL=0.0,
@@ -335,6 +361,7 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
     fila = _fila(semilla_, evolucion, generacion, ticks, agents, world, learning_monitor)
     orden = sorted(agents, key=lambda a: a.fitness, reverse=True)  # el mismo orden estable que evolve
     k = max(2, int(len(agents) * max(0.05, min(0.95, SimulationConfig.MEETING_POOL_FRACTION))))
+    posicion = {a: i for i, a in enumerate(agents)}  # quién actúa primero en cada tick
     FILA_DE.clear()
     for lugar, a in enumerate(orden, start=1):
         m = MED.get(a, nueva())
@@ -346,8 +373,21 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
         f['origen'], f['padre1'], f['padre2'] = ORIGEN.get(a, ('', '', ''))
         f.update({k2: round(v, 4) for k2, v in terminos_fitness(a).items()})
         f.update({k2: ('' if v is None else (round(v, 3) if isinstance(v, float) else v)) for k2, v in m.items()})
+        if congelar is not None:
+            f['pesos_hash'], f['orden'], f['cerebro'] = hash_pesos(a.brain), posicion[a], ''
+            if generacion == congelar:
+                SLOT[a.brain] = a.id
+                HASH_G[a.id] = f['pesos_hash']
+            if generacion >= congelar:
+                f['cerebro'] = SLOT.get(a.brain, '')
+                if HASH_G.get(f['cerebro']) != f['pesos_hash']:
+                    INCONS[0] += 1  # no es un cerebro de la generación G, o le cambiaron los pesos
         FILAS.append(f)
         FILA_DE[a] = f
+    if congelar is not None and generacion > congelar:
+        cerebros = [FILA_DE[a]['cerebro'] for a in agents]
+        if set(cerebros) != set(HASH_G) or len(set(cerebros)) != len(agents):
+            INCONS[0] += 1  # cada cerebro de la G, una vez por episodio
     dmin, area = geometria(world)
     fin, fin_desliza = seguidor(world)
     cx, cy = centro_puerta(world)
@@ -368,18 +408,46 @@ _copy = SimpleNeuralNetwork.copy_from
 
 
 def crossover(self, other):
+    LLAMADAS_AG[0] += int(CONGELADO[0])
     hijo = _cross(self, other)
     CRUCES[id(hijo)] = (self, other)
     return hijo
 
 
 def copy_from(self, other):
+    LLAMADAS_AG[0] += int(CONGELADO[0])
     resultado = _copy(self, other)
     CRUCES[id(self)] = (other, None)
     return resultado
 
 
+_mutate = SimpleNeuralNetwork.mutate
+
+
+def mutate(self, mutation_rate=0.1):
+    LLAMADAS_AG[0] += int(CONGELADO[0])
+    return _mutate(self, mutation_rate)
+
+
+def congelados(agents, generation):
+    """Con congelar=G, desde la generación G + 1: agentes nuevos (estado en cero) con los mismos
+    cerebros, sin selección, cruce, mutación ni inmigrantes. El orden de la lista, quién actúa primero
+    en cada tick, se baraja con un azar propio que no toca el de la corrida: si quedara fijo, la
+    ventaja de actuar primero se repetiría entre episodios y se contaría como del cerebro."""
+    CONGELADO[0] = True
+    ORIGEN.clear()
+    nuevos = []
+    for a in agents:
+        hijo = AdvancedAgent(0, 0, a.brain)
+        ORIGEN[hijo] = ('congelado', a.id, '')
+        nuevos.append(hijo)
+    random.Random(semilla * 1000 + generation).shuffle(nuevos)
+    return nuevos
+
+
 def evolve(self, agents, generation=1):
+    if congelar is not None and generation >= congelar:
+        return congelados(agents, generation)
     CRUCES.clear()
     nuevos = _evolve(self, agents, generation)
     # agents ya quedó ordenado por evolve: control del lugar que se anotó en _fila_csv
@@ -423,6 +491,20 @@ main._fila_csv = fila_csv
 GeneticAlgorithm.evolve = evolve
 SimpleNeuralNetwork.crossover = crossover
 SimpleNeuralNetwork.copy_from = copy_from
+if congelar is not None:
+    _ticks = main._ticks_de_generacion
+    _etapa = main._fijar_etapa_inicial
+
+    def ticks_de_generacion(config, generacion):
+        return _ticks(config, min(generacion, congelar))  # los episodios duran lo que la generación G
+
+    def fijar_etapa_inicial(agents, generacion):
+        _etapa(agents, min(generacion, congelar))  # y nacen con su etapa (el currículo)
+
+    main._ticks_de_generacion = ticks_de_generacion
+    main._fijar_etapa_inicial = fijar_etapa_inicial
+    SimpleNeuralNetwork.mutate = mutate
+    print(f"CONGELAR={congelar}: los cerebros de la generación {congelar} juegan de la {congelar + 1} a la {generaciones}")
 
 os.makedirs(salida, exist_ok=True)
 if laboratorio:
@@ -449,7 +531,8 @@ etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, 
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
           f"{'moviles_' if moviles else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
-          f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}{tipo}")
+          f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
+          f"{f'congelar{congelar}_' if congelar is not None else ''}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
 argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
@@ -471,6 +554,8 @@ for f in FILAS:
     f["curriculo_hasta"] = SimulationConfig.CURRICULO_HASTA_GENERACION
     f["cruce"] = SimulationConfig.CROSSOVER_RATE
     f["pesos"] = pesos
+    if congelar is not None:
+        f["congelar"] = congelar
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
@@ -483,4 +568,9 @@ with open(os.path.join(salida, f"geometria_{nombre}.csv"), "w", newline="", enco
     w = csv.DictWriter(f, fieldnames=list(GEOM[0].keys()))
     w.writeheader()
     w.writerows(GEOM)
+if congelar is not None:
+    INCONS[0] += LLAMADAS_AG[0]
+    episodios = len({f["generacion"] for f in FILAS if f["generacion"] > congelar})
+    print(f"CONGELADO episodios={episodios} cerebros={len(HASH_G)} distintos={len(set(HASH_G.values()))}"
+          f" llamadas_ag={LLAMADAS_AG[0]}")
 print(f"MEDICION inconsistencias={INCONS[0]} filas={len(FILAS)}")
