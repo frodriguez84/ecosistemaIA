@@ -13,6 +13,10 @@ class SimulationConfig:
     # "guiado": decide() suma la conducción escrita a mano hacia la comida y el puzzle.
     # "autonomo": decide() es solo la salida de la red. Lo demás es igual en los dos (--modo lo pisa)
     MODO = "guiado"
+
+    # .venv/Scripts/python.exe main.py --generaciones 10 --semilla 1 --modo autonomo
+    # .venv/Scripts/python.exe main.py --generaciones 10 --semilla 1 --modo guiado
+
     
     # === SISTEMA ADAPTATIVO DE TIEMPO ===
     ADAPTIVE_TIME_ENABLED = True      # Habilitar tiempo adaptativo

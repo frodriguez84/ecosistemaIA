@@ -26,9 +26,10 @@ verifica comparando corridas con la misma semilla. Todo sale del
 
 ## Decisiones pendientes de Fer
 
-- [ ] **¿Deslizar prendido por defecto?** Mejora la mecánica en todas las condiciones, pero cambia todas las corridas de referencia y las alarga ~1,5 veces ([mejoras futuras](mejoras_futuras.md#aparecido-al-medir-deslizar--2026-11-16)).
+_(ninguna)_
 
 ## Hecho
 
+- [x] 2026-11-16 — `DESLIZAR` queda apagado por defecto, decidido por Fer: las corridas de referencia siguen siendo las de antes, y deslizar se prende con `--deslizar` ([mejoras futuras](mejoras_futuras.md#aparecido-al-medir-deslizar--2026-11-16)).
 - [x] 2026-11-14 — `LICENSE`: MIT, decidido por Fer (DIAG-22). El `.env.example` vacío pasa a la limpieza (ítem 2): no hay variables de entorno.
 - [x] 2026-11-14 — Metodología sembrada (`/bootstrap-project`, plantilla + bitácora en specs) y diagnóstico inicial registrado en [AnalisisQA](../qa/AnalisisQA.md#diagnostico-inicial).

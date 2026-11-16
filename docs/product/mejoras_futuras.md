@@ -63,5 +63,5 @@ Aparecido al escribir el [spec](../specs/done/PUZZLE_APRENDIBLE.md) con Fer, con
 
 Con la [medición y el experimento](../qa/AnalisisQA.md#deslizar-al-chocar) de deslizar.
 
-- [ ] **Deslizar prendido por defecto** (decisión de Fer): mejora comer, la llave y llegar a la puerta, con evolución y sin ella, y la evolución sigue sumando encima (5 de 5 en fitness, manzanas y llave). Prenderlo cambia todas las corridas: los experimentos anteriores dejan de ser la línea base de los nuevos, y las corridas tardan ~1,5 veces.
+- [x] 2026-11-16 — **Deslizar prendido por defecto** (decisión de Fer): mejora comer, la llave y llegar a la puerta, con evolución y sin ella, y la evolución sigue sumando encima (5 de 5 en fitness, manzanas y llave). Prenderlo cambia todas las corridas: los experimentos anteriores dejan de ser la línea base de los nuevos, y las corridas tardan ~1,5 veces. **Decidido por Fer: queda apagado por defecto;** se prende con `--deslizar`.
 - [ ] **Que la brújula se aprenda:** deslizando, un seguidor de brújula perfecto llega a la puerta en el 50% de los arranques y los agentes en el 1,7%; la evolución sube igual el camino hacia la puerta y hacia un punto de control. Es el cuello que queda para la puerta de madera. Candidatos ya anotados: más presión selectiva y el sensor de obstáculos con dirección.
