@@ -4,9 +4,14 @@ Envuelve, sin consumir azar:
 - AdvancedAgent.act: después de moverse y con la llave (etapa 1), la distancia al centro de la
   puerta (al nacer y la mínima), los ticks a menos de 25 px, los ticks golpeando, y la distancia a
   un punto de control al que la brújula no apunta (la llave roja).
+- AdvancedAgent.perceive y act: con la percepción que vio el agente y la llave, la sensibilidad de su
+  red a la brújula (cuánto cambia el giro si el sensor 9 marca +90° contra −90°) y a la comida (el
+  sensor 3, control positivo), sumada por tick (sens_brujula y sens_comida; promedio: / sens_ticks).
+  Control: el forward en lote da las salidas de decide() y giro() el giro de act().
 - AdvancedAgent._try_hit_door: cada golpe a menos de 25 px, si contó o qué lo frenó.
-- main._fila_csv: fitness, ranking, geometría de la puerta y un seguidor de brújula perfecto (como
-  hoy y deslizando) sobre el mapa de cada generación.
+- main._fila_csv: fitness y sus términos (f_*; control: suman el fitness del agente), ranking,
+  geometría de la puerta y un seguidor de brújula perfecto (como hoy y deslizando) sobre el mapa de
+  cada generación.
 - GeneticAlgorithm.evolve, SimpleNeuralNetwork.crossover y copy_from: qué aporta cada agente a la
   generación siguiente (élite y copia, 1; cruce, 0,5 por padre).
 
@@ -58,15 +63,91 @@ INCONS = [0]      # predicción del golpe distinta de lo que pasó
 def nueva():
     return dict(d0_llave=None, dmin_llave=math.inf, d0=None, dmin=math.inf, ticks_etapa1=0, ticks_25=0, ticks_golpe=0, ticks_golpe_25=0,
                 bloq_agente_inicio=0, bloq_agente_corte=0, bloq_puerta=0, golpes=0,
-                t_llega25=None, t_golpe1=None, t_golpe2=None, ticks_25_post90=0, golpe_25_post90=0)
+                t_llega25=None, t_golpe1=None, t_golpe2=None, ticks_25_post90=0, golpe_25_post90=0,
+                sens_ticks=0, sens_brujula=0.0, sens_comida=0.0, ticks_avanza=0, ticks_gira=0, giro_abs=0.0)
 
 
+def terminos_fitness(a):
+    """Los términos de _calculate_fitness del agente, con los mismos pesos de config.py, sin el recorte
+    a [0, 100] ni el tope por tiempo vivido. Lee el estado del agente, sin azar."""
+    c = SimulationConfig
+    anti = 0.0
+    if a.distance_traveled > 100:
+        anti = c.FITNESS_ANTI_CIRCLE * (c.ANTI_CIRCLE_W1_SR * a.metric_sr + c.ANTI_CIRCLE_W2_TURN * a.metric_turn_smooth
+                                        + c.ANTI_CIRCLE_W3_NOVELTY * a.metric_novelty)
+    t = dict(f_supervivencia=min(a.age * c.FITNESS_SURVIVAL, c.FITNESS_SURVIVAL_MAX),
+             f_comida=c.FITNESS_FOOD * math.sqrt(max(0.0, float(a.food_eaten))),
+             f_exploracion=min(c.FITNESS_EXPLORATION * math.log1p(max(0.0, a.distance_traveled) / 350.0),
+                               c.FITNESS_EXPLORATION_MAX),
+             f_anticirculo=anti, f_puzzle=a.puzzle_rewards + a.cut_rewards,
+             f_acercarse=(c.FITNESS_ACERCARSE * (a.etapa - a.etapa_inicial + a._avance_en_el_paso())
+                          if c.RECOMPENSA_ACERCARSE else 0.0),
+             f_agua=-min(a.fitness_env_penalty, c.WATER_PENALTY_MAX))
+    total = sum(t.values())
+    tope = 50.0 + 50.0 * min(1.0, float(a.age) / float(c.BASE_TICKS))
+    if abs(min(max(0, min(100, total)), tope) - a.fitness) > 1e-6:
+        INCONS[0] += 1  # los términos no suman el fitness del agente
+    return t
+
+
+_perceive = AdvancedAgent.perceive
+
+
+def perceive(self, world, other_agents):
+    p = _perceive(self, world, other_agents)
+    self._med_percepcion = p  # la que va a usar decide(); main.py llama a act() justo después
+    return p
+
+
+def giro(salidas):
+    """El giro en radianes que hace act() en el autónomo con esas salidas de la red (una por fila):
+    recortadas a [0, 1], si las dos pasan 0,3 se anula la más débil, × 0,12 y, arriba de 0,08, × 0,6."""
+    izq, der = np.clip(salidas[:, 1], 0, 1), np.clip(salidas[:, 2], 0, 1)
+    ambos, gana_izq = (izq > 0.3) & (der > 0.3), izq > der
+    der = np.where(ambos & gana_izq, 0.0, der)
+    izq = np.where(ambos & ~gana_izq, 0.0, izq)
+    g = (der - izq) * 0.12
+    return np.where(np.abs(g) > 0.08, g * 0.6, g)
+
+
+def sensibilidad(cerebro, p):
+    """Con la percepción p que vio el agente, cuánto cambia su giro si la brújula (sensor 9) marca el
+    objetivo 90° a un lado o al otro (+0,5 contra −0,5), y lo mismo con la comida (sensor 3), el control
+    positivo: un ángulo que se aprende. Positivo: gira hacia donde marca. Solo numpy, sin azar."""
+    x = np.repeat(p[None, :], 5, axis=0)  # la quinta fila, sin tocar: control contra decide()
+    x[0, 8], x[1, 8], x[2, 2], x[3, 2] = 0.5, -0.5, 0.5, -0.5
+    a = x
+    for i in range(len(cerebro.weights) - 1):
+        a = np.tanh(np.dot(a, cerebro.weights[i]) + cerebro.biases[i])
+    salidas = np.tanh(np.dot(a, cerebro.weights[-1]) + cerebro.biases[-1])
+    g = giro(salidas)
+    return g[0] - g[1], g[2] - g[3], salidas[4]
+
+
+ORDEN_SALIDAS = ('move_forward', 'turn_left', 'turn_right', 'eat', 'hit')
 _act = AdvancedAgent.act
 
 
 def act(self, decisions, world, other_agents, tick):
     vivo = self.alive
+    angulo, predicho = self.angle, None
+    if vivo and self.etapa == 1 and world.door and getattr(self, "_med_percepcion", None) is not None:
+        m = MED.setdefault(self, nueva())
+        sb, sc, salida = sensibilidad(self.brain, self._med_percepcion)
+        m['sens_ticks'] += 1
+        m['sens_brujula'] += float(sb)
+        m['sens_comida'] += float(sc)
+        tomadas = np.array([decisions[k] for k in ORDEN_SALIDAS])
+        if np.abs(np.clip(salida, 0, 1) - tomadas).max() > 1e-6:
+            INCONS[0] += 1  # el forward en lote no es el de la red
+        predicho = float(giro(tomadas[None, :])[0])
+        m['ticks_avanza'] += int(decisions['move_forward'] > 0.5)
+        m['ticks_gira'] += int(predicho != 0.0)
+        m['giro_abs'] += abs(predicho)
+    self._med_percepcion = None
     _act(self, decisions, world, other_agents, tick)
+    if predicho is not None and abs((self.angle - angulo) - predicho) > 1e-9:
+        INCONS[0] += 1  # giro() no es el de act()
     if not vivo or self.etapa != 1 or not world.door:
         return
     m = MED.setdefault(self, nueva())
@@ -236,6 +317,7 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
                  fitness=round(float(a.fitness), 4), lugar=lugar, en_pool=int(lugar <= k),
                  elite=int(lugar <= SimulationConfig.ELITISM), golpes_puerta=a.golpes_puerta.get('door', (0, 0))[0],
                  abrio=int(a.etapa >= 2 and a.etapa_inicial < 2), aporte='')
+        f.update({k2: round(v, 4) for k2, v in terminos_fitness(a).items()})
         f.update({k2: ('' if v is None else (round(v, 3) if isinstance(v, float) else v)) for k2, v in m.items()})
         FILAS.append(f)
         FILA_DE[a] = f
@@ -301,6 +383,7 @@ def evolve(self, agents, generation=1):
     return nuevos
 
 
+AdvancedAgent.perceive = perceive
 AdvancedAgent.act = act
 AdvancedAgent._try_hit_door = try_hit_door
 main._fila_csv = fila_csv

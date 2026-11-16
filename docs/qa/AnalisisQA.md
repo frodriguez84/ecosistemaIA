@@ -1403,3 +1403,236 @@ con la llave dada en 4 de 5 con evolución y en 2 de 5 sin.
   referencia (en [mejoras futuras](../product/mejoras_futuras.md)).
 - **El cuello pasa a ser aprender la brújula,** como anticipaba la medición de la puerta: la presión de
   selección o un sensor de contra qué chocan (los dos ya en mejoras futuras).
+
+---
+
+<a id="brujula-c-deslizando"></a>
+
+## La brújula, deslizando y con la recompensa por acercarse — experimento C y medición (2026-11-16)
+
+**La pregunta** (ítem "Que la brújula se aprenda" de [mejoras futuras](../product/mejoras_futuras.md)):
+ahora que chocar desliza, ¿la recompensa por acercarse hace que el autónomo aprenda a seguir la brújula
+y a pasar la puerta de madera? Si no, medir por qué antes de cambiar nada. Sin cambios en `src/`,
+`main.py` ni `config.py`.
+
+**Criterio, fijado antes de medir:**
+- **Aprende la puerta:** el criterio del ítem 5 (al menos 1 agente por generación con la puerta de
+  madera abierta en las últimas 5 y más que la línea base, en 4 de 5 semillas). Lo calcula
+  `experimento.py`.
+- **Usa la brújula:** en las generaciones 11 a 15, (camino hacia la puerta − camino hacia el punto de
+  control) con evolución, mayor que en su línea base, en 4 de 5 semillas. El camino es el de la
+  [medición de la puerta](#medicion-puerta-madera): (al nacer − mínima) / al nacer; el control, la
+  llave roja, a la que la brújula no apunta con la etapa 1.
+
+**Cómo se corrió.**
+1. **El experimento C deslizando:** `python experimento.py --semillas 1 2 3 4 5 --generaciones 30
+   --modos autonomo --acercarse --curriculo --deslizar`, 10 corridas, 10 a la vez: 665 s la más lenta.
+   Carpeta `results/experimento_20261116-105457`.
+2. **La medición del C deslizando:** `mediciones/medir_puerta.py` con `acercarse deslizar`, semillas 1
+   a 5, con evolución y sin ella, 15 generaciones, 10 a la vez; el embudo con
+   `mediciones/analizar_puerta.py` (con las condiciones (1, 1, 1) y (1, 1, 0) sumadas a `CONDS`) y lo
+   nuevo con [`mediciones/analizar_brujula.py`](../../mediciones/analizar_brujula.py).
+3. **Lo mismo con el B deslizando** (`deslizar` solo, sin la recompensa), para tener el control del
+   criterio de la brújula y los términos del fitness, que se sumaron a la medición después del paso 2.
+
+Los `agentes_*.csv` de las dos mediciones quedaron en el scratchpad de la sesión, que no sobrevive: se
+regeneran con `medir_puerta.py` desde el commit de esta sesión (las corridas son las mismas: lo
+comprueba el control byte a byte contra las carpetas de `results/`). Las del C deslizando no traen los
+términos del fitness ni el giro, que se sumaron después.
+
+**Qué se sumó a la medición** (`medir_puerta.py`, sin consumir azar):
+- **La sensibilidad de la red a la brújula:** con la percepción que vio el agente en cada tick con la
+  llave, cuánto cambia el giro que haría `act()` si el sensor 9 marca el objetivo 90° a un lado o al
+  otro (+0,5 contra −0,5), en rad/tick. Positivo: gira hacia donde marca. Lo mismo con el sensor 3 (la
+  comida) como control positivo. Una red armada a mano que sigue la brújula da +0,143 (el máximo es
+  ~0,144), la que huye −0,143, y las dos dan 0 a la comida.
+- **El giro:** % de ticks girando, giro medio |rad/tick| y % de ticks avanzando.
+- **Los términos del fitness** por agente al final de la generación (supervivencia, comida, exploración,
+  anti-círculo, puzzle, acercarse y agua), con los pesos de `config.py`.
+
+**Controles.**
+- **La tabla de abajo, rehecha** (el script de la sesión anterior ya no existía): da las 4 filas
+  publicadas en [deslizar](#deslizar-al-chocar) (B y B deslizando) y, en el C, las aperturas y la
+  diferencia de fitness de su `resumen.md`.
+- **La línea base del C deslizando es la del B deslizando** salvo `fitness_*` y `acercarse`, en las 5
+  semillas y las 30 generaciones (`fitness_prom` más alto con la recompensa en las 150).
+- **La medición no cambió ninguna corrida:** los 20 `corrida_*.csv` (10 del C deslizando y 10 del B
+  deslizando) son byte a byte el encabezado y las 15 primeras filas de sus corridas en
+  `results/experimento_20261116-105457` y `results/experimento_20261116-101649`. Las 20 terminaron con
+  `MEDICION inconsistencias=0`, que cuenta, además de los golpes y el ranking: que el forward en lote
+  de la sensibilidad dé las salidas de `decide()`, que el giro calculado sea el que hizo `act()` y que
+  los términos sumen el fitness de cada agente.
+- **El embudo del B deslizando da el publicado** (76 y 17 aperturas en las gens 1-15 con evolución; 45
+  y 10 sin ella; 28 y 7, 18 y 5 en las 11-15) y el camino puerta / control también (0,186 / 0,197 y
+  0,085 / 0,097).
+
+### El experimento C deslizando
+
+**Ayudas prendidas:** recompensa por acercarse y currículo y deslizar al chocar.
+
+| Modo | Evolución | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| autonomo | Con evolución | 5 | 22.18 ± 0.88 | 41.76 ± 1.83 | 19.58 ± 1.93 | 0.41 ± 0.06 | 0.93 ± 0.12 | 0.51 ± 0.09 | 953 ± 50 | 4.44 ± 2.33 | 2.2 ± 0.4 | 0 de 5 |
+| autonomo | Sin evolución | 5 | 19.81 ± 0.90 | 20.47 ± 0.82 | 0.66 ± 0.92 | 0.34 ± 0.03 | 0.33 ± 0.06 | -0.02 ± 0.04 | 893 ± 8 | 1.24 ± 0.73 | 2.6 ± 0.5 | 0 de 5 |
+
+- **Autónomo, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5, más con la puerta de madera abierta en 2 de 5 y más llave roja por 1.000 px en 3 de 5.
+- **Criterio del ítem 5 (puerta de madera):** con evolución, al menos 1 agente por generación con la puerta de madera abierta en las últimas 5 y más que la línea base, en 0 de 5 semillas; secundario, más llave roja por 1.000 px que la línea base, en 3 de 5. Cada uno pide 4 de 5. **El autónomo aprende a pasar la puerta de madera: no.** Secundario: no.
+
+Por corrida, en el `resumen.md` de la carpeta. **Contra el B deslizando y el C sin deslizar**, la misma
+cuenta sobre los CSV de las cuatro carpetas (suma de las 5 semillas, y por semilla):
+
+| | Puerta abierta, gens 1-15 (llave dada) | Puerta abierta, gens 16-30 | Llave roja agarrada, gens 16-30 | Manzanas por agente, últimas 5 | Fitness, diferencia | Etapa máxima |
+|---|---|---|---|---|---|---|
+| B con evolución | 8 (1/3/2/1/1) | 1 (0/0/0/0/1) | 167 (20/32/46/30/39) | 0,77 | 13,15 | 2,2 |
+| B sin evolución | 9 (3/3/1/0/2) | 0 | 53 (6/8/10/12/17) | 0,20 | 0,11 | 2,0 |
+| B deslizando, con evolución | 17 (3/1/4/4/5) | 2 (0/0/1/0/1) | 270 (47/53/48/44/78) | 1,06 | 17,78 | 2,8 |
+| B deslizando, sin evolución | 10 (2/3/3/1/1) | 0 | 82 (11/10/22/14/25) | 0,33 | 0,02 | 2,6 |
+| C con evolución | 6 (1/0/2/1/2) | 0 | 188 (12/31/71/37/37) | 0,72 | 14,01 | 1,8 |
+| C sin evolución | 9 (3/3/1/0/2) | 0 | 53 (6/8/10/12/17) | 0,20 | 0,60 | 2,0 |
+| C deslizando, con evolución | 11 (4/3/2/1/1) | 3 (0/0/2/1/0) | 282 (33/83/47/47/72) | 0,93 | 19,58 | 2,2 |
+| C deslizando, sin evolución | 10 (2/3/3/1/1) | 0 | 82 (11/10/22/14/25) | 0,33 | 0,66 | 2,6 |
+
+| Criterio del ítem 5 / puerta abierta | B | B deslizando | C | C deslizando |
+|---|---|---|---|---|
+| Criterio del ítem 5 | 0 de 5 | 0 de 5 | 0 de 5 | 0 de 5 |
+| Con evolución abrió más que su línea base, gens 1-15 / 16-30 | 2 / 1 de 5 | 4 / 2 de 5 | 2 / 0 de 5 | 1 / 2 de 5 |
+| Puerta abierta en las gens 11-15, con / sin evolución | 4 / 4 | 7 / 5 | 4 / 4 | 3 / 5 |
+
+### La medición: la puerta y la brújula
+
+**El embudo** (agentes × generación con la llave; las filas del B deslizando son las de
+[deslizar](#deslizar-al-chocar), repetidas por esta medición):
+
+| | Agentes × gen. | < 100 px | < 50 px | < 25 px | Golpearon a < 25 px | ≥ 1 golpe que contó | Abrieron |
+|---|---|---|---|---|---|---|---|
+| B deslizando, con evolución, gens 1-15 | 4.500 | 408 (9,1%) | 137 (3,0%) | 76 (1,7%) | 32 | 29 | 17 |
+| C deslizando, con evolución, gens 1-15 | 4.500 | 392 (8,7%) | 130 (2,9%) | 53 (1,2%) | 26 | 26 | 11 |
+| C deslizando, sin evolución, gens 1-15 | 4.500 | 253 (5,6%) | 79 (1,8%) | 45 (1,0%) | 22 | 19 | 10 |
+| B deslizando, con evolución, gens 11-15 | 1.500 | 170 (11,3%) | 55 (3,7%) | 28 (1,9%) | 10 | 10 | 7 |
+| C deslizando, con evolución, gens 11-15 | 1.500 | 159 (10,6%) | 53 (3,5%) | 21 (1,4%) | 10 | 10 | 3 |
+| C deslizando, sin evolución, gens 11-15 | 1.500 | 96 (6,4%) | 32 (2,1%) | 18 (1,2%) | 11 | 10 | 5 |
+
+Los 11 que abrieron con evolución quedaron en el pool (lugar mediano 1) y dejaron 2,27
+hijos-equivalentes, contra 0,99 del promedio. Desde más de 400 px llegan a < 25 px 15 de 3.102 con
+evolución (abrieron 2) y 5 de 3.140 sin ella (1).
+
+**El criterio de la brújula** (generaciones 11 a 15, camino hacia la puerta − hacia el control, con
+evolución / sin ella; "sí" si con evolución es mayor):
+
+| Semilla | C deslizando | | B deslizando (control, sin recompensa) | |
+|---|---|---|---|---|
+| 1 | −0,038 / −0,012 | no | −0,025 / −0,012 | no |
+| 2 | +0,013 / +0,004 | sí | +0,002 / +0,004 | no |
+| 3 | −0,014 / −0,034 | sí | −0,019 / −0,034 | sí |
+| 4 | +0,012 / −0,004 | sí | +0,004 / −0,004 | sí |
+| 5 | −0,014 / −0,017 | sí | −0,015 / −0,017 | sí |
+| **Criterio** | **4 de 5** | | **3 de 5** | |
+| Grupo: puerta / control, con evolución | 0,172 / 0,180 | | 0,186 / 0,197 | |
+| Grupo: puerta / control, sin evolución | 0,085 / 0,097 | | 0,085 / 0,097 | |
+
+**La sensibilidad del giro** (rad/tick; un seguidor de brújula, 0,143), promedio por agente:
+
+| | Brújula, gens 1-5 | Brújula, gens 11-15 | Comida, gens 1-5 | Comida, gens 11-15 | Agentes con > 0,02 a la brújula, gens 11-15 |
+|---|---|---|---|---|---|
+| C deslizando, con evolución | +0,0018 | +0,0045 | +0,0013 | +0,0028 | 23% |
+| B deslizando, con evolución | +0,0004 | +0,0013 | +0,0015 | +0,0026 | 18% |
+| Sin evolución (la misma en los dos) | +0,0000 | +0,0014 | +0,0008 | +0,0010 | 20% |
+
+Con evolución, más que su línea base en las gens 11-15: a la brújula, 3 de 5 semillas en los dos; a la
+comida, 2 de 5 (C) y 4 de 5 (B). Por agente, la sensibilidad a la brújula va de −0,055 a +0,057 (p5 a
+p95; |promedio| 0,021), igual con evolución y sin ella, en las gens 1-5 y en las 11-15.
+
+**La selección** (dentro de cada generación, correlación de rangos con el fitness: mediana entre las
+75 generaciones, y % con r > 0):
+
+| | C deslizando, con evolución | C deslizando, sin evolución | B deslizando, con evolución |
+|---|---|---|---|
+| Sensibilidad a la brújula | +0,032 (63%) | −0,027 (43%) | −0,009 (49%) |
+| Sensibilidad a la comida | +0,041 (64%) | −0,009 (45%) | +0,032 (61%) |
+| Camino hacia la puerta | +0,566 (100%) | +0,621 (100%) | +0,517 (100%) |
+| Camino hacia el control | +0,567 (100%) | +0,586 (100%) | — |
+| Sensibilidad a la brújula → camino hacia la puerta / el control | +0,152 / +0,047 | +0,056 / +0,005 | — |
+
+Por quintil de sensibilidad a la brújula dentro de la generación (con evolución, gens 1 a 14), el
+aporte a la generación siguiente va de 0,90 a 1,11 en el C deslizando y de 0,89 a 1,07 en el B
+deslizando, sin orden (el quintil más alto, 0,97 y 0,91), y el % en el pool de 52% a 67%.
+
+**Qué mueve el fitness** (B deslizando, con evolución; por término: promedio, desvío dentro de la
+generación y correlación de rangos con el fitness, medianas):
+
+| Término | Gens 1-5 | Gens 11-15 | Sin evolución, gens 11-15 |
+|---|---|---|---|
+| Supervivencia | 8,7 · 1,2 · +0,39 | 9,1 · 1,2 · +0,29 | 8,9 · 1,4 · +0,36 |
+| Comida | 2,7 · 6,0 · +0,64 | 4,6 · 7,0 · +0,73 | 2,0 · 5,2 · +0,59 |
+| Exploración | 5,1 · 5,5 · +0,85 | 8,7 · 5,3 · +0,64 | 4,1 · 5,1 · +0,86 |
+| Anti-círculo | 5,9 · 6,6 · +0,83 | 9,2 · 6,4 · +0,57 | 5,0 · 6,6 · +0,84 |
+| Agua | −0,7 · 2,2 · −0,12 | −1,4 · 3,4 · +0,03 | −0,5 · 2,2 · −0,15 |
+
+El puzzle (abrir la puerta, 12) vale 0 en casi todos. En el C deslizando, el término de acercarse
+suma 0,69 en promedio con evolución (desvío dentro de la generación, 1,16; sin evolución, 0,40 y 0,94),
+en un fitness con un desvío de ~15. Los que llegan a < 50 px sin abrir tienen +13,4 de fitness sobre el
+resto de su generación en el C deslizando y +10,9 en el B (mediana entre generaciones; lugar mediano 14
+y 16 de 60).
+
+**El giro** (B deslizando): giran en el 48% de los ticks, 0,024 rad/tick en promedio, con evolución y
+sin ella (0,023), en las gens 1-5 y en las 11-15. Lo que la evolución cambia es avanzar: de 30% a 58% de
+los ticks (sin evolución, 24%). En las gens 11-15 con evolución, el que más gira tiene menos
+anti-círculo (−0,33) y apenas más fitness (+0,09).
+
+**Si el término de acercarse pesara más** (sobre los datos del C deslizando, con el mismo
+comportamiento: solo cambia el fitness; el término se reconstruye con su fórmula, con el camino y los
+golpes de la medición):
+
+| Peso de acercarse | 10 (hoy) | 20 | 40 | 60 | 100 |
+|---|---|---|---|---|---|
+| Sensibilidad a la brújula ↔ fitness | +0,032 | +0,040 | +0,047 | +0,060 | +0,075 |
+| Uso (puerta − control) ↔ fitness | −0,023 | −0,014 | +0,010 | +0,030 | +0,050 |
+
+**Lectura.**
+
+1. **La puerta: no.** Criterio del ítem 5, 0 de 5. Con la llave dada, la evolución la abre como el
+   azar (11 contra 10; en las gens 11-15, 3 contra 5). Sumarle la recompensa al B deslizando no ayudó:
+   abre 11 en lugar de 17, llegan menos a < 25 px (53 contra 76) y comen menos (0,93 contra 1,06
+   manzanas por agente). Con 5 semillas, que reste no está probado; que no suma, sí.
+2. **La brújula, por el criterio fijado: sí, en el mínimo, 4 de 5; pero no la aprenden.** Los márgenes
+   van de 0,003 a 0,020, y en el grupo es +0,004, cuando el camino hecho subió +0,087. Sin la
+   recompensa (B deslizando), la misma cuenta da 3 de 5: la recompensa cambió una semilla. Si la
+   evolución no usara la brújula para nada, 4 o más de 5 sale por azar 6 veces de 32 (19%). La medida
+   directa no lo acompaña: con evolución, la sensibilidad a la brújula es +0,0045 rad/tick en las gens
+   11-15, el 3% de un seguidor, más que la línea base en 3 de 5 semillas; y los agentes que giran hacia
+   ella con más de 0,02 siguen siendo 1 de cada 5, como en cerebros al azar.
+3. **No aprenden a girar hacia nada, tampoco hacia la comida.** La sensibilidad a la comida queda en
+   +0,003 con evolución, como la de la brújula. Lo que la evolución aprende es a avanzar más (de 30% a
+   58% de los ticks) y a caminar más y más derecho: comen más porque recorren más, no porque giren hacia
+   las manzanas. "Aprende a comer", en los experimentos, quiere decir que come más.
+4. **Hay variación para seleccionar, y sirve un poco, pero la selección no la ve.** En cada generación
+   hay agentes que giran hacia la brújula y agentes que giran al revés (±0,055), y los que giran hacia
+   ella se acercan más a la puerta (+0,15 con evolución; hacia el control, +0,05). Pero acercarse a la
+   puerta no paga más que acercarse a cualquier lado: el camino hacia la puerta y hacia el control se
+   correlacionan igual con el fitness (+0,57). La sensibilidad a la brújula y el fitness, +0,03 (C) y
+   −0,01 (B); por quintil, el mismo aporte y el mismo pool.
+5. **Por qué no paga: el fitness premia caminar y comer, y la brújula pesa 0,7.** El desvío del
+   fitness dentro de la generación (~15) lo hacen la comida (7), el anti-círculo (6) y la exploración
+   (5), y los dos últimos pagan caminar hacia cualquier lado. El término de acercarse da como mucho 5
+   por recorrer todo el camino a la puerta y en promedio 0,7. Aun con peso 100 en lugar de 10, con el
+   comportamiento de hoy, la sensibilidad a la brújula se correlacionaría +0,075 con el fitness: la
+   brújula mueve poco dónde termina cada agente, que depende sobre todo de dónde nace y cuánto camina.
+6. **Girar ya tiene un costo:** giran casi la mitad de los ticks, con un sesgo propio (0,024 rad/tick)
+   del tamaño de lo que la brújula cambia el giro (±0,02). Girar más baja el anti-círculo, que premia
+   la rectitud: el término juega en contra de doblar hacia cualquier objetivo.
+
+**Qué sugiere** (para decidir; esta sesión no tocó código de la simulación):
+- **Más presión selectiva, sola, no:** el gradiente de la brújula sobre el fitness es ~0; más presión
+  empujaría más fuerte lo que hoy se selecciona, caminar y comer.
+- **Un sensor de obstáculos, tampoco por ahora:** el cuello no es esquivar (deslizando, un seguidor
+  llega en el 50%), es que nadie gira hacia la brújula.
+- **Dos causas posibles, que estos datos no separan:** que el fitness no lo pida (lo de arriba) o que el
+  aprendiz no lo encuentre (en un cerebro al azar la brújula es 1 de 11 entradas con la misma escala
+  de pesos; su efecto en el giro es del tamaño del sesgo; la mutación mueve 0,1 por peso; son 15 a 30
+  generaciones). El paso siguiente que propongo es un **laboratorio de la brújula** que las separe: el C
+  deslizando con solo acercarse pagando (comida, exploración, anti-círculo y supervivencia en 0), desde
+  un script de `mediciones/` que fija esos pesos antes de llamar a `main.main()`, sin tocar `src/`. Si
+  ahí la sensibilidad sube clara sobre la línea base, el aprendiz puede y lo que falta es rebalancear el
+  fitness (medido); si ni así sube, lo que falta está en el aprendiz (la mutación, la población, las
+  generaciones o cómo entra la brújula a la red). Con un criterio con tamaño mínimo, no solo K de N
+  ([LEC-018](../operations/LECCIONES_APRENDIDAS.md)).

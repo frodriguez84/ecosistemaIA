@@ -1,7 +1,7 @@
 """Embudo de la puerta de madera a partir de los agentes_*.csv y geometria_*.csv de medir_puerta.py.
 
 Toma las condiciones que encuentre en la carpeta: B con y sin evolución, C (con `acercarse`) con
-evolución, y B deslizando (con `deslizar`) con y sin evolución. Uso: python mediciones/analizar_puerta.py SALIDA
+evolución, y B y C deslizando (con `deslizar`) con y sin evolución. Uso: python mediciones/analizar_puerta.py SALIDA
 """
 import csv
 import glob
@@ -39,7 +39,8 @@ def clave(f):
 # (acercarse, deslizar, evolucion): solo las que están en la carpeta
 CONDS = [((0, 0, 1), "B con evolución"), ((0, 0, 0), "B sin evolución"),
          ((1, 0, 1), "C con evolución (acercarse)"),
-         ((0, 1, 1), "B deslizando, con evolución"), ((0, 1, 0), "B deslizando, sin evolución")]
+         ((0, 1, 1), "B deslizando, con evolución"), ((0, 1, 0), "B deslizando, sin evolución"),
+         ((1, 1, 1), "C deslizando, con evolución"), ((1, 1, 0), "C deslizando, sin evolución")]
 CONDS = [(c, nombre) for c, nombre in CONDS if any(clave(f) == c for f in filas)]
 COLUMNAS = " / ".join(nombre for _, nombre in CONDS)
 

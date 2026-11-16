@@ -131,6 +131,8 @@ EcosistemaEvolutivo/
   [docs/operations/LECCIONES_APRENDIDAS.md](docs/operations/LECCIONES_APRENDIDAS.md)).
 - **Una tabla que compara experimentos se llena con la misma cuenta en cada fila,** sobre los CSV,
   también donde el razonamiento dice que da 0 (LEC-016).
+- **Un criterio fijado antes de medir lleva un tamaño mínimo, no solo "K de N semillas",** y se lee con
+  un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018).
 
 <!-- TODO: ajustar a medida que se fijen (p. ej. type hints, estructura de tests). -->
 

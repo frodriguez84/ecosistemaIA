@@ -5,6 +5,21 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-018 — 2026-11-16 — Un criterio "más que la línea base en K de N" pasa con márgenes de ruido
+
+**Qué pasó.** En la [medición de la brújula](../qa/AnalisisQA.md#brujula-c-deslizando), el criterio
+"usa la brújula", fijado antes de medir, era: (camino hacia la puerta − hacia un punto de control) con
+evolución, mayor que en la línea base, en 4 de 5 semillas. Dio 4 de 5, con márgenes de 0,003 a 0,020
+cuando el camino había subido 0,087. La misma cuenta sin la recompensa dio 3 de 5, y la medida directa
+(cuánto gira la red hacia donde marca la brújula) quedó en el 3% de un seguidor, como sin evolución.
+Sin efecto ninguno, 4 o más de 5 sale por azar el 19% de las veces. Se vio porque la sesión había sumado
+una medida independiente y un control antes de leer el resultado.
+
+**Regla.** Un criterio fijado antes de medir lleva, además del K de N, un tamaño mínimo del efecto, y
+se lee junto con una condición de control o una medida independiente. Si pasa en el mínimo y lo demás no
+lo acompaña, se informa que pasó y por qué no se lee como aprendizaje. Aplicada en
+[`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código.
+
 ## LEC-017 — 2026-11-16 — Una tanda en segundo plano termina con 0 aunque se caiga una corrida
 
 **Qué pasó.** En la [medición de dónde se traba la puerta de madera](../qa/AnalisisQA.md#medicion-puerta-madera),
