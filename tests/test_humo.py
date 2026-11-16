@@ -5,7 +5,7 @@ Cuida lo que el spec MEDIR_ANTES_DE_TOCAR necesita que siga andando: que la corr
 termine, que deje el CSV con las columnas acordadas y que la misma semilla dé el mismo archivo. En
 los dos modos (spec MODO_GUIADO_Y_AUTONOMO, decisión 31), y en el autónomo con la recompensa por
 acercarse y con el currículo (spec PUZZLE_APRENDIBLE, decisión 16). Las doce corridas se lanzan
-juntas, así el test tarda lo que tarda una.
+de a seis, así el test tarda lo que tardan dos.
 """
 
 import csv
@@ -20,6 +20,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 SEMILLA = 7
 GENERACIONES = 2
 TIMEOUT_S = 180
+# Corridas a la vez: con las doce juntas, a veces una se caía al arrancar, sin memoria virtual
+# para cargar scipy ("El archivo de paginación es demasiado pequeño"; LEC-017)
+SIMULTANEAS = 6
 
 # Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO, y acercarse y
 # etapa_inicial, de PUZZLE_APRENDIBLE), escrita acá a propósito (no importada de main.py): si cambia,
@@ -52,30 +55,32 @@ POBLACION = 60  # POPULATION_SIZE de config.py: en el currículo, todos nacen co
 
 @pytest.fixture(scope="module")
 def corridas(tmp_path_factory):
-    """Lanza las doce corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
+    """Lanza las corridas de a SIMULTANEAS; da, por nombre, su código de salida, CSV y log."""
     carpeta = tmp_path_factory.mktemp("humo")
-    lanzadas = {}
-    for nombre, extra in CORRIDAS.items():
-        ruta_csv = carpeta / f"{nombre}.csv"
-        ruta_log = carpeta / f"{nombre}.log"
-        comando = [sys.executable, "main.py", "--sin-ventana",
-                   "--generaciones", str(GENERACIONES), "--semilla", str(SEMILLA),
-                   "--csv", str(ruta_csv), *extra]
-        # La salida va a un archivo: así también se prueba que main.py no se cae con la salida
-        # redirigida (DIAG-25)
-        log = open(ruta_log, "wb")
-        proceso = subprocess.Popen(comando, cwd=RAIZ, stdout=log, stderr=subprocess.STDOUT)
-        lanzadas[nombre] = (proceso, log, ruta_csv, ruta_log)
-
+    todas = list(CORRIDAS.items())
     resultados = {}
-    for nombre, (proceso, log, ruta_csv, ruta_log) in lanzadas.items():
-        try:
-            codigo = proceso.wait(timeout=TIMEOUT_S)
-        except subprocess.TimeoutExpired:
-            proceso.kill()
-            codigo = f"timeout de {TIMEOUT_S} s"
-        log.close()
-        resultados[nombre] = {"codigo": codigo, "csv": ruta_csv, "log": ruta_log}
+    for inicio in range(0, len(todas), SIMULTANEAS):
+        lanzadas = {}
+        for nombre, extra in todas[inicio:inicio + SIMULTANEAS]:
+            ruta_csv = carpeta / f"{nombre}.csv"
+            ruta_log = carpeta / f"{nombre}.log"
+            comando = [sys.executable, "main.py", "--sin-ventana",
+                       "--generaciones", str(GENERACIONES), "--semilla", str(SEMILLA),
+                       "--csv", str(ruta_csv), *extra]
+            # La salida va a un archivo: así también se prueba que main.py no se cae con la salida
+            # redirigida (DIAG-25)
+            log = open(ruta_log, "wb")
+            proceso = subprocess.Popen(comando, cwd=RAIZ, stdout=log, stderr=subprocess.STDOUT)
+            lanzadas[nombre] = (proceso, log, ruta_csv, ruta_log)
+
+        for nombre, (proceso, log, ruta_csv, ruta_log) in lanzadas.items():
+            try:
+                codigo = proceso.wait(timeout=TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                proceso.kill()
+                codigo = f"timeout de {TIMEOUT_S} s"
+            log.close()
+            resultados[nombre] = {"codigo": codigo, "csv": ruta_csv, "log": ruta_log}
     return resultados
 
 

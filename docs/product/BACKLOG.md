@@ -38,6 +38,7 @@ _(ninguna)_
 
 ## Hecho
 
+- [x] 2026-11-16 — El humo lanza sus 12 corridas de a 6, pedido por Fer: las 12 juntas, a veces una se quedaba sin memoria virtual al arrancar (siete veces en dos días). Mismos CSV byte a byte ([mejoras futuras](mejoras_futuras.md#aparecido-al-ejecutar-el-spec-que-el-puzzle-se-pueda-aprender--2026-11-15)).
 - [x] 2026-11-16 — `FORTALEZAS_MOVILES` queda apagado por defecto, decidido por Fer: las corridas de referencia siguen siendo las de antes, y las fortalezas móviles se prenden con `--fortalezas-moviles` en las mediciones que siguen. Si una pasa el criterio de la brújula, se revisa junto con deslizar y los pesos ([medición](../qa/AnalisisQA.md#fortalezas-moviles)).
 - [x] 2026-11-16 — `DESLIZAR` queda apagado por defecto, decidido por Fer: las corridas de referencia siguen siendo las de antes, y deslizar se prende con `--deslizar` ([mejoras futuras](mejoras_futuras.md#aparecido-al-medir-deslizar--2026-11-16)).
 - [x] 2026-11-14 — `LICENSE`: MIT, decidido por Fer (DIAG-22). El `.env.example` vacío pasa a la limpieza (ítem 2): no hay variables de entorno.
