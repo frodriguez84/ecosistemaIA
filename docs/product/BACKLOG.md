@@ -33,10 +33,11 @@ verifica comparando corridas con la misma semilla. Todo sale del
 
 ## Decisiones pendientes de Fer
 
-- [ ] **¿`FORTALEZAS_MOVILES` prendido por defecto?** (2026-11-16) A favor: es lo que pide el ítem 7 ("aprender reglas, no un mapa"), saca la ruta y da lo mejor medido en el juego. En contra: cambia todas las corridas y deja atrás las de referencia, como deslizar ([medición](../qa/AnalisisQA.md#fortalezas-moviles)).
+_(ninguna)_
 
 ## Hecho
 
+- [x] 2026-11-16 — `FORTALEZAS_MOVILES` queda apagado por defecto, decidido por Fer: las corridas de referencia siguen siendo las de antes, y las fortalezas móviles se prenden con `--fortalezas-moviles` en las mediciones que siguen. Si una pasa el criterio de la brújula, se revisa junto con deslizar y los pesos ([medición](../qa/AnalisisQA.md#fortalezas-moviles)).
 - [x] 2026-11-16 — `DESLIZAR` queda apagado por defecto, decidido por Fer: las corridas de referencia siguen siendo las de antes, y deslizar se prende con `--deslizar` ([mejoras futuras](mejoras_futuras.md#aparecido-al-medir-deslizar--2026-11-16)).
 - [x] 2026-11-14 — `LICENSE`: MIT, decidido por Fer (DIAG-22). El `.env.example` vacío pasa a la limpieza (ítem 2): no hay variables de entorno.
 - [x] 2026-11-14 — Metodología sembrada (`/bootstrap-project`, plantilla + bitácora en specs) y diagnóstico inicial registrado en [AnalisisQA](../qa/AnalisisQA.md#diagnostico-inicial).

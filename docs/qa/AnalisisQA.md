@@ -2577,7 +2577,8 @@ evolución, a 375 px de mediana, llegan 48 (con la puerta fija, 44).
 **Qué sugiere** (para decidir):
 - **El switch queda apagado por defecto hasta que lo decida Fer.** Prenderlo cambia todas las corridas y deja atrás las
   de referencia, como deslizar. A favor: es lo que pide el ítem 7 del BACKLOG ("aprender reglas, no un mapa"), saca la
-  ruta, y con los pesos de acercarse 40 sin caminar da lo mejor medido en el juego.
+  ruta, y con los pesos de acercarse 40 sin caminar da lo mejor medido en el juego. **Decidido por Fer el 2026-11-16:
+  queda apagado**, y se prende con `--fortalezas-moviles` en las mediciones que siguen.
 - **Lo siguiente para la brújula, con las móviles:** acercarse más pesado que la comida (80, sin lo que paga caminar; ya
   en [mejoras futuras](../product/mejoras_futuras.md#aparecido-en-el-laboratorio-de-la-brújula--2026-11-16)), contra
   esta tanda: sin la ruta, lo que suba acercarse solo se cobra con la brújula. 5 corridas, unos 15 min.
