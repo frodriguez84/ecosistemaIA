@@ -21,7 +21,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Que el puzzle se pueda aprender](active/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch, medidos en el autónomo contra la línea base | Antes de tocar el fitness, `config.py`, `main.py` o `experimento.py`. En ejecución desde el 2026-11-15: bloque A (la recompensa), después el B (el currículo); el estado, en su Bitácora de ejecución |
+| _(vacío)_ | |
 
 ## 🔵 Planned (`planned/`)
 
@@ -33,6 +33,7 @@ Paths viejos tras un `git mv` llevan un stub con redirect.
 
 | Spec | Resumen en SPECS_ARCHIVO |
 |------|---------------------------|
+| [Que el puzzle se pueda aprender](done/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch; en el autónomo, ninguno hace que aprenda la puerta de madera | [§ Que el puzzle se pueda aprender](../archive/SPECS_ARCHIVO.md#puzzle-aprendible) |
 | [Pantallas para ver aprender](done/PANTALLAS_VER_APRENDER.md) — sin el popup de cada generación: gráfico en vivo en el panel, avisos que no tapan y una pantalla final como boletín, sin cambiar la simulación | [§ Pantallas para ver aprender](../archive/SPECS_ARCHIVO.md#pantallas-ver-aprender) |
 | [Modo guiado y modo autónomo](done/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | [§ Modo guiado y modo autónomo](../archive/SPECS_ARCHIVO.md#modo-guiado-y-autonomo) |
 | [Limpieza sin cambiar comportamiento](done/LIMPIEZA_SIN_CAMBIAR_COMPORTAMIENTO.md) — código muerto, dependencias, `.pyc`, duplicación y reportes, con el mismo CSV byte a byte | [§ Limpieza sin cambiar comportamiento](../archive/SPECS_ARCHIVO.md#limpieza-sin-cambiar-comportamiento) |

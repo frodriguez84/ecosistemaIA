@@ -5,6 +5,37 @@ diseño queda en el spec, en [`../specs/done/`](../specs/done/). El más nuevo a
 
 ---
 
+## Que el puzzle se pueda aprender {#puzzle-aprendible}
+
+**Spec:** [PUZZLE_APRENDIBLE](../specs/done/PUZZLE_APRENDIBLE.md) · cerrado el 2026-11-15, en cuatro
+sesiones (autoría con una medición previa, los bloques A y B, y el cierre).
+
+**Qué hace:** dos ayudas para aprender el puzzle, cada una con su switch en `config.py`, apagadas por
+defecto y comunes a los dos modos. La **recompensa por acercarse** (`RECOMPENSA_ACERCARSE`,
+`--acercarse`) suma `FITNESS_ACERCARSE` (10) × (pasos que dio + avance en el paso actual). El avance es
+lo más cerca que llegó del objetivo de la brújula desde donde empezó el paso; en las puertas suma
+además los golpes que contaron. El **currículo** (`CURRICULO`, `--curriculo`) hace que las generaciones
+1 a `CURRICULO_HASTA_GENERACION` (15) nazcan con la llave roja, sin su premio. Lo que se da al nacer no
+cuenta como logro. Apagadas, la corrida es la de antes.
+
+**Alcance:** el bloque A, la recompensa (`_medir_acercamiento` y `_avance_en_el_paso` en el agente, la
+columna `acercarse`, la ruta con `_acercarse`); el bloque B, el currículo (`etapa_inicial`,
+`_fijar_etapa_inicial` en `main.py`, los hitos que cuentan solo los pasos dados, la columna
+`etapa_inicial`, la ruta con `_curriculo` y el renglón "Ayudas" del panel); `experimento.py`, con los
+dos flags, la puerta de madera, la llave roja por 1.000 px y la línea del criterio. Tests:
+`test_acercarse.py` (10) y `test_curriculo.py` (12), nuevos; 155 en ~35 s. No cambia el genético, los
+sensores, la red, el mapa, los premios ni la energía.
+
+**Resultado:** no. Ninguna ayuda, ni las dos juntas, hace que el autónomo aprenda a pasar la puerta de
+madera: 0 de 5 semillas en los tres experimentos. Con la llave dada, la evolución abre la puerta lo
+mismo que cerebros al azar. Sigue aprendiendo a comer y a caminar (5 de 5). Detalle en
+[AnalisisQA § La respuesta al ítem 5](../qa/AnalisisQA.md#puzzle-respuesta-item-5).
+
+**QA:** [AnalisisQA § QA /qa-spec — Que el puzzle se pueda aprender](../qa/AnalisisQA.md#qa-puzzle-aprendible),
+APROBADO 18/18 (la primera pasada dio PARCIAL por la tabla del ítem 5; se corrigió en la sesión).
+
+---
+
 ## Pantallas para ver aprender {#pantallas-ver-aprender}
 
 **Spec:** [PANTALLAS_VER_APRENDER](../specs/done/PANTALLAS_VER_APRENDER.md) · cerrado el 2026-11-15: autoría

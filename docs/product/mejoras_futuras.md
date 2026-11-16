@@ -46,7 +46,7 @@ Decidido con Fer al escribir el [spec](../specs/active/MODO_GUIADO_Y_AUTONOMO.md
 
 ## Fuera de alcance del spec Que el puzzle se pueda aprender — 2026-11-15
 
-Aparecido al escribir el [spec](../specs/active/PUZZLE_APRENDIBLE.md) con Fer, con la medición de su § Problema.
+Aparecido al escribir el [spec](../specs/done/PUZZLE_APRENDIBLE.md) con Fer, con la medición de su § Problema.
 
 - [ ] **Más presión selectiva en el genético:** el meeting pool elige al azar dentro del 60% de arriba, más una élite, así que un término del fitness solo pesa si cambia quién queda adentro de ese 60%. Cambiarlo cambia todo lo aprendido hasta ahora: va con una medición propia.
 - [ ] **Una medida de "usa la brújula":** el coseno entre el rumbo y la brújula da negativo también con cerebros al azar (−0,09 a −0,19), probablemente porque el que camina derecho pasa cerca y se aleja. Una alternativa: si gira hacia el lado que marca la brújula más seguido que al azar.

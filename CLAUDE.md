@@ -103,7 +103,7 @@ EcosistemaEvolutivo/
   las generaciones 1 a `CURRICULO_HASTA_GENERACION` = 15 nacen con la llave roja, sin su premio).
   Apagadas, la corrida es la de antes. Lo dado al nacer no es un logro: hitos, primera vez del boletín
   y pasos de la recompensa cuentan solo los pasos dados (`etapa_inicial` del agente y del CSV). Spec
-  [Que el puzzle se pueda aprender](docs/specs/active/PUZZLE_APRENDIBLE.md).
+  [Que el puzzle se pueda aprender](docs/specs/done/PUZZLE_APRENDIBLE.md).
 - **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso del
   agente.
 
@@ -123,6 +123,8 @@ EcosistemaEvolutivo/
 - **Una mejora del aprendizaje se demuestra contra la línea base sin evolución,** con la misma
   semilla y con varias semillas. Si la línea base mejora igual, no es aprendizaje (LEC-001 en
   [docs/operations/LECCIONES_APRENDIDAS.md](docs/operations/LECCIONES_APRENDIDAS.md)).
+- **Una tabla que compara experimentos se llena con la misma cuenta en cada fila,** sobre los CSV,
+  también donde el razonamiento dice que da 0 (LEC-016).
 
 <!-- TODO: ajustar a medida que se fijen (p. ej. type hints, estructura de tests). -->
 

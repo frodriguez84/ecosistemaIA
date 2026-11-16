@@ -5,9 +5,23 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-016 — 2026-11-15 — Una celda que obviamente vale 0 se cuenta igual
+
+**Qué pasó.** En el bloque B de [Que el puzzle se pueda aprender](../specs/done/PUZZLE_APRENDIBLE.md),
+la tabla de la respuesta al ítem 5 compara las puertas abiertas en las generaciones 1 a 15 de los
+cuatro experimentos. Las del B y el C se contaron en los CSV; las del experimento sin ayuda y del de la
+recompensa se llenaron con "0 / 0 (sin llave)" por razonamiento: sin el currículo, nadie nace con la
+llave. Pero en la semilla 5 un agente abrió la puerta en la generación 1, la misma con evolución y sin
+ella, y el texto del experimento A, en el mismo archivo, ya lo contaba. Lo encontró el checker
+independiente del QA de cierre, que recalculó cada celda desde los CSV.
+
+**Regla.** En una tabla que compara experimentos, cada celda de una columna sale de la misma cuenta
+sobre los datos, también las filas donde el razonamiento dice que da 0. Aplicada en `CLAUDE.md`
+(§ Convenciones de código) y en la tabla corregida (PUZZLE-QA-16).
+
 ## LEC-015 — 2026-11-15 — Separar dos cosas que eran una deja textos que todavía las juntan
 
-**Qué pasó.** En el bloque B de [Que el puzzle se pueda aprender](../specs/active/PUZZLE_APRENDIBLE.md),
+**Qué pasó.** En el bloque B de [Que el puzzle se pueda aprender](../specs/done/PUZZLE_APRENDIBLE.md),
 con el currículo los agentes nacen con la llave roja, y "llegar a un paso" dejó de ser lo mismo que
 "darlo". La primera vez de cada paso en el boletín pasó a contar solo los pasos dados, y los tests
 (filas armadas a mano, con generaciones del currículo y después sin él) daban bien. Mirando la

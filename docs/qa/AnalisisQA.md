@@ -849,7 +849,7 @@ era un texto que el spec no fijaba o un desvío anotado (ver las observaciones).
 
 ## Que el puzzle se pueda aprender — experimento A, la recompensa por acercarse (2026-11-15, PUZZLE-12)
 
-**Qué cambió** (bloque A del [spec](../specs/active/PUZZLE_APRENDIBLE.md)): con `--acercarse`, el
+**Qué cambió** (bloque A del [spec](../specs/done/PUZZLE_APRENDIBLE.md)): con `--acercarse`, el
 fitness suma `FITNESS_ACERCARSE` (10) × (pasos que dio + avance en el paso actual). El avance va de 0 a
 1: lo más cerca que llegó al objetivo de la brújula desde que empezó el paso, y en las puertas, mitad
 eso y mitad los golpes que contaron. Vale para los dos modos; el experimento es del autónomo.
@@ -932,7 +932,7 @@ juntas).
 
 ## Que el puzzle se pueda aprender — experimento B, el currículo (2026-11-15, PUZZLE-16)
 
-**Qué cambió** (bloque B del [spec](../specs/active/PUZZLE_APRENDIBLE.md)): con `--curriculo`, las
+**Qué cambió** (bloque B del [spec](../specs/done/PUZZLE_APRENDIBLE.md)): con `--curriculo`, las
 generaciones 1 a 15 (`CURRICULO_HASTA_GENERACION`) nacen con la llave roja, élites incluidas y sin su
 premio; desde la 16, sin ella. El mapa no cambia: la brújula apunta a la puerta de madera, que es pared
 para cada agente hasta que la abre. Sin la recompensa por acercarse. En las generaciones 1 a 15,
@@ -1070,8 +1070,8 @@ generaciones, salvo la última columna.
 
 | | Puerta de madera | Criterio (4 de 5) | Llave roja | Llave roja por 1.000 px | Manzanas por agente | Puertas abiertas en las gens 1-15, con / sin evolución |
 |---|---|---|---|---|---|---|
-| Cierre, sin ayuda | 0 | 0 de 5 | 3,16 | 2,87 | 0,83 | 0 / 0 (sin llave) |
-| A, acercarse | 0,04 | 0 de 5 | 3,52 | 2,90 | 0,88 | 0 / 0 (sin llave) |
+| Cierre, sin ayuda | 0 | 0 de 5 | 3,16 | 2,87 | 0,83 | 1 / 1 (sin llave; la generación 1 de la semilla 5, la misma en los dos) |
+| A, acercarse | 0,04 | 0 de 5 | 3,52 | 2,90 | 0,88 | 1 / 1 (sin llave; la misma generación 1 de la semilla 5) |
 | B, currículo | 0 | 0 de 5 | 2,88 | 2,46 | 0,77 | 8 / 9 |
 | C, las dos | 0 | 0 de 5 | 3,52 | 2,95 | 0,72 | 6 / 9 |
 
@@ -1091,3 +1091,59 @@ generaciones, salvo la última columna.
 currículo de nacer con la llave hacen que el autónomo aprenda la puerta de madera; con la llave dada,
 la evolución la abre tanto como el azar. Lo que sigue es una decisión de Fer (en
 [mejoras futuras](../product/mejoras_futuras.md), la medición que diría dónde se traba).
+
+---
+
+<a id="qa-puzzle-aprendible"></a>
+## QA /qa-spec — Que el puzzle se pueda aprender (2026-11-15)
+**Veredicto:** APROBADO (la primera pasada dio PARCIAL en PUZZLE-16 por dos celdas de la tabla de la
+respuesta al ítem 5; se corrigieron en la sesión y se re-verificaron)
+**Verificación técnica:** sintaxis ✅ (`compileall` de `main.py`, `config.py`, `src`, `experimento.py`
+y `tests`) · tests 155/155 en 35,2 s · build N/A (Python, sin build)
+**Método:** cuatro checkers independientes (Explore/haiku, solo lectura) contra las decisiones, el DoD
+y el QA manual de `docs/specs/active/PUZZLE_APRENDIBLE.md`, sin leer su bitácora (salvo el de los
+experimentos, solo la frase de la parada de la decisión 14): la recompensa (PUZZLE-01 a 06 y 10), el
+currículo (01, 10, 13 a 15), el resumen y los experimentos (11, 12 y 16) y los docs (18). Los checkers
+no ejecutaban nada: lo que pide corridas se volvió a correr en la sesión desde `a5759fd` (el árbol
+tenía solo el cambio local de Fer en `config.py`, dos comentarios): las 12 corridas de PUZZLE-07 y 08,
+las 9 de PUZZLE-09 (3 con ventana, con ESC inyectado y capturas, LEC-004) y el control de los tests
+nuevos en dos worktrees. Cada `archivo:línea` de la tabla se imprimió antes de copiarlo (LEC-006). Los
+checkers dieron PARCIAL en tres criterios: el de la recompensa, por el tope de los golpes de la
+decisión 6 (se cumple por construcción, ver PUZZLE-QA-04); el del currículo, porque no leyó la brújula
+ni la pared (evidencia de código en PUZZLE-QA-13); y el de los experimentos, por la tabla de la
+respuesta al ítem 5 (PUZZLE-QA-16, corregida). Los IDs `PUZZLE-NN` son los del QA manual del spec.
+
+| ID | Criterio | Resultado | Evidencia / Gap |
+|----|----------|-----------|-----------------|
+| PUZZLE-QA-01 | Switches en `config.py` | ✅ | `config.py:112-113` (`RECOMPENSA_ACERCARSE = False`, `FITNESS_ACERCARSE = 10.0`) y `:116-117` (`CURRICULO = False`, `CURRICULO_HASTA_GENERACION = 15`). `--acercarse` y `--curriculo` en `main.py:145-151` y en `experimento.py:337-342`, con la ayuda en español; `experimento.py:369-372` los pasa a cada corrida. `test_acercarse.py:176` y `:187`, `test_curriculo.py:72` (PUZZLE-01) |
+| PUZZLE-QA-02 | Avance en una llave | ✅ | `_medir_acercamiento` (`advanced_agent.py:214-225`): d0 en el primer tick de la etapa y dmín con `min`, en línea recta (`math.hypot`) al objetivo de `_proximo_paso` (`:200-212`), sin el tope de `VISION_RANGE`. `_avance_en_el_paso` (`:227-239`): `(d0 − dmin) / d0`, 1 si d0 es 0. `test_acercarse.py:100`: de 200 a 50 px, 0,75 × `FITNESS_ACERCARSE` (PUZZLE-02) |
+| PUZZLE-QA-03 | Avance en una puerta | ✅ | `advanced_agent.py:235-238`: `(camino + golpes / necesarios) / 2`, con `DOOR_HITS_TO_OPEN` o `DOOR_IRON_HITS_TO_OPEN`. Los golpes son los de `golpes_puerta`, que `obstacles.py:262-266` suma solo fuera del cooldown del agente y `world.py:930-934` solo con la llave y a menos de 25 px. `test_acercarse.py:129` (PUZZLE-03) |
+| PUZZLE-QA-04 | Sin trampa | ✅ | dmín solo baja (`advanced_agent.py:225`): quedarse cerca no suma y alejarse no resta. El tope de los golpes en los necesarios menos uno (decisión 6) sale por construcción: el golpe que los completa devuelve `True` (`obstacles.py:272-274`) y `world.py:934-935` pasa al agente a la etapa 2 en la misma llamada. Dar el paso: `pasos_que_dio` sube 1 y el avance del paso nuevo arranca en 0 (`advanced_agent.py:231-232`). `test_acercarse.py:107` y `:145` (PUZZLE-04) |
+| PUZZLE-QA-05 | Sin azar | ✅ | La medición usa `math.hypot`, sin `random` (`advanced_agent.py:214-225`), y corre una vez por tick, después de moverse (`:547-549`). `test_acercarse.py:239`: el estado de `random` y de `np.random`, igual después de `decide()` + `act()` en el autónomo con el switch (PUZZLE-05) |
+| PUZZLE-QA-06 | Común a los modos | ✅ | Ni el término (`advanced_agent.py:786-790`) ni la medición (`:547-549`) miran `MODO`. `test_acercarse.py:260`: la misma trayectoria da el mismo término en guiado y autónomo (PUZZLE-06) |
+| PUZZLE-QA-07 | Apagado = hoy | ✅ | En esta sesión, autónomo y guiado, semillas 1 y 2, con evolución y sin ella, 10 generaciones: las 8, sin `acercarse` ni `etapa_inicial` (que valen 0), son las 10 primeras filas del cierre (`results/experimento_20261115-112804`). Además, autónomo con `--acercarse`, semillas 1 y 2, con evolución y sin ella: las 10 primeras del experimento A, sin `etapa_inicial` (PUZZLE-07) |
+| PUZZLE-QA-08 | Línea base intacta | ✅ | En esta sesión, autónomo sin evolución con `--acercarse`, semillas 1 y 2: igual al cierre salvo `fitness_*`, `acercarse` y `etapa_inicial`; `fitness_*` cambia y `fitness_prom` es más alto en las 10 generaciones, así que la comparación ve diferencias. Con el currículo, desde los CSV: la línea base del C es la del B salvo `fitness_*` y `acercarse`, en las 5 semillas y las 30 generaciones. `test_humo.py:135` (PUZZLE-08) |
+| PUZZLE-QA-09 | Reproducible | ✅ | En esta sesión, semilla 7, 2 generaciones, autónomo, con cada switch: dos corridas sin ventana y una con ventana (un solo ESC, inyectado después de capturar la pantalla final) dan el mismo CSV. Con `--curriculo`, `54ab394b…`, y con los dos, `b2b65538…`: los SHA-256 de la bitácora. Con `--acercarse`, `5a6d88a1…` (el de la sesión 1 era de antes de la columna `etapa_inicial`). `test_humo.py:106` (PUZZLE-09) |
+| PUZZLE-QA-10 | CSV y ruta | ✅ | `COLUMNAS_CSV` con `acercarse` después de `modo` y `etapa_inicial` después de `generacion` (`main.py:114`), y `_fila_csv` las llena en ese orden (`:180-183`); `_ruta_csv_por_defecto` con `_acercarse` y `_curriculo` (`:201-207`). `test_acercarse.py:199`, `test_curriculo.py:260` y `:277` (PUZZLE-10) |
+| PUZZLE-QA-11 | Resumen | ✅ | `experimento.py:98-103` (puerta de madera y llave roja por 1.000 px de las últimas 5), `:241-245` (K de N y la línea del criterio, `_linea_del_criterio` en `:216-228`), `:259-263` (las ayudas) y `:306-312` (la marca del currículo). El checker recalculó desde los CSV la puerta, la llave roja y la llave roja por 1.000 px de las 30 corridas de A, B y C y de las 10 del autónomo del cierre: coinciden con cada `resumen.md` a dos decimales (semilla 1 del A: 0,20 y 0,00; 3,18 y 2,82). `test_resumen.py:85`, `:273`, `:303`, `:310` y `:330` (PUZZLE-11) |
+| PUZZLE-QA-12 | Experimento A | ✅ | [Registrado](#experimento-puzzle-a), con su lectura contra el cierre y el criterio aplicado: 0 de 5, secundario 2 de 5, como su `resumen.md`. La parada de la decisión 14, evaluada en la bitácora (sesión 1); el checker recalculó las manzanas por agente con evolución de las últimas 5 desde los CSV: de 0,68 a 1,07, ninguna debajo de 0,42 (PUZZLE-12) |
+| PUZZLE-QA-13 | Nacen con la llave | ✅ | `_fijar_etapa_inicial` (`main.py:100-107`): etapa 1 hasta `CURRICULO_HASTA_GENERACION` para toda la población, sin azar ni premio; después de `_ubicar_agentes`, al arrancar (`:379-380`) y al final de cada generación (`:550-551`), con evolución y sin ella (`:543-546`). `RED_KEY_REWARD` se suma solo al agarrar la llave (`advanced_agent.py:667-668`), y en la etapa 1 no se puede (`world.py:910`). La brújula de la etapa 1 apunta a la puerta (`advanced_agent.py:209`), y la puerta es pared mientras la etapa sea menor que 2 (`:584`). `test_curriculo.py:86`, `:101`, `:111`, `:118` y `:124`; `test_humo.py:154` (PUZZLE-13) |
+| PUZZLE-QA-14 | Lo dado no es logro | ✅ | `mirar_hitos` cuenta solo a quien dio el paso (`registro.py:62-63`: `etapa_inicial < paso <= etapa`); la primera vez del boletín, solo generaciones con `etapa_inicial < paso` (`boletin.py:117-118`); el "llegó a" del mejor agente, sin lo dado (`:204-208`); el término cuenta `etapa − etapa_inicial` (`advanced_agent.py:789`). En esta sesión, con `--curriculo` el log con ventana no tiene ninguna línea de hito; con `--acercarse`, en la misma semilla, sale "¡Primera llave roja! Agente 4, generación 1". `test_curriculo.py:159`, `:175`, `:193`, `:216` y `:260` (PUZZLE-14) |
+| PUZZLE-QA-15 | Pantallas | ✅ | El panel tiene el renglón "Ayudas" solo si hay alguna (`stats.py:53-57`); el boletín, "Modo autónomo + …" (`boletin.py:58-70` y `:163-164`). Capturas de esta sesión (semilla 7): en la generación 1 con los dos switches, "Ayudas: acercarse + currículo", "Llave roja: 60" y ningún aviso sobre el mundo; el boletín del currículo, "Modo autónomo + currículo", "60 de 60 · dada al nacer" y "llegó a: ningún paso (nació con la llave roja)" (PUZZLE-15) |
+| PUZZLE-QA-16 | Experimentos B y C | ✅ | Registrados ([B](#experimento-puzzle-b), [C](#experimento-puzzle-c)) con la [respuesta al ítem 5](#puzzle-respuesta-item-5): 0 de 5 en los dos y secundario 1 de 5, como sus `resumen.md`; la respuesta aplica el 4 de 5 de la decisión 13. **Primera pasada PARCIAL:** la tabla de la respuesta decía 0 / 0 puertas abiertas en las generaciones 1 a 15 del cierre y del A, y son 1 / 1 (semilla 5, generación 1, la misma con evolución y sin ella; el texto del A ya lo contaba). Corregida en la sesión, con la cuenta del checker y la de la sesión, que coinciden; la respuesta no cambia (PUZZLE-16) |
+| PUZZLE-QA-17 | `python -m pytest -q` | ✅ | 155 passed en 35,2 s. Control vuelto a correr en esta sesión: `test_acercarse.py` en un worktree de `c9b8983` (antes del bloque A), 10 de 10 fallan; `test_curriculo.py` en uno de `7390ed3` (antes del B), 12 de 12 fallan. Los de `test_humo.py` y `test_resumen.py`, en la bitácora del spec (PUZZLE-17) |
+| PUZZLE-QA-18 | Docs | ✅ | README: el término con su peso (`README.md:262`), las ayudas (`:320-326`), los flags y la ruta (`:496-498`), el CSV (`:500-502`) y `experimento.py` (`:521-523`). `CLAUDE.md:98-105` (los dos switches, comunes a los dos modos, con 10 y 15) y `:157-160` (los flags de `main.py` y de `experimento.py`). Cada número, contra `config.py` y el código que lo lee (PUZZLE-18) |
+
+**Observaciones que no cambian el veredicto:**
+- **Las listas de términos del fitness del README** (`README.md:113` y `:223`) no nombran el de
+  acercarse. Con el switch apagado, que es el valor por defecto, son ciertas; el término está en `:262`
+  y en § Ayudas. El DoD no las pide.
+- **El tope de los golpes de la decisión 6 no tiene un `min` ni un test:** sale de que el golpe que
+  completa los necesarios cambia la etapa en la misma llamada. Tampoco hay test de la etapa 5 (sin paso
+  actual: `_proximo_paso` da `None` y el avance, 0); la decisión 16 no lo pide.
+- **El encabezado del boletín deduce el currículo** de la `etapa_inicial` de la generación 1
+  (`boletin.py:164`), no del switch. Con el flujo de `main.py` es lo mismo, salvo con
+  `CURRICULO_HASTA_GENERACION` = 0, donde nadie nace con la llave y el boletín no lo nombra.
+- **Con el currículo, "Hasta dónde llegaron: nadie agarró la llave roja"** aunque los 60 la tengan: es
+  cierto (nadie la agarró) y es la decisión 10; el embudo dice "dada al nacer".
+- **Los CSV del experimento A no tienen `etapa_inicial`:** corrieron antes del bloque B.
