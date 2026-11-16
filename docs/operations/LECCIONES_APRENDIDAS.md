@@ -5,6 +5,22 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-015 — 2026-11-15 — Separar dos cosas que eran una deja textos que todavía las juntan
+
+**Qué pasó.** En el bloque B de [Que el puzzle se pueda aprender](../specs/active/PUZZLE_APRENDIBLE.md),
+con el currículo los agentes nacen con la llave roja, y "llegar a un paso" dejó de ser lo mismo que
+"darlo". La primera vez de cada paso en el boletín pasó a contar solo los pasos dados, y los tests
+(filas armadas a mano, con generaciones del currículo y después sin él) daban bien. Mirando la
+pantalla final de una corrida de 2 generaciones, las dos del currículo, la barra de la llave roja
+estaba llena (60 de 60) y al lado decía "nadie, en ninguna generación"; el mejor agente "llegó a: llave
+roja", que le habían dado. La barra cuenta quién llegó; el texto, quién la dio: cada uno estaba bien y
+juntos se contradecían.
+
+**Regla.** Cuando un cambio separa dos cosas que antes eran la misma, buscar cada lugar donde se
+muestran una al lado de la otra y probar el caso en que difieren del todo (acá, una corrida que
+termina adentro del currículo), mirándolo en pantalla. Aplicada en el boletín: "60 de 60 · dada al
+nacer" y "llegó a: ningún paso (nació con la llave roja)", con su test en `tests/test_curriculo.py`.
+
 ## LEC-014 — 2026-11-15 — Un texto distinto del de una decisión es un desvío, aunque la decisión lo dé con una variable
 
 **Qué pasó.** En el bloque A de [Pantallas para ver aprender](../specs/done/PANTALLAS_VER_APRENDER.md),

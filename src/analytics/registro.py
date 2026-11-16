@@ -35,7 +35,7 @@ class RegistroDeLaCorrida:
         self.calor_gen1 = None
         self.calor_ultima = None
         self._en_curso = self._grilla_vacia()
-        self._etapa_alcanzada = 0  # El paso más lejano al que llegó alguien en la corrida
+        self._pasos_con_hito = set()  # Los pasos que algún agente ya dio en la corrida
 
     def _grilla_vacia(self):
         return [0] * (self.columnas * self.filas)
@@ -49,18 +49,24 @@ class RegistroDeLaCorrida:
                 self._en_curso[fila * self.columnas + columna] += 1
 
     def mirar_hitos(self, agents, generacion, tick):
-        """Registra y devuelve los pasos del puzzle a los que un agente llegó por primera vez en la
-        corrida (decisión 5). Si pasan dos en el mismo tick, van los dos, en el orden del puzzle; el
-        agente de cada uno es el primero de la lista que llegó a ese paso."""
+        """Registra y devuelve los pasos del puzzle que un agente dio por primera vez en la corrida
+        (decisión 5). Lo que se le dio al nacer no cuenta (spec PUZZLE_APRENDIBLE, decisión 10): con el
+        currículo, el primer hito puede ser la puerta de madera. Si pasan dos en el mismo tick, van
+        los dos, en el orden del puzzle; el agente de cada uno es el primero de la lista que dio ese
+        paso."""
         nuevos = []
         etapa_maxima = max((agent.etapa for agent in agents), default=0)
-        while self._etapa_alcanzada < etapa_maxima:
-            paso = self._etapa_alcanzada + 1
-            agente = next(agent for agent in agents if agent.etapa >= paso)
+        for paso in range(1, etapa_maxima + 1):
+            if paso in self._pasos_con_hito:
+                continue
+            agente = next((agent for agent in agents
+                           if agent.etapa_inicial < paso <= agent.etapa), None)
+            if agente is None:
+                continue
             hito = {"paso": paso, "generacion": generacion, "tick": tick, "agente": agente.id}
             self.hitos.append(hito)
             nuevos.append(hito)
-            self._etapa_alcanzada = paso
+            self._pasos_con_hito.add(paso)
         return nuevos
 
     def cerrar_generacion(self, fila, ticks_max, agents):
@@ -83,6 +89,7 @@ class RegistroDeLaCorrida:
                 "recorrido": float(mejor.distance_traveled),
                 "ticks_vividos": mejor.age,
                 "etapa": mejor.etapa,
+                "etapa_inicial": mejor.etapa_inicial,
             }
 
         grilla = {"generacion": fila["generacion"], "ticks": fila["ticks"], "cuentas": self._en_curso}

@@ -1,7 +1,9 @@
 # Spec: Que el puzzle se pueda aprender
 
-**Estado:** Parcial — bloque A ✅ (2026-11-15: la recompensa sola no alcanza, 0 de 5 en el
-[experimento A](../../qa/AnalisisQA.md#experimento-puzzle-a)); bloque B pendiente
+**Estado:** Parcial — bloques A y B ✅ (2026-11-15: ninguna de las dos ayudas, ni las dos juntas,
+alcanza: 0 de 5 en los experimentos [A](../../qa/AnalisisQA.md#experimento-puzzle-a),
+[B](../../qa/AnalisisQA.md#experimento-puzzle-b) y [C](../../qa/AnalisisQA.md#experimento-puzzle-c));
+falta el cierre (`/close-spec`)
 **Prioridad:** Alta — es el ítem 5 del [BACKLOG](../../product/BACKLOG.md): en el modo autónomo, la
 evolución aprende a comer y a caminar, pero el puzzle no pasa de la llave roja.
 **Gate:** Ninguno
@@ -119,7 +121,7 @@ Fer eligió las siete recomendaciones de la sesión de autoría (bitácora, sesi
 
 | # | Decisión |
 |---|----------|
-| 11 | **Columnas nuevas:** `acercarse` (0 o 1, de la corrida) después de `modo`, y `etapa_inicial` (0 o 1, de cada generación) después de `generacion`. **Ruta por defecto:** `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion\|sin_evolucion>.csv`. El renglón "Modo" del panel y el encabezado del boletín nombran los switches prendidos. |
+| 11 | **Columnas nuevas:** `acercarse` (0 o 1, de la corrida) después de `modo`, y `etapa_inicial` (0 o 1, de cada generación) después de `generacion`. **Ruta por defecto:** `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion\|sin_evolucion>.csv`. El panel nombra los switches prendidos en un renglón "Ayudas", solo si hay alguno (con el modo no entran; confirmado con Fer en el bloque B), y el encabezado del boletín, junto al modo. |
 | 12 | **`experimento.py`:** `--acercarse` y `--curriculo` pasan a cada corrida, y el resumen dice cuáles estaban prendidos. Por corrida suma **puerta de madera** (promedio de `agentes_puerta_madera` en las últimas 5) y **llave roja por 1.000 px** (promedio de `agentes_llave_roja` en las últimas 5 / promedio de `distancia_prom` en las últimas 5 × 1.000). La comparación con evolución contra sin evolución suma esas dos, como "K de N", y una línea con el criterio de la decisión 13. Si las últimas 5 de una corrida no son todas del puzzle de hoy (`etapa_inicial` > 0), el resumen la marca. |
 
 ### Cómo se mide
@@ -155,19 +157,19 @@ Fer eligió las siete recomendaciones de la sesión de autoría (bitácora, sesi
   cierre y el criterio de la decisión 13 aplicado. La parada de la decisión 14, evaluada en la bitácora.
 
 **Bloque B — El currículo**
-- [ ] `CURRICULO` (`False`) y `CURRICULO_HASTA_GENERACION` (15) en `config.py`; `--curriculo` en `main.py` y
+- [x] `CURRICULO` (`False`) y `CURRICULO_HASTA_GENERACION` (15) en `config.py`; `--curriculo` en `main.py` y
   en `experimento.py`, en `--help` en español.
-- [ ] El currículo sigue las decisiones 8 a 10, y `tests/test_curriculo.py` está verde, con su control.
-- [ ] El CSV tiene `etapa_inicial` después de `generacion`, la ruta lleva `_curriculo`, y el panel y el
+- [x] El currículo sigue las decisiones 8 a 10, y `tests/test_curriculo.py` está verde, con su control.
+- [x] El CSV tiene `etapa_inicial` después de `generacion`, la ruta lleva `_curriculo`, y el panel y el
   boletín lo nombran cuando está prendido.
-- [ ] Apagados los dos switches, la corrida sigue siendo la de hoy (el mismo control que en el A).
+- [x] Apagados los dos switches, la corrida sigue siendo la de hoy (el mismo control que en el A).
   Prendido: la misma semilla da el mismo CSV, con ventana el mismo que sin ventana.
-- [ ] Mirado con ventana, con `--curriculo`: en la generación 1 todos arrancan con la llave roja y no
+- [x] Mirado con ventana, con `--curriculo`: en la generación 1 todos arrancan con la llave roja y no
   sale el aviso de hito de la llave roja.
-- [ ] Experimentos B y C corridos y registrados en `AnalisisQA.md`, y la lectura de los tres responde
+- [x] Experimentos B y C corridos y registrados en `AnalisisQA.md`, y la lectura de los tres responde
   el ítem 5 con el criterio de la decisión 13.
-- [ ] `python -m pytest -q` verde en menos de 90 s.
-- [ ] Docs al día: README (el término del fitness con su peso en `config.py`, el currículo, los dos
+- [x] `python -m pytest -q` verde en menos de 90 s.
+- [x] Docs al día: README (el término del fitness con su peso en `config.py`, el currículo, los dos
   flags) y `CLAUDE.md` (§ Lógica de negocio crítica: los dos switches, comunes a los dos modos; § Notas:
   los flags). Cada número de esas secciones coincide con `config.py` o con el código (LEC-010).
 
@@ -407,3 +409,86 @@ Formato: [`docs/AGENTES.md`](../../AGENTES.md) § "Specs de varias sesiones".
     --curriculo`, su término arranca en 0 (pasos dados 0, avance 0), no en `FITNESS_ACERCARSE`.
   - **Trampa:** la suite tarda 31 s con 9 corridas de humo en paralelo; si el currículo suma corridas,
     mirar los 90 s (Trampas conocidas).
+
+### Sesión 2 — 2026-11-15 — Bloque B
+- **Hecho:** `CURRICULO` (`False`) y `CURRICULO_HASTA_GENERACION` (15) en `config.py`. En el agente,
+  `etapa_inicial`; el término de acercarse cuenta `etapa − etapa_inicial`. En `main.py`,
+  `_fijar_etapa_inicial` (una sola función, después de `_ubicar_agentes`, al arrancar y al final de cada
+  generación; no usa el azar), `--curriculo`, la columna `etapa_inicial` y la ruta con `_curriculo`.
+  `mirar_hitos` recorre los pasos que todavía no tienen hito y cuenta solo a los agentes que dieron el
+  paso (`etapa_inicial < paso ≤ etapa`). El panel tiene un renglón "Ayudas" y el boletín dice "Modo
+  autónomo + acercarse + currículo". En el boletín, la primera vez de cada paso no cuenta las
+  generaciones que nacieron con él. `experimento.py`: `--curriculo`, las ayudas del resumen y la marca
+  de las corridas con generaciones del currículo entre las últimas 5. Experimentos B y C corridos y
+  registrados, con la respuesta al ítem 5 ([AnalisisQA](../../qa/AnalisisQA.md#puzzle-respuesta-item-5)).
+  README, `CLAUDE.md`, LEC-015 y mejoras futuras al día. Commit: `puzzle: bloque B, el currículo`.
+- **Tests:** `tests/test_curriculo.py` (12 tests). `test_humo.py`: 3 corridas con `--curriculo` (12 en
+  total), un test nuevo (`etapa_inicial` y los 60 con la llave), dos parametrizaciones más y el de los
+  hitos generalizado (la primera fila sin el paso dado). `test_resumen.py`: la columna, 1 test nuevo y 1
+  ampliado. Al día por el cambio: `test_registro.py` y `test_boletin.py` (`etapa_inicial` en los
+  agentes de mentira y en el mejor), `test_acercarse.py` (la recompensa va en el renglón "Ayudas").
+  `python -m pytest -q`: 155 verdes en ~37 s. **Controles:** los 11 primeros de `test_curriculo.py`
+  corrieron contra el código de antes del bloque y fallaron: por `AttributeError`, 6 por
+  `main._fijar_etapa_inicial` (nacen, el premio, el corte, apagado, la puerta, los dos switches) y 1 por
+  `CURRICULO` (los flags); por `ValueError`, el del CSV (`etapa_inicial` no estaba en las columnas); por
+  valor, el del hito (salía el de la llave dada), el de la primera vez del boletín y el de la ruta. El
+  12.º (el boletín de una corrida que termina adentro del currículo) se escribió después, al ver la
+  pantalla, y falló contra el código de ese momento. Los de `test_humo.py` y `test_resumen.py`, en un
+  worktree de `7390ed3` con los tests nuevos copiados: fallaron los 14 nuevos o cambiados (las corridas
+  con `--curriculo` salen con código 2; el resumen, por `KeyError`).
+- **Estados:** DoD del bloque B completo. Lo que piden corridas, hecho en la sesión (LEC-006: el QA del
+  cierre lo vuelve a correr):
+  - PUZZLE-07: apagados los dos switches, autónomo y guiado, semillas 1 y 2, con evolución y sin ella,
+    10 generaciones: las 8 corridas, sin `acercarse` ni `etapa_inicial`, son byte a byte las 10 primeras
+    filas del experimento de cierre. Además, autónomo con `--acercarse` sola, semillas 1 y 2: las 10
+    primeras del experimento A, sin `etapa_inicial`.
+  - PUZZLE-09: semilla 7, 2 generaciones, autónomo, con ventana (ESC inyectado, LEC-004) y sin ella: el
+    mismo CSV. Con `--curriculo`, SHA-256
+    `54ab394bf97bdfaa3b1d6842520a0b272dd386bc0b4065d4ce5f6cd0af14a862`; con `--acercarse --curriculo`,
+    `b2b65538eef848ce08ba81474326d9be6608b4ed89db122b6d73468258a5d4be`; los dos desde el commit de esta
+    sesión.
+  - PUZZLE-15: capturas de la corrida con ventana. En la generación 1, "Llave roja: 60" en el panel, la
+    llave en el mapa y ningún aviso de hito (el log no tiene ninguna línea de hito). El renglón
+    "Ayudas: acercarse + currículo" entra (132 px de 155). El boletín: "60 de 60 · dada al nacer".
+  - PUZZLE-16: experimento B en `results/experimento_20261115-205826` y C en
+    `results/experimento_20261115-210549` (fuera de git), ~7 min cada uno. Criterio de la decisión 13:
+    0 de 5 en los dos (como el A y el cierre); secundario, 1 de 5 en los dos. **Respuesta al ítem 5:
+    no.** Con la llave dada, la evolución abre la puerta lo mismo que el azar (en las generaciones 1 a
+    15, 8 contra 9 en el B y 6 contra 9 en el C). La línea base del B, en las generaciones 16 a 30, es
+    byte a byte la del cierre; la del C, la del B salvo `fitness_*` y `acercarse`.
+  - En el C, la semilla 1 queda en 0,37 manzanas por agente (debajo del 0,42 de la decisión 14, que se
+    evaluaba después del A; acá sería 1 semilla de 5).
+- **Desvíos del spec, y por qué:**
+  - **Confirmado con Fer en la sesión** (la decisión 11 dice ahora el renglón "Ayudas"): decía que "el
+    renglón 'Modo' del panel" nombraba los switches.
+    Con los dos, "autónomo + acercarse + currículo" mide 211 px y el valor del renglón tiene 164: las
+    ayudas van en un renglón propio, "Ayudas", solo si hay alguna prendida, y "Modo" dice solo el modo
+    (también con `--acercarse` sola, que en el bloque A iba en "Modo"). El encabezado del boletín las
+    sigue nombrando junto al modo: ahí entran (765 px de 1.088).
+  - Textos que el spec no fija (buscados en las decisiones, LEC-014): "Ayudas" y "acercarse +
+    currículo"; "**Ayudas prendidas:** recompensa por acercarse y currículo" en el resumen; la sección
+    "Corridas con generaciones del currículo entre las últimas 5"; "dada al nacer" y "ningún paso (nació
+    con la llave roja)" en el boletín.
+  - Además de lo pedido, por la decisión 10 (lo dado no es logro): en el boletín, la primera vez de cada
+    paso, el texto de una corrida que termina adentro del currículo y el "llegó a" del mejor agente
+    (LEC-015). El test del CSV corre `_simular` adentro de pytest, con generaciones de 30 ticks: así el
+    corte del currículo se prueba en 3 s sin correr 16 generaciones.
+- **A medias o bloqueado:** nada; falta el cierre.
+- **Para verificar en producción:** N/A, no hay producción.
+- **Próxima sesión:** cierre (decisión 17), en una sesión nueva: el contexto de esta no alcanza.
+  - **Primer paso:** `git status -sb` (`config.py` sigue con el cambio local de Fer, los dos comandos
+    comentados: en los commits del spec se stageó solo lo del spec). Después, `/close-spec
+    docs/specs/active/PUZZLE_APRENDIBLE.md`.
+  - **Trampa:** los checkers de `/qa-spec` no corren `main.py` (LEC-006): PUZZLE-07, 08 y 09 se vuelven
+    a correr en la sesión. Los scripts de esta (el control de apagado y el de con ventana, que inyecta
+    ESC y saca capturas) quedaron en su scratchpad: se rearman. Referencias, fuera de git: el cierre en
+    `results/experimento_20261115-112804`, el A en `-200451`, el B en `-205826` y el C en `-210549`; si
+    faltan, se regeneran desde el commit de esta sesión con los comandos de la decisión 15 (LEC-011).
+  - **Trampa:** al mover el spec a `done/`, actualizar los links que apuntan a `active/` (`CLAUDE.md` §
+    Lógica de negocio crítica, `AnalisisQA.md`, mejoras futuras, LECCIONES y el BACKLOG), además del
+    stub.
+  - **Trampa:** el ítem 5 del BACKLOG se cierra con un resultado negativo; lo que sigue lo decide Fer
+    (en mejoras futuras, la medición de dónde se traba la puerta).
+  - **Trampa:** el humo lanza 12 corridas a la vez y a veces una se cae (2 de ~12, en mejoras futuras).
+    Si el gate del pre-commit falla así, repetir con `--basetemp` para guardar el log antes de tocar el
+    test.

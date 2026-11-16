@@ -19,7 +19,7 @@ sys.path.insert(0, str(RAIZ))
 import experimento  # noqa: E402
 
 COLUMNAS = [
-    "semilla", "evolucion", "modo", "acercarse", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "acercarse", "generacion", "etapa_inicial", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
@@ -28,9 +28,11 @@ COLUMNAS = [
 
 
 def _escribir_corrida(carpeta, semilla, evolucion, fitness, manzanas, puzzle_final=(0, 0, 0, 0, 0),
-                      edades=None, puzzle=None, modo="guiado", distancias=None, acercarse=0):
+                      edades=None, puzzle=None, modo="guiado", distancias=None, acercarse=0,
+                      curriculo_hasta=0):
     """Escribe un CSV como el de main.py. fitness, manzanas, edades, distancias y puzzle traen un
-    valor por generación; cada valor de puzzle son las cinco columnas agentes_*.
+    valor por generación; cada valor de puzzle son las cinco columnas agentes_*. Las generaciones 1 a
+    curriculo_hasta nacen con la llave roja (etapa_inicial 1).
 
     Sin puzzle, las columnas agentes_* valen 0 en todas las generaciones menos la última, que lleva
     puzzle_final. Las columnas que el resumen no mira van en 0, y edad_prom y distancia_prom también
@@ -43,7 +45,8 @@ def _escribir_corrida(carpeta, semilla, evolucion, fitness, manzanas, puzzle_fin
         for i, (fit, manz) in enumerate(zip(fitness, manzanas)):
             fila = dict.fromkeys(COLUMNAS, 0)
             fila.update(semilla=semilla, evolucion=int(evolucion), modo=modo, generacion=i + 1,
-                        fitness_prom=fit, manzanas_prom=manz, acercarse=acercarse)
+                        fitness_prom=fit, manzanas_prom=manz, acercarse=acercarse,
+                        etapa_inicial=int(i < curriculo_hasta))
             if edades:
                 fila.update(edad_prom=edades[i])
             if distancias:
@@ -309,8 +312,37 @@ def test_el_resumen_dice_las_ayudas_prendidas(tmp_path):
                              manzanas=[1] * 10, modo="autonomo", acercarse=1)
     corrida = experimento.resumir_corrida(ruta)
     assert corrida["acercarse"] is True
+    assert corrida["curriculo"] is False
     texto = experimento.resumen_markdown([corrida], [], "python experimento.py --acercarse")
     assert "**Ayudas prendidas:** recompensa por acercarse." in texto
+
+    # El currículo se ve en etapa_inicial: alguna generación nació con la llave roja
+    ruta = _escribir_corrida(tmp_path, semilla=2, evolucion=True, fitness=[10] * 10,
+                             manzanas=[1] * 10, modo="autonomo", curriculo_hasta=3)
+    solo_curriculo = experimento.resumir_corrida(ruta)
+    assert (solo_curriculo["acercarse"], solo_curriculo["curriculo"]) == (False, True)
+    texto = experimento.resumen_markdown([solo_curriculo], [], "python experimento.py --curriculo")
+    assert "**Ayudas prendidas:** currículo." in texto
+    texto = experimento.resumen_markdown([corrida, solo_curriculo], [], "")
+    assert "**Ayudas prendidas:** recompensa por acercarse y currículo." in texto
+
+
+def test_el_resumen_marca_las_corridas_con_el_curriculo_en_las_ultimas_5(tmp_path):
+    # Decisión 12: de 10 generaciones, las últimas 5 son la 6 a la 10. Con el currículo hasta la 5,
+    # son todas del puzzle de hoy; hasta la 6, no
+    hasta_la_5, hasta_la_6 = [
+        experimento.resumir_corrida(_escribir_corrida(tmp_path, semilla=1, evolucion=evolucion,
+                                                      fitness=[10] * 10, manzanas=[1] * 10,
+                                                      modo="autonomo", curriculo_hasta=hasta))
+        for hasta, evolucion in ((5, True), (6, False))]
+    assert hasta_la_5["ultimas_con_curriculo"] is False
+    assert hasta_la_6["ultimas_con_curriculo"] is True
+    texto = experimento.resumen_markdown([hasta_la_5, hasta_la_6], [], "")
+    assert ("**Corridas con generaciones del currículo entre las últimas 5** (no son todas del puzzle "
+            "de hoy: alguna nació con la llave roja):\n\n- Semilla 1, autonomo, sin evolución.\n") in texto
+    assert "Semilla 1, autonomo, con evolución." not in texto
+    # Sin ninguna marcada, no hay sección
+    assert "Corridas con generaciones del currículo" not in experimento.resumen_markdown([hasta_la_5], [], "")
 
 
 def test_con_un_solo_modo_no_se_comparan_los_modos(tmp_path):

@@ -73,6 +73,9 @@ class AdvancedAgent:
 
         # Puzzle del agente (decisión 7): etapa de 0 a 5, hacha propia y golpes a cada puerta
         self.etapa = 0
+        # La etapa con la que nació: lo que se le dio no es un logro (spec PUZZLE_APRENDIBLE, decisión
+        # 10). Con el currículo, main.py la fija en 1 al nacer
+        self.etapa_inicial = 0
         self.tiene_hacha = False
         self.golpes_puerta = {}  # tipo de puerta -> (golpes, tick del último golpe)
         # Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisión 4): la etapa del paso que se mide,
@@ -781,9 +784,10 @@ class AdvancedAgent:
         total_fitness += self.cut_rewards
 
         # Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisión 5): los pasos que dio más el avance
-        # en el actual. Todos nacen en la etapa 0: los pasos que dio son su etapa
+        # en el actual. El paso dado al nacer no cuenta (decisión 10)
         if SimulationConfig.RECOMPENSA_ACERCARSE:
-            total_fitness += SimulationConfig.FITNESS_ACERCARSE * (self.etapa + self._avance_en_el_paso())
+            pasos_que_dio = self.etapa - self.etapa_inicial
+            total_fitness += SimulationConfig.FITNESS_ACERCARSE * (pasos_que_dio + self._avance_en_el_paso())
         
         # Restar penalizaciones acumuladas del entorno, con tope (DIAG-11)
         total_fitness -= min(self.fitness_env_penalty, SimulationConfig.WATER_PENALTY_MAX)

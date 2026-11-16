@@ -925,3 +925,169 @@ fitness no se compara entre los dos: este tiene un término más.
 5, igual que sin ella), ni que encuentre la llave roja por la brújula en lugar de por caminar. Tampoco
 le quita comida. Siguen el experimento B (el currículo: nacer con la llave roja) y el C (las dos
 juntas).
+
+---
+
+<a id="experimento-puzzle-b"></a>
+
+## Que el puzzle se pueda aprender — experimento B, el currículo (2026-11-15, PUZZLE-16)
+
+**Qué cambió** (bloque B del [spec](../specs/active/PUZZLE_APRENDIBLE.md)): con `--curriculo`, las
+generaciones 1 a 15 (`CURRICULO_HASTA_GENERACION`) nacen con la llave roja, élites incluidas y sin su
+premio; desde la 16, sin ella. El mapa no cambia: la brújula apunta a la puerta de madera, que es pared
+para cada agente hasta que la abre. Sin la recompensa por acercarse. En las generaciones 1 a 15,
+`agentes_llave_roja` vale 60: es la llave dada, y `etapa_inicial` vale 1.
+
+**Antes de correr, los controles** (detalle en la bitácora del spec): apagados los dos switches, las 8
+corridas del autónomo y del guiado, semillas 1 y 2, con evolución y sin ella, 10 generaciones, son
+byte a byte las del [experimento de cierre](#experimento-modos-cierre) sin `acercarse` ni
+`etapa_inicial` (PUZZLE-07), y con `--acercarse` sola, semillas 1 y 2, las 10 primeras generaciones
+del [experimento A](#experimento-puzzle-a) sin `etapa_inicial`. Con `--curriculo`, la misma semilla da
+el mismo CSV, con ventana y sin ella (PUZZLE-09).
+
+**Cómo se corrió:** 10 corridas, 11 a la vez, en 12 núcleos: 429 s la más lenta. Carpeta
+`results/experimento_20261115-205826`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 30 --modos autonomo --curriculo`
+
+**Ayudas prendidas:** currículo.
+
+**Por grupo** (promedio ± desvío muestral entre semillas):
+
+| Modo | Evolución | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| autonomo | Con evolución | 5 | 17.86 ± 0.90 | 31.00 ± 1.90 | 13.15 ± 1.76 | 0.30 ± 0.05 | 0.77 ± 0.17 | 0.47 ± 0.19 | 954 ± 60 | 2.88 ± 1.28 | 2.2 ± 0.4 | 0 de 5 |
+| autonomo | Sin evolución | 5 | 16.46 ± 0.98 | 16.58 ± 0.87 | 0.11 ± 0.98 | 0.23 ± 0.06 | 0.20 ± 0.07 | -0.02 ± 0.05 | 884 ± 9 | 0.72 ± 0.36 | 2.0 ± 0.7 | 0 de 5 |
+
+**Comparaciones pareadas por semilla** (un empate no cuenta como más):
+
+- **Autónomo, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5, más con la puerta de madera abierta en 0 de 5 y más llave roja por 1.000 px en 1 de 5.
+- **Criterio del ítem 5 (puerta de madera):** con evolución, al menos 1 agente por generación con la puerta de madera abierta en las últimas 5 y más que la línea base, en 0 de 5 semillas; secundario, más llave roja por 1.000 px que la línea base, en 1 de 5. Cada uno pide 4 de 5. **El autónomo aprende a pasar la puerta de madera: no.** Secundario: no.
+
+**Por corrida:**
+
+| Semilla | Modo | Evolución | Generaciones | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom., últimas 5 | Agentes con llave roja, últimas 5 | Puerta de madera, últimas 5 | Llave roja por 1.000 px | Etapa máxima | Cofre en la gen. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | autonomo | Con evolución | 30 | 17.59 | 28.99 | 11.40 | 0.33 | 0.59 | 0.27 | 942 | 1.80 | 0.00 | 2.46 | 2 | — |
+| 1 | autonomo | Sin evolución | 30 | 17.35 | 17.15 | -0.21 | 0.24 | 0.26 | 0.02 | 883 | 0.60 | 0.00 | 2.82 | 3 | — |
+| 2 | autonomo | Con evolución | 30 | 16.65 | 30.83 | 14.18 | 0.22 | 0.79 | 0.57 | 988 | 1.40 | 0.00 | 1.47 | 2 | — |
+| 2 | autonomo | Sin evolución | 30 | 15.76 | 15.03 | -0.73 | 0.18 | 0.10 | -0.08 | 886 | 0.40 | 0.00 | 2.73 | 2 | — |
+| 3 | autonomo | Con evolución | 30 | 17.68 | 29.90 | 12.23 | 0.32 | 0.60 | 0.28 | 854 | 4.40 | 0.00 | 3.76 | 2 | — |
+| 3 | autonomo | Sin evolución | 30 | 17.35 | 16.88 | -0.47 | 0.24 | 0.18 | -0.07 | 891 | 1.20 | 0.00 | 5.82 | 2 | — |
+| 4 | autonomo | Con evolución | 30 | 19.07 | 31.29 | 12.22 | 0.36 | 0.90 | 0.54 | 996 | 3.00 | 0.00 | 2.14 | 2 | — |
+| 4 | autonomo | Sin evolución | 30 | 16.70 | 16.92 | 0.22 | 0.31 | 0.27 | -0.04 | 890 | 0.40 | 0.00 | 1.97 | 1 | — |
+| 5 | autonomo | Con evolución | 30 | 18.30 | 34.01 | 15.70 | 0.28 | 0.98 | 0.70 | 988 | 3.80 | 0.00 | 2.46 | 3 | — |
+| 5 | autonomo | Sin evolución | 30 | 15.15 | 16.91 | 1.76 | 0.17 | 0.21 | 0.04 | 868 | 1.00 | 0.00 | 5.63 | 2 | — |
+
+
+**Lectura, contra el experimento de cierre y el A** (mismas semillas y generaciones). El fitness no se
+compara entre experimentos; las manzanas y las columnas `agentes_*` de las últimas 5, sí.
+
+1. **Criterio de la decisión 13: no.** La puerta de madera vale 0 en las últimas 5 de las 5 semillas,
+   con evolución y sin ella: 0 de 5, como en el cierre y en el A. Después del corte (generaciones 16 a
+   30) se abrió una sola vez en las 75 generaciones evolucionadas (semilla 5, generación 22).
+2. **Con la llave dada, la evolución tampoco aprende a abrir la puerta.** En las 15 generaciones del
+   currículo, con los 60 agentes de cada generación con la llave, la puerta se abrió 8 veces en las 5
+   semillas con evolución y 9 sin ella; en las generaciones 11 a 15, 0,16 agentes por generación en
+   promedio en las dos. Con la llave en la mano, llegar a la puerta y golpearla dos veces no sale más
+   seguido que con cerebros al azar.
+3. **Secundario, usar la brújula: no.** Llave roja por 1.000 px con evolución en las últimas 5: 2,46
+   (cierre 2,87, A 2,90); más que la línea base en 1 de 5 semillas.
+4. **La línea base de las generaciones 16 a 30 es la del cierre:** byte a byte, salvo `etapa_inicial`,
+   en las 5 semillas. El currículo cambia solo las generaciones en que se da la llave, y las últimas 5
+   se comparan contra lo mismo que en el cierre y en el A.
+
+**Además:** manzanas por agente con evolución en las últimas 5, 0,77 (cierre 0,83), de 0,59 a 0,98 por
+semilla; edad promedio 954 ticks (cierre 990); diversidad en la generación 30 entre 0,070 y 0,084. La
+etapa máxima (2 o 3) sale de las generaciones del currículo, que cuentan la llave dada: con ella, alguno
+abrió la puerta, y en dos corridas uno agarró la llave dorada.
+
+---
+
+<a id="experimento-puzzle-c"></a>
+
+## Que el puzzle se pueda aprender — experimento C, las dos ayudas (2026-11-15, PUZZLE-16)
+
+**Qué cambió:** `--acercarse --curriculo`. Las generaciones 1 a 15 nacen con la llave roja, y la
+recompensa por acercarse mide desde el primer tick el camino a la puerta de madera y los golpes que
+contaron; la llave dada no cuenta como paso (decisión 10), así que el término arranca en 0.
+
+**Cómo se corrió:** 10 corridas, 11 a la vez, en 12 núcleos: 396 s la más lenta. Carpeta
+`results/experimento_20261115-210549`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 30 --modos autonomo --acercarse --curriculo`
+
+**Ayudas prendidas:** recompensa por acercarse y currículo.
+
+**Por grupo** (promedio ± desvío muestral entre semillas):
+
+| Modo | Evolución | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| autonomo | Con evolución | 5 | 18.87 ± 0.50 | 32.88 ± 3.41 | 14.01 ± 3.14 | 0.30 ± 0.05 | 0.72 ± 0.21 | 0.42 ± 0.19 | 951 ± 89 | 3.52 ± 1.99 | 1.8 ± 0.4 | 0 de 5 |
+| autonomo | Sin evolución | 5 | 16.69 ± 0.97 | 17.29 ± 0.90 | 0.60 ± 1.01 | 0.23 ± 0.06 | 0.20 ± 0.07 | -0.02 ± 0.05 | 884 ± 9 | 0.72 ± 0.36 | 2.0 ± 0.7 | 0 de 5 |
+
+**Comparaciones pareadas por semilla** (un empate no cuenta como más):
+
+- **Autónomo, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5, más con la puerta de madera abierta en 0 de 5 y más llave roja por 1.000 px en 1 de 5.
+- **Criterio del ítem 5 (puerta de madera):** con evolución, al menos 1 agente por generación con la puerta de madera abierta en las últimas 5 y más que la línea base, en 0 de 5 semillas; secundario, más llave roja por 1.000 px que la línea base, en 1 de 5. Cada uno pide 4 de 5. **El autónomo aprende a pasar la puerta de madera: no.** Secundario: no.
+
+**Por corrida:**
+
+| Semilla | Modo | Evolución | Generaciones | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom., últimas 5 | Agentes con llave roja, últimas 5 | Puerta de madera, últimas 5 | Llave roja por 1.000 px | Etapa máxima | Cofre en la gen. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | autonomo | Con evolución | 30 | 18.74 | 28.12 | 9.38 | 0.27 | 0.37 | 0.10 | 954 | 0.80 | 0.00 | 1.70 | 2 | — |
+| 1 | autonomo | Sin evolución | 30 | 17.57 | 17.86 | 0.29 | 0.24 | 0.26 | 0.02 | 883 | 0.60 | 0.00 | 2.82 | 3 | — |
+| 2 | autonomo | Con evolución | 30 | 19.24 | 33.31 | 14.07 | 0.37 | 0.79 | 0.42 | 1018 | 3.20 | 0.00 | 2.36 | 1 | — |
+| 2 | autonomo | Sin evolución | 30 | 16.04 | 15.68 | -0.36 | 0.18 | 0.10 | -0.08 | 886 | 0.40 | 0.00 | 2.73 | 2 | — |
+| 3 | autonomo | Con evolución | 30 | 19.26 | 37.00 | 17.74 | 0.28 | 0.89 | 0.61 | 1029 | 6.40 | 0.00 | 4.51 | 2 | — |
+| 3 | autonomo | Sin evolución | 30 | 17.60 | 17.66 | 0.07 | 0.24 | 0.18 | -0.07 | 891 | 1.20 | 0.00 | 5.82 | 2 | — |
+| 4 | autonomo | Con evolución | 30 | 19.04 | 34.82 | 15.78 | 0.34 | 0.84 | 0.49 | 949 | 3.60 | 0.00 | 3.16 | 2 | — |
+| 4 | autonomo | Sin evolución | 30 | 16.88 | 17.60 | 0.72 | 0.31 | 0.27 | -0.04 | 890 | 0.40 | 0.00 | 1.97 | 1 | — |
+| 5 | autonomo | Con evolución | 30 | 18.07 | 31.17 | 13.10 | 0.24 | 0.72 | 0.48 | 806 | 3.60 | 0.00 | 3.03 | 2 | — |
+| 5 | autonomo | Sin evolución | 30 | 15.38 | 17.64 | 2.26 | 0.17 | 0.21 | 0.04 | 868 | 1.00 | 0.00 | 5.63 | 2 | — |
+
+
+**Lectura, contra el cierre, el A y el B:**
+
+1. **Criterio de la decisión 13: no.** La puerta de madera vale 0 en las últimas 5 de las 5 semillas: 0
+   de 5. Después del corte no se abrió ninguna vez en las 75 generaciones evolucionadas.
+2. **Con la llave dada y la recompensa hacia la puerta, tampoco aprenden a abrirla.** En las 15
+   generaciones del currículo, la puerta se abrió 6 veces en las 5 semillas con evolución y 9 sin ella.
+3. **Secundario: no.** Llave roja por 1.000 px con evolución: 2,95 (cierre 2,87); más que la línea base
+   en 1 de 5.
+4. **La semilla 1 come y camina menos:** 0,37 manzanas por agente en las últimas 5, debajo del 0,42 de
+   la parada de la decisión 14 (que se evaluaba después del A; acá sería 1 semilla de 5, no 3), con 472
+   px de recorrido (cierre 1.257) y 0,8 agentes con llave roja. En el grupo, 0,72 manzanas (cierre 0,83).
+5. **La línea base es la del B:** en las 5 semillas y las 30 generaciones, el CSV sin evolución es igual
+   al del B salvo `fitness_*` y `acercarse` (PUZZLE-08, con el currículo).
+
+<a id="puzzle-respuesta-item-5"></a>
+
+### La respuesta al ítem 5, con los tres experimentos
+
+Autónomo, semillas 1 a 5, 30 generaciones; con evolución, promedio entre semillas de las últimas 5
+generaciones, salvo la última columna.
+
+| | Puerta de madera | Criterio (4 de 5) | Llave roja | Llave roja por 1.000 px | Manzanas por agente | Puertas abiertas en las gens 1-15, con / sin evolución |
+|---|---|---|---|---|---|---|
+| Cierre, sin ayuda | 0 | 0 de 5 | 3,16 | 2,87 | 0,83 | 0 / 0 (sin llave) |
+| A, acercarse | 0,04 | 0 de 5 | 3,52 | 2,90 | 0,88 | 0 / 0 (sin llave) |
+| B, currículo | 0 | 0 de 5 | 2,88 | 2,46 | 0,77 | 8 / 9 |
+| C, las dos | 0 | 0 de 5 | 3,52 | 2,95 | 0,72 | 6 / 9 |
+
+- **Ninguna de las dos ayudas, ni las dos juntas, hace que el autónomo aprenda a pasar la puerta de
+  madera:** 0 de 5 en A, B y C, como sin ayuda. Tampoco encuentra la llave roja por la brújula en lugar
+  de por caminar: la llave roja por 1.000 px queda entre 2,46 y 2,95 con evolución, contra 2,87 sin
+  ayuda, y supera a la línea base en 1 o 2 semillas de 5.
+- **El cuello no es solo encontrar la llave.** Con la llave dada a los 60 agentes durante 15
+  generaciones, la evolución abre la puerta lo mismo que cerebros al azar: 14 veces entre B y C, contra
+  18 de sus líneas base. Por qué no se midió. Dos candidatos, de la medición del § Problema del spec: la
+  puerta pide llegar a menos de 25 px de su centro y golpear dos veces con espera entre golpes, y la
+  evolución deja de golpear porque golpear cuesta energía.
+- **La evolución sigue aprendiendo a comer y a caminar:** en los tres, sube más que su línea base en
+  fitness y en manzanas por agente en 5 de 5 semillas.
+
+**En corto:** el ítem 5 se cierra con un resultado negativo. Ni la recompensa por acercarse ni el
+currículo de nacer con la llave hacen que el autónomo aprenda la puerta de madera; con la llave dada,
+la evolución la abre tanto como el azar. Lo que sigue es una decisión de Fer (en
+[mejoras futuras](../product/mejoras_futuras.md), la medición que diría dónde se traba).

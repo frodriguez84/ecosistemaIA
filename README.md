@@ -259,6 +259,7 @@ EcosistemaEvolutivo/
   * Exploración: 10 × log(1 + distancia / 350) (`FITNESS_EXPLORATION`), con tope de 15 (`FITNESS_EXPLORATION_MAX`)
   * Anti-círculo (rectitud, giros suaves, lugares nuevos): 18 × su puntaje (`FITNESS_ANTI_CIRCLE`), si recorrió más de 100 px
   * Puzzle y cortes: la recompensa de cada paso, para el agente que lo dio (ver Sistema de Puzzle y Sistema de Corte)
+  * Acercarse, solo con la recompensa prendida (`RECOMPENSA_ACERCARSE`, `--acercarse`): 10 × (pasos que dio + avance en el paso actual, de 0 a 1) (`FITNESS_ACERCARSE`). Ver Ayudas para aprender el puzzle
   * Agua: se resta la penalización acumulada, con tope de 10 (`WATER_PENALTY_MAX`)
   * Tope por tiempo vivido: de 50 al nacer a 100 desde los 960 ticks (`BASE_TICKS`)
 * **Selección**: Meeting pool (60% superior por ranking) + élite de 1
@@ -306,7 +307,7 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 2. **Una puerta es pared para cada agente hasta que él la abre**: abrirla no la abre para los demás. Con ventana, se dibuja abierta si algún agente de la generación la abrió.
 3. **Golpear** es la quinta salida de la red (> 0,5). Cuesta 0,05 de energía por tick (`HIT_ENERGY_COST`), golpee algo o no.
 4. **Brújula**: los sensores 9 y 11 apuntan al próximo paso del agente; con el cofre abierto dan 0 y 1.
-5. **Reinicio**: cada generación arranca con todos los agentes en la etapa 0 y sin hacha, las puertas y el cofre cerrados, y la llave roja y el hacha en lugares nuevos.
+5. **Reinicio**: cada generación arranca con todos los agentes en la etapa 0 (con el currículo, en la 1 hasta la generación 15) y sin hacha, las puertas y el cofre cerrados, y la llave roja y el hacha en lugares nuevos.
 6. **Abrir el cofre no termina la corrida**: la consola, el panel, la pantalla final y el CSV dicen cuántos agentes llegaron a cada paso.
 
 ### Mecánica de Aprendizaje
@@ -314,6 +315,14 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 * **En el modo autónomo, sin guía**: la red tiene que descubrir el puzzle por prueba y error, con la brújula y golpear
 * **En el modo guiado**: con fitness > 65, en el 40% de los ticks la guía lo empuja hacia su próximo paso y aprieta golpear al alinearse
 * **Recompensas**: Fitness por cada paso, para el agente que lo dio
+
+### Ayudas para aprender el puzzle
+
+Dos switches en `config.py`, apagados por defecto e independientes, que valen para los dos modos. Apagados, la corrida es la de siempre.
+
+* **Recompensa por acercarse** (`RECOMPENSA_ACERCARSE`, `--acercarse`): suma al fitness 10 × (pasos que dio + avance en el paso actual) (`FITNESS_ACERCARSE`). El avance va de 0 a 1 y cuenta lo más cerca que llegó al objetivo de la brújula, (distancia al empezar el paso − la más corta) / distancia al empezar; en las puertas, la mitad es ese camino y la otra mitad, los golpes que contaron sobre los necesarios. Quedarse cerca no suma más que pasar una vez, y alejarse después no resta
+* **Currículo** (`CURRICULO`, `--curriculo`): las generaciones 1 a 15 (`CURRICULO_HASTA_GENERACION`) nacen con la llave roja, sin su premio, y desde la 16 sin ella. El mapa no cambia: la brújula apunta a la puerta de madera, que sigue siendo pared hasta que el agente la abre
+* **Lo dado al nacer no es un logro**: los avisos de hito, la primera vez del boletín y los pasos de la recompensa cuentan solo los pasos que el agente dio. Las columnas `agentes_*` del CSV cuentan quién llegó al menos a cada paso, también con la llave dada; la columna `etapa_inicial` dice con qué etapa nació la generación
 
 ---
 
@@ -484,9 +493,12 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--semilla S` | Semilla del azar. Sin ella se sortea una y se imprime al arrancar. |
 | `--sin-evolucion` | Línea base: cada generación arranca con cerebros al azar y no hereda nada. |
 | `--modo guiado\|autonomo` | `guiado`: la red más la conducción escrita a mano; `autonomo`: solo la red. Pisa `MODO`. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>_<evolucion\|sin_evolucion>.csv`. |
+| `--acercarse` | Prende la recompensa por acercarse al próximo paso del puzzle. Pisa `RECOMPENSA_ACERCARSE`. |
+| `--curriculo` | Prende el currículo: las primeras generaciones nacen con la llave roja. Pisa `CURRICULO`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion\|sin_evolucion>.csv`. |
 
-Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, fitness,
+Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, si la
+recompensa por acercarse estaba prendida, la etapa con la que nació la generación, fitness,
 manzanas, vivos, edad, distancia, diversidad y cuántos agentes llegaron a cada paso del puzzle. **La
 misma semilla da el mismo CSV byte a byte.**
 
@@ -506,7 +518,10 @@ grupo (modo × evolución): fitness y manzanas por agente en las primeras y las 
 generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
 comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
 guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
-minutos en una máquina de 12 núcleos.
+minutos en una máquina de 12 núcleos. `--acercarse` y `--curriculo` pasan a todas las corridas; el
+resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
+1.000 px de recorrido, y en el autónomo aplica el criterio del ítem 5 del BACKLOG (¿aprende a pasar
+la puerta de madera?).
 
 ### Tests
 

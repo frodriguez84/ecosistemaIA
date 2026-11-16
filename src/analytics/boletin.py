@@ -55,11 +55,19 @@ def veces(valor):
     return f"×{numero(valor, 1)}"
 
 
-def nombre_del_modo(modo, acercarse):
-    """El modo, y la recompensa por acercarse si está prendida: "autónomo + acercarse" (spec
-    PUZZLE_APRENDIBLE, decisión 11). Lo usan el panel y el encabezado del boletín."""
+def nombre_de_las_ayudas(acercarse, curriculo):
+    """Las ayudas prendidas: "acercarse", "currículo" o "acercarse + currículo"; "" si ninguna (spec
+    PUZZLE_APRENDIBLE, decisión 11). El panel las pone en un renglón propio."""
+    ayudas = (("acercarse", acercarse), ("currículo", curriculo))
+    return " + ".join(nombre for nombre, prendida in ayudas if prendida)
+
+
+def nombre_del_modo(modo, acercarse, curriculo=False):
+    """El modo, y las ayudas prendidas: "autónomo + acercarse + currículo". Lo usa el encabezado del
+    boletín."""
     nombre = NOMBRES_DE_MODOS.get(modo, modo)
-    return f"{nombre} + acercarse" if acercarse else nombre
+    ayudas = nombre_de_las_ayudas(acercarse, curriculo)
+    return f"{nombre} + {ayudas}" if ayudas else nombre
 
 
 def minutos_simulados(ticks_totales):
@@ -103,9 +111,11 @@ def linea_de_hito(hito):
             f"{hito['generacion']}, segundo {hito['tick'] / 60:.1f}")
 
 
-def _primera_generacion(historia, columna):
-    """La primera generación con algún agente en ese paso, o None (decisión 4)."""
-    return next((fila["generacion"] for fila in historia if fila[columna] > 0), None)
+def _primera_generacion(historia, paso, columna):
+    """La primera generación en que algún agente dio ese paso, o None (decisión 4). Una generación que
+    nació con el paso dado no cuenta (spec PUZZLE_APRENDIBLE, decisión 10)."""
+    return next((fila["generacion"] for fila in historia
+                 if fila[columna] > 0 and fila["etapa_inicial"] < paso), None)
 
 
 def _cuatro_numeros(historia):
@@ -151,7 +161,7 @@ def armar_boletin(registro):
 
     minutos = minutos_simulados(sum(fila["ticks"] for fila in historia))
     subtitulo = " · ".join([
-        f"Modo {nombre_del_modo(primera['modo'], primera['acercarse'])}",
+        f"Modo {nombre_del_modo(primera['modo'], primera['acercarse'], primera['etapa_inicial'] > 0)}",
         "con evolución" if evolucion else "sin evolución (línea base)",
         f"semilla {primera['semilla']}",
         f"{generaciones} generación" if generaciones == 1 else f"{generaciones} generaciones",
@@ -161,9 +171,13 @@ def armar_boletin(registro):
     # El embudo: cuántos de la última generación llegaron a cada paso, y la primera vez en la corrida
     embudo = []
     for paso, (nombre, columna) in enumerate(zip(PASOS, COLUMNAS_DE_PASOS), start=1):
-        agentes, primera_vez = ultima[columna], _primera_generacion(historia, columna)
-        texto = ("nadie, en ninguna generación" if primera_vez is None
-                 else f"{agentes} de {poblacion} · 1ª vez: gen {primera_vez}")
+        agentes, primera_vez = ultima[columna], _primera_generacion(historia, paso, columna)
+        if primera_vez is not None:
+            texto = f"{agentes} de {poblacion} · 1ª vez: gen {primera_vez}"
+        elif agentes:  # Nadie lo dio, pero la última generación nació con él: la llave del currículo
+            texto = f"{agentes} de {poblacion} · dada al nacer"
+        else:
+            texto = "nadie, en ninguna generación"
         embudo.append({"paso": paso, "nombre": nombre.capitalize(), "agentes": agentes,
                        "fraccion": agentes / poblacion, "primera_vez": primera_vez, "texto": texto})
 
@@ -187,7 +201,13 @@ def armar_boletin(registro):
 
     mejor = registro.mejor
     manzanas = "1 manzana" if mejor["manzanas"] == 1 else f"{numero(mejor['manzanas'])} manzanas"
-    llego_a = PASOS[mejor["etapa"] - 1] if mejor["etapa"] else "ningún paso del puzzle"
+    # Hasta dónde llegó él: lo que se le dio al nacer no cuenta (spec PUZZLE_APRENDIBLE, decisión 10)
+    if mejor["etapa"] > mejor["etapa_inicial"]:
+        llego_a = PASOS[mejor["etapa"] - 1]
+    elif mejor["etapa_inicial"]:
+        llego_a = f"ningún paso (nació con la {PASOS[mejor['etapa_inicial'] - 1]})"
+    else:
+        llego_a = "ningún paso del puzzle"
 
     mapas = [registro.calor_gen1] + ([registro.calor_ultima] if generaciones > 1 else [])
 

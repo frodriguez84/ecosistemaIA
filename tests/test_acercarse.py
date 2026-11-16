@@ -197,8 +197,9 @@ def test_los_flags_prenden_el_switch_y_estan_en_la_ayuda(capsys):
 
 
 def test_la_ruta_por_defecto_el_panel_y_el_boletin_nombran_el_switch(monkeypatch):
-    # Decisión 11: la ruta lleva _acercarse, y el renglón Modo del panel y el encabezado del boletín
-    # nombran la recompensa cuando está prendida
+    # Decisión 11: la ruta lleva _acercarse, y el panel y el encabezado del boletín nombran la
+    # recompensa cuando está prendida. En el panel va en el renglón de las ayudas (bloque B: con el
+    # modo, las dos ayudas no entran)
     import main  # noqa: E402
     from src.analytics.boletin import armar_boletin  # noqa: E402
     from src.analytics.registro import RegistroDeLaCorrida  # noqa: E402
@@ -208,7 +209,7 @@ def test_la_ruta_por_defecto_el_panel_y_el_boletin_nombran_el_switch(monkeypatch
         fila = dict.fromkeys(main.COLUMNAS_CSV, 0)
         fila.update(semilla=7, evolucion=1, modo="autonomo", acercarse=acercarse, generacion=1, ticks=960)
         registro = RegistroDeLaCorrida(960, 800, 16)
-        agente = SimpleNamespace(id=1, x=50.0, y=50.0, alive=True, etapa=0, fitness=20.0,
+        agente = SimpleNamespace(id=1, x=50.0, y=50.0, alive=True, etapa=0, etapa_inicial=0, fitness=20.0,
                                  food_eaten=1, distance_traveled=100.0, age=960)
         registro.cerrar_generacion(fila, 960, [agente])
         return armar_boletin(registro)["subtitulo"]
@@ -217,12 +218,14 @@ def test_la_ruta_por_defecto_el_panel_y_el_boletin_nombran_el_switch(monkeypatch
     monkeypatch.setattr(SimulationConfig, "MODO", "autonomo")
     monkeypatch.setattr(SimulationConfig, "RECOMPENSA_ACERCARSE", False, raising=False)
     assert main._ruta_csv_por_defecto(3, False) == str(Path("results") / "corrida_s3_autonomo_sin_evolucion.csv")
-    assert dict(datos_de_la_generacion(1, [], sin_comida, 0))["Modo"] == "autónomo"
+    datos = dict(datos_de_la_generacion(1, [], sin_comida, 0))
+    assert datos["Modo"] == "autónomo" and "Ayudas" not in datos
     assert boletin(0).startswith("Modo autónomo · con evolución")
 
     monkeypatch.setattr(SimulationConfig, "RECOMPENSA_ACERCARSE", True)
     assert main._ruta_csv_por_defecto(3, True) == str(Path("results") / "corrida_s3_autonomo_acercarse_evolucion.csv")
-    assert dict(datos_de_la_generacion(1, [], sin_comida, 0))["Modo"] == "autónomo + acercarse"
+    datos = dict(datos_de_la_generacion(1, [], sin_comida, 0))
+    assert (datos["Modo"], datos["Ayudas"]) == ("autónomo", "acercarse")
     assert boletin(1).startswith("Modo autónomo + acercarse · con evolución")
 
 

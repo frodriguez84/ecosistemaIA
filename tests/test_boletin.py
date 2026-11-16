@@ -34,7 +34,7 @@ def _registro(filas, ticks_max=None, mejor_etapa=1):
     """Un registro con esas filas cerradas, en orden. ticks_max: los de cada generación (960 si no)."""
     registro = RegistroDeLaCorrida(960, 800, 16)
     for i, fila in enumerate(filas):
-        agente = SimpleNamespace(id=100 + i, x=50.0, y=50.0, alive=True, etapa=mejor_etapa,
+        agente = SimpleNamespace(id=100 + i, x=50.0, y=50.0, alive=True, etapa=mejor_etapa, etapa_inicial=0,
                                  fitness=40.0 + i, food_eaten=7, distance_traveled=1515.4, age=1335)
         registro.contar_posiciones([agente])
         registro.cerrar_generacion(fila, (ticks_max or [960] * len(filas))[i], [agente])

@@ -97,11 +97,21 @@ def _ubicar_agentes(world, agents):
         ubicados.append(agent)
 
 
+def _fijar_etapa_inicial(agents, generacion):
+    """La etapa con la que nacen todos los agentes de la generación, élites incluidas (spec
+    PUZZLE_APRENDIBLE, decisiones 8 y 9). Con el currículo, hasta CURRICULO_HASTA_GENERACION nacen
+    con la llave roja (etapa 1), sin su premio: no la agarraron. Si no, en la 0. No usa el azar."""
+    etapa = 1 if (SimulationConfig.CURRICULO
+                  and generacion <= SimulationConfig.CURRICULO_HASTA_GENERACION) else 0
+    for agent in agents:
+        agent.etapa = agent.etapa_inicial = etapa
+
+
 # Columnas del CSV de cada corrida, en este orden (spec MEDIR_ANTES_DE_TOCAR, decisión 6;
-# modo, edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28; acercarse: spec
-# PUZZLE_APRENDIBLE, decisión 11)
+# modo, edad_prom y agentes_*: spec MODO_GUIADO_Y_AUTONOMO, decisión 28; acercarse y etapa_inicial:
+# spec PUZZLE_APRENDIBLE, decisión 11)
 COLUMNAS_CSV = [
-    "semilla", "evolucion", "modo", "acercarse", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "acercarse", "generacion", "etapa_inicial", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
@@ -135,9 +145,13 @@ def _leer_argumentos(argv):
     parser.add_argument("--acercarse", action="store_true",
                         help="Prende la recompensa por acercarse al próximo paso del puzzle, en los dos "
                              "modos. Pisa RECOMPENSA_ACERCARSE de config.py.")
+    parser.add_argument("--curriculo", action="store_true",
+                        help="Prende el currículo, en los dos modos: las primeras "
+                             "CURRICULO_HASTA_GENERACION generaciones nacen con la llave roja. Pisa "
+                             "CURRICULO de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
-                        help="Dónde escribir el CSV. Por defecto, "
-                             "results/corrida_s<semilla>_<modo>[_acercarse]_<evolucion|sin_evolucion>.csv.")
+                        help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
+                             "[_acercarse][_curriculo]_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -153,8 +167,9 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
     Hace las mismas cuentas que el reporte por consola del final de generación. Los decimales van
     redondeados a 4 para que dos corridas con la misma semilla den el mismo archivo byte a byte.
-    Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso. El
-    modo y el switch de la recompensa por acercarse se leen de SimulationConfig, donde main() los pisa.
+    Las columnas agentes_* cuentan los agentes de la generación que llegaron al menos a ese paso,
+    también lo que se les dio al nacer; etapa_inicial dice con qué etapa nacieron (todos con la misma).
+    El modo y el switch de la recompensa por acercarse se leen de SimulationConfig, donde main() los pisa.
     """
     fitness = [float(agent.fitness) for agent in agents]
     manzanas = [agent.food_eaten for agent in agents]
@@ -165,6 +180,7 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
         SimulationConfig.MODO,
         int(SimulationConfig.RECOMPENSA_ACERCARSE),
         generacion,
+        agents[0].etapa_inicial,
         ticks,
         sum(fitness) / len(fitness),
         max(fitness),
@@ -183,10 +199,11 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 
 def _ruta_csv_por_defecto(semilla, evolucion):
-    """results/corrida_s<semilla>_<modo>[_acercarse]_<evolucion|sin_evolucion>.csv, con el modo y el
-    switch de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11)."""
+    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion|sin_evolucion>.csv, con el
+    modo y los switches de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11)."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
-    return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}_"
+    curriculo = "_curriculo" if SimulationConfig.CURRICULO else ""
+    return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}_"
                                    f"{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
@@ -265,6 +282,8 @@ def main(argv=None):
         SimulationConfig.MODO = args.modo
     if args.acercarse:
         SimulationConfig.RECOMPENSA_ACERCARSE = True
+    if args.curriculo:
+        SimulationConfig.CURRICULO = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
@@ -358,6 +377,7 @@ def _simular(semilla, evolucion, escribir_fila):
     # Crear población inicial y ubicarla en el mundo
     agents = ga._create_random_population()
     _ubicar_agentes(world, agents)
+    _fijar_etapa_inicial(agents, 1)
     
     # Panel de estadísticas: la columna entera, a la derecha del mundo
     stats_panel = StatsPanel(config.get_game_area_width(), 0, config.get_stats_panel_width(), screen_height)
@@ -528,6 +548,7 @@ def _simular(semilla, evolucion, escribir_fila):
             # El mapa se regenera con el puzzle reiniciado, y recién ahí se ubican los agentes (DIAG-29)
             world.reset_food(generation + 1)
             _ubicar_agentes(world, agents)
+            _fijar_etapa_inicial(agents, generation + 1)
             world.tick = 0
             tick = 0
             generation += 1

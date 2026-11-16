@@ -24,8 +24,8 @@ COLUMNAS, FILAS = ANCHO // CELDA, ALTO // CELDA  # 60 × 50
 
 
 def _agente(id_, x=100.0, y=100.0, vivo=True, etapa=0, fitness=10.0):
-    return SimpleNamespace(id=id_, x=x, y=y, alive=vivo, etapa=etapa, fitness=fitness, food_eaten=2,
-                           distance_traveled=300.0, age=500)
+    return SimpleNamespace(id=id_, x=x, y=y, alive=vivo, etapa=etapa, etapa_inicial=0, fitness=fitness,
+                           food_eaten=2, distance_traveled=300.0, age=500)
 
 
 def _fila(generacion, ticks=960, **valores):
@@ -146,7 +146,7 @@ def test_el_mejor_agente_es_el_record_de_la_corrida():
     # Una que lo supera, sí
     registro.cerrar_generacion(_fila(4), 960, [_agente(5, fitness=40.5, etapa=1)])
     assert registro.mejor == {"id": 5, "generacion": 4, "fitness": 40.5, "manzanas": 2,
-                              "recorrido": 300.0, "ticks_vividos": 500, "etapa": 1}
+                              "recorrido": 300.0, "ticks_vividos": 500, "etapa": 1, "etapa_inicial": 0}
 
 
 def test_la_historia_guarda_la_fila_tal_cual_y_los_ticks_maximos():

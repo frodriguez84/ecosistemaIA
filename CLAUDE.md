@@ -51,7 +51,7 @@ EcosistemaEvolutivo/
 ├── config.py            ← SimulationConfig: parámetros centralizados (tres no se leen, ver Notas)
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
-├── tests/               ← pytest: humo de main.py (los dos modos), reglas, puzzle, modos, reportes, resumen, registro, boletín, fuentes y pantallas
+├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, reportes, resumen, registro, boletín, fuentes y pantallas
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── assets/fonts/        ← Pixelify Sans e Inter, TTF estáticos con licencia OFL (origen en su LEEME.md)
@@ -96,7 +96,14 @@ EcosistemaEvolutivo/
 - **El puzzle es de cada agente:** etapa de 0 a 5 y hacha propias; una puerta es pared para cada uno
   hasta que él la abre; las llaves y el hacha se agarran por contacto y quedan en el mapa; puertas,
   cofre y árboles piden golpear (quinta salida, cuesta `HIT_ENERGY_COST`). Todo vuelve a 0 en cada
-  generación, y abrir el cofre no termina la corrida.
+  generación (a 1 con el currículo, hasta la 15), y abrir el cofre no termina la corrida.
+- **Dos ayudas para aprender el puzzle,** comunes a los dos modos, cada una con su switch en
+  `config.py`, apagadas por defecto: la recompensa por acercarse (`RECOMPENSA_ACERCARSE`: suma
+  `FITNESS_ACERCARSE` = 10 × (pasos que dio + avance en el paso actual)) y el currículo (`CURRICULO`:
+  las generaciones 1 a `CURRICULO_HASTA_GENERACION` = 15 nacen con la llave roja, sin su premio).
+  Apagadas, la corrida es la de antes. Lo dado al nacer no es un logro: hitos, primera vez del boletín
+  y pasos de la recompensa cuentan solo los pasos dados (`etapa_inicial` del agente y del CSV). Spec
+  [Que el puzzle se pueda aprender](docs/specs/active/PUZZLE_APRENDIBLE.md).
 - **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso del
   agente.
 
@@ -147,9 +154,10 @@ EcosistemaEvolutivo/
   Un script de edición escrito con Write pierde los espacios de sus líneas en blanco: que compare
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
-  --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base y `--modo autonomo`, el modo
-  sin guía). El experimento con los dos modos, con evolución y sin ella, en varias semillas es
-  `python experimento.py` (`--modos` elige los modos).
+  --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
+  sin guía, y `--acercarse` y `--curriculo` prenden las ayudas). El experimento con los dos modos, con
+  evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige los modos;
+  `--acercarse` y `--curriculo` pasan a todas las corridas).
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select

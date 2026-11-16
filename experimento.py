@@ -5,11 +5,11 @@ Corre main.py sin ventana para cada semilla y cada modo, una vez con evolución 
 base (--sin-evolucion), varias a la vez. Cada corrida deja su CSV y su log en
 results/experimento_<AAAAMMDD-HHMMSS>/. Al final arma resumen.md: tablas Markdown para pegar tal
 cual en docs/qa/AnalisisQA.md (spec MEDIR_ANTES_DE_TOCAR, decisiones 12 a 14; los modos y las
-comparaciones entre ellos: spec MODO_GUIADO_Y_AUTONOMO, decisión 29; la recompensa por acercarse, la
-puerta de madera y el criterio del ítem 5: spec PUZZLE_APRENDIBLE, decisiones 12 y 13).
+comparaciones entre ellos: spec MODO_GUIADO_Y_AUTONOMO, decisión 29; la recompensa por acercarse, el
+currículo, la puerta de madera y el criterio del ítem 5: spec PUZZLE_APRENDIBLE, decisiones 12 y 13).
 
 Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--modos guiado autonomo]
-                           [--acercarse] [--paralelo K]
+                           [--acercarse] [--curriculo] [--paralelo K]
 
 El resumen usa solo la librería estándar (decisión 18).
 """
@@ -68,17 +68,21 @@ def resumir_corrida(ruta_csv):
     12). Si la corrida tiene menos de 10 generaciones, todos quedan en None. etapa_maxima: la etapa
     más alta a la que llegó algún agente en cualquier generación. generacion_cofre: la primera
     generación en que algún agente abrió el cofre, o None. acercarse: si corrió con la recompensa por
-    acercarse (un CSV de antes del spec no tiene la columna: no).
+    acercarse. curriculo: si alguna generación nació con la llave roja; ultimas_con_curriculo: si
+    alguna de las últimas 5 (un CSV de antes del spec no tiene esas columnas: no).
     """
     with open(ruta_csv, newline="", encoding="utf-8") as archivo:
         filas = list(csv.DictReader(archivo))
     ultima = filas[-1]
     con_cofre = [int(fila["generacion"]) for fila in filas if int(fila["agentes_cofre"]) > 0]
+    con_curriculo = [int(fila.get("etapa_inicial", 0)) > 0 for fila in filas]
     resumen = {
         "semilla": int(ultima["semilla"]),
         "modo": ultima["modo"],
         "evolucion": ultima["evolucion"] == "1",
         "acercarse": ultima.get("acercarse") == "1",
+        "curriculo": any(con_curriculo),
+        "ultimas_con_curriculo": any(con_curriculo[-VENTANA:]),
         "generaciones": len(filas),
         "etapa_maxima": max(_etapa(fila) for fila in filas),
         "generacion_cofre": con_cofre[0] if con_cofre else None,
@@ -251,9 +255,10 @@ def _comparaciones(corridas):
 
 def resumen_markdown(corridas, fallidas, comando):
     """Arma el resumen en Markdown: por grupo (modo × evolución), las comparaciones pareadas, por
-    corrida y las que fallaron."""
-    ayudas = ("recompensa por acercarse" if any(corrida["acercarse"] for corrida in corridas)
-              else "ninguna")
+    corrida, las que tienen generaciones del currículo en las últimas 5 y las que fallaron."""
+    ayudas = " y ".join(nombre for nombre, clave in (("recompensa por acercarse", "acercarse"),
+                                                     ("currículo", "curriculo"))
+                        if any(corrida[clave] for corrida in corridas)) or "ninguna"
     lineas = [f"`{comando}`", "",
               f"**Ayudas prendidas:** {ayudas}.", "",
               "**Por grupo** (promedio ± desvío muestral entre semillas):", "",
@@ -298,6 +303,14 @@ def resumen_markdown(corridas, fallidas, comando):
                str(corrida["etapa_maxima"]),
                "—" if corrida["generacion_cofre"] is None else str(corrida["generacion_cofre"])]))
 
+    # Decisión 12: las últimas 5 tienen que ser del puzzle de hoy, que es donde se mide
+    marcadas = [corrida for corrida in sorted(corridas, key=_orden) if corrida["ultimas_con_curriculo"]]
+    if marcadas:
+        lineas += ["", "**Corridas con generaciones del currículo entre las últimas 5** (no son todas del "
+                       "puzzle de hoy: alguna nació con la llave roja):", ""]
+        lineas += [f"- Semilla {corrida['semilla']}, {corrida['modo']}, "
+                   f"{_evolucion(corrida['evolucion']).lower()}." for corrida in marcadas]
+
     if fallidas:
         lineas += ["", "**Corridas que fallaron** (fuera del resumen):", ""]
         lineas += [f"- Semilla {f['semilla']}, {f['modo']}, {_evolucion(f['evolucion']).lower()}: "
@@ -324,6 +337,9 @@ def _leer_argumentos(argv):
     parser.add_argument("--acercarse", action="store_true",
                         help="Corre todas con la recompensa por acercarse al próximo paso del puzzle "
                              "(--acercarse de main.py).")
+    parser.add_argument("--curriculo", action="store_true",
+                        help="Corre todas con el currículo: las primeras generaciones nacen con la llave "
+                             "roja (--curriculo de main.py).")
     parser.add_argument("--paralelo", type=int, default=max(1, (os.cpu_count() or 2) - 1), metavar="K",
                         help="Corridas a la vez. Por defecto, los núcleos menos uno.")
     args = parser.parse_args(argv)
@@ -339,11 +355,11 @@ def _leer_argumentos(argv):
     return args
 
 
-def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False):
+def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, curriculo=False):
     """Corre main.py sin ventana, con la salida a un log, y devuelve cómo terminó. El CSV y el log se
     llaman como la ruta por defecto de main.py."""
-    nombre = (f"corrida_s{semilla}_{modo}{'_acercarse' if acercarse else ''}_"
-              f"{'evolucion' if evolucion else 'sin_evolucion'}")
+    nombre = (f"corrida_s{semilla}_{modo}{'_acercarse' if acercarse else ''}"
+              f"{'_curriculo' if curriculo else ''}_{'evolucion' if evolucion else 'sin_evolucion'}")
     ruta_csv, ruta_log = carpeta / f"{nombre}.csv", carpeta / f"{nombre}.log"
     # -u: el log se escribe a medida que corre, y una corrida cortada no pierde la cola
     comando = [sys.executable, "-u", "main.py", "--sin-ventana", "--generaciones", str(generaciones),
@@ -352,6 +368,8 @@ def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False):
         comando.append("--sin-evolucion")
     if acercarse:
         comando.append("--acercarse")
+    if curriculo:
+        comando.append("--curriculo")
     inicio = time.monotonic()
     # cwd en la raíz: main.py carga los sprites con una ruta relativa
     with open(ruta_log, "wb") as log:
@@ -375,7 +393,8 @@ def main(argv=None):
 
     resultados = []
     with ThreadPoolExecutor(max_workers=args.paralelo) as pool:
-        futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta, args.acercarse)
+        futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta, args.acercarse,
+                               args.curriculo)
                    for semilla, modo, evolucion in tareas]
         for futuro in as_completed(futuros):
             resultado = futuro.result()
@@ -389,7 +408,7 @@ def main(argv=None):
     fallidas = sorted((r for r in resultados if r["codigo"] != 0), key=_orden)
     comando = (f"python experimento.py --semillas {' '.join(map(str, args.semillas))} "
                f"--generaciones {args.generaciones} --modos {' '.join(args.modos)}"
-               f"{' --acercarse' if args.acercarse else ''}")
+               f"{' --acercarse' if args.acercarse else ''}{' --curriculo' if args.curriculo else ''}")
     texto = (f"# Experimento: modos guiado y autónomo, con evolución y sin ella\n\n"
              f"{datetime.now():%Y-%m-%d} · carpeta `{_ruta_md(carpeta)}`\n\n"
              + resumen_markdown(corridas, fallidas, comando))

@@ -107,6 +107,10 @@ class SimulationConfig:
     # Recompensa por acercarse al próximo paso del puzzle, en los dos modos (--acercarse la prende)
     RECOMPENSA_ACERCARSE = False
     FITNESS_ACERCARSE = 10.0         # × (pasos que dio + avance en el paso actual, de 0 a 1)
+    # Currículo, en los dos modos (--curriculo lo prende): las generaciones 1 a CURRICULO_HASTA_GENERACION
+    # nacen con la llave roja, sin su premio; desde la siguiente, sin ella
+    CURRICULO = False
+    CURRICULO_HASTA_GENERACION = 15
     
     # === SISTEMA DE FORTALEZAS/LLAVES/PUERTAS/COFRE ===
     FORTRESSES_ENABLED = True     # Habilitar sistema de fortalezas

@@ -4,8 +4,8 @@ Test de humo: corre main.py como lo correría una persona, con sus flags reales.
 Cuida lo que el spec MEDIR_ANTES_DE_TOCAR necesita que siga andando: que la corrida sin ventana
 termine, que deje el CSV con las columnas acordadas y que la misma semilla dé el mismo archivo. En
 los dos modos (spec MODO_GUIADO_Y_AUTONOMO, decisión 31), y en el autónomo con la recompensa por
-acercarse (spec PUZZLE_APRENDIBLE, decisión 16). Las nueve corridas se lanzan juntas, así el test
-tarda lo que tarda una.
+acercarse y con el currículo (spec PUZZLE_APRENDIBLE, decisión 16). Las doce corridas se lanzan
+juntas, así el test tarda lo que tarda una.
 """
 
 import csv
@@ -21,10 +21,11 @@ SEMILLA = 7
 GENERACIONES = 2
 TIMEOUT_S = 180
 
-# Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO, y acercarse, de
-# PUZZLE_APRENDIBLE), escrita acá a propósito (no importada de main.py): si cambia, el test avisa
+# Decisión 6 del spec (con modo, edad_prom y agentes_*, de MODO_GUIADO_Y_AUTONOMO, y acercarse y
+# etapa_inicial, de PUZZLE_APRENDIBLE), escrita acá a propósito (no importada de main.py): si cambia,
+# el test avisa
 COLUMNAS = [
-    "semilla", "evolucion", "modo", "acercarse", "generacion", "ticks",
+    "semilla", "evolucion", "modo", "acercarse", "generacion", "etapa_inicial", "ticks",
     "fitness_prom", "fitness_max", "fitness_min", "fitness_desvio",
     "manzanas_prom", "manzanas_max", "vivos", "edad_prom", "distancia_prom", "diversidad",
     "arboles_cortados", "agentes_llave_roja", "agentes_puerta_madera", "agentes_llave_dorada",
@@ -42,12 +43,16 @@ CORRIDAS = {
     "autonomo_acercarse_evolucion_1": ["--modo", "autonomo", "--acercarse"],
     "autonomo_acercarse_evolucion_2": ["--modo", "autonomo", "--acercarse"],
     "autonomo_acercarse_sin_evolucion": ["--modo", "autonomo", "--acercarse", "--sin-evolucion"],
+    "autonomo_curriculo_evolucion_1": ["--modo", "autonomo", "--curriculo"],
+    "autonomo_curriculo_evolucion_2": ["--modo", "autonomo", "--curriculo"],
+    "autonomo_curriculo_sin_evolucion": ["--modo", "autonomo", "--curriculo", "--sin-evolucion"],
 }
+POBLACION = 60  # POPULATION_SIZE de config.py: en el currículo, todos nacen con la llave roja
 
 
 @pytest.fixture(scope="module")
 def corridas(tmp_path_factory):
-    """Lanza las nueve corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
+    """Lanza las doce corridas en paralelo y devuelve, por nombre, su código de salida, CSV y log."""
     carpeta = tmp_path_factory.mktemp("humo")
     lanzadas = {}
     for nombre, extra in CORRIDAS.items():
@@ -97,13 +102,13 @@ def test_el_csv_tiene_las_columnas_y_una_fila_por_generacion(corridas):
         assert {fila[COLUMNAS.index("semilla")] for fila in filas} == {str(SEMILLA)}, nombre
 
 
-@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_"])
+@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_", "autonomo_curriculo_"])
 def test_la_misma_semilla_da_el_mismo_csv(corridas, prefijo):
     uno, dos = corridas[f"{prefijo}evolucion_1"]["csv"], corridas[f"{prefijo}evolucion_2"]["csv"]
     assert uno.read_bytes() == dos.read_bytes()
 
 
-@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_"])
+@pytest.mark.parametrize("prefijo", ["", "autonomo_", "autonomo_acercarse_", "autonomo_curriculo_"])
 def test_sin_evolucion_arranca_igual_que_con_evolucion(corridas, prefijo):
     con = _filas(corridas[f"{prefijo}evolucion_1"]["csv"])[1]
     sin = _filas(corridas[f"{prefijo}sin_evolucion"]["csv"])[1]
@@ -146,6 +151,18 @@ def test_acercarse_va_en_el_csv_y_no_cambia_la_linea_base(corridas):
     assert all(float(fila_con[j]) > float(fila_sin[j]) for fila_sin, fila_con in zip(sin, con))
 
 
+def test_etapa_inicial_va_en_el_csv_y_con_el_curriculo_todos_nacen_con_la_llave(corridas):
+    # Spec PUZZLE_APRENDIBLE, decisiones 8 y 11. Las dos generaciones son del currículo (las 15
+    # primeras): con --curriculo nacen todos en la etapa 1, con evolución y sin ella; sin, en la 0
+    i, j = COLUMNAS.index("etapa_inicial"), COLUMNAS.index("agentes_llave_roja")
+    for nombre, corrida in corridas.items():
+        filas = _filas(corrida["csv"])[1:]
+        esperado = "1" if "_curriculo_" in nombre else "0"
+        assert {fila[i] for fila in filas} == {esperado}, nombre
+        if esperado == "1":
+            assert {fila[j] for fila in filas} == {str(POBLACION)}, nombre
+
+
 def test_el_resumen_final_dice_el_tiempo_simulado(corridas):
     # DIAG-15: decía "Tiempo total: 0.0 minutos" (división entera, y solo de la última generación).
     # Dos generaciones de 960 ticks, a 60 ticks por segundo, son 0,53 minutos simulados; el boletín
@@ -163,16 +180,18 @@ LINEA_DE_HITO = re.compile(r"^🏆 (¡.+!) Agente (\d+), generación (\d+), segu
 
 
 def test_cada_hito_del_log_coincide_con_la_primera_generacion_del_csv(corridas):
-    # Decisión 5: un hito es la primera vez en la corrida que un agente llega a un paso. Su generación
-    # es la primera fila del CSV con esa columna mayor que 0, y cada paso con agentes tiene su línea
+    # Decisión 5: un hito es la primera vez en la corrida que un agente da un paso. Su generación es
+    # la primera fila del CSV con esa columna mayor que 0 que no nació con ese paso dado (spec
+    # PUZZLE_APRENDIBLE, decisión 10), y cada paso dado tiene su línea
     for nombre, corrida in corridas.items():
         log = corrida["log"].read_text(encoding="utf-8", errors="replace")
         lineas = [LINEA_DE_HITO.match(linea) for linea in log.splitlines()]
         generacion_del_log = {m.group(1): int(m.group(3)) for m in lineas if m}
         assert len(generacion_del_log) == len([m for m in lineas if m]), f"{nombre}: un hito repetido"
         encabezado, *filas = _filas(corrida["csv"])
-        for titulo, columna in HITOS:
+        g, e = encabezado.index("generacion"), encabezado.index("etapa_inicial")
+        for paso, (titulo, columna) in enumerate(HITOS, start=1):
             i = encabezado.index(columna)
-            primera = next((int(fila[encabezado.index("generacion")]) for fila in filas if int(fila[i]) > 0),
+            primera = next((int(fila[g]) for fila in filas if int(fila[i]) > 0 and int(fila[e]) < paso),
                            None)
             assert generacion_del_log.get(titulo) == primera, f"{nombre}: {titulo}"
