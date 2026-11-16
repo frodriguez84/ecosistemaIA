@@ -21,7 +21,11 @@ Por condición (acercarse, deslizar, evolución) de las que estén en la carpeta
 Las generaciones salen de la carpeta: ventanas 1-5, 11-15 y, si la corrida pasa de 15, las últimas 5;
 la selección, en las gens 1-15 y en las 16 a la última.
 
-Uso: python mediciones/analizar_brujula.py SALIDA
+Lee una o varias carpetas. El cruce (CROSSOVER_RATE, columna cruce de medir_puerta.py con cruce=X) es
+parte de la condición; la línea base sin evolución lo ignora, porque nunca se cruza. Una condición con
+otro cruce se compara además contra la misma con el de siempre (docs/qa/AnalisisQA.md#laboratorio-menos-cruce).
+
+Uso: python mediciones/analizar_brujula.py SALIDA [SALIDA ...]
 """
 import csv
 import glob
@@ -50,12 +54,13 @@ def spearman(x, y):
     return float(np.corrcoef(rx, ry)[0, 1])
 
 
-dir_med = sys.argv[1]
 TERMINOS = ("f_supervivencia", "f_comida", "f_exploracion", "f_anticirculo", "f_puzzle", "f_acercarse", "f_agua")
+CRUCE_DE_SIEMPRE = 0.95  # CROSSOVER_RATE de config.py: el de los CSV sin la columna cruce
 filas = []
-for ruta in sorted(glob.glob(os.path.join(dir_med, "agentes_s*.csv"))):
-    with open(ruta, encoding="utf-8") as f:
-        filas.extend(csv.DictReader(f))
+for dir_med in sys.argv[1:]:
+    for ruta in sorted(glob.glob(os.path.join(dir_med, "agentes_s*.csv"))):
+        with open(ruta, encoding="utf-8") as f:
+            filas.extend(csv.DictReader(f))
 for f in filas:
     f["deslizar"] = f.get("deslizar") or 0
     f["laboratorio"] = f.get("laboratorio") or 0
@@ -64,6 +69,7 @@ for f in filas:
         f[k] = int(f[k])
     # El currículo hasta la 30: el laboratorio (sin la columna) y su control, curriculo30
     f["c30"] = int(f["laboratorio"] == 1 or f.get("curriculo_hasta") == "30")
+    f["cruce"] = float(f.get("cruce") or CRUCE_DE_SIEMPRE)
     f["origen"] = f.get("origen") or None
     f["padres"] = [int(f[k]) for k in ("padre1", "padre2") if f.get(k)]
     for k in ("dmin", "d0", "dmin_llave", "d0_llave"):
@@ -89,15 +95,17 @@ NOMBRES = {(0, 0, 0, 0): "B", (1, 0, 0, 0): "C", (0, 1, 0, 0): "B deslizando", (
 
 
 def cond(f):
-    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"]
+    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"], f["cruce"]
 
 
 def nombre(c):
-    return NOMBRES.get(c, str(c))
+    return NOMBRES.get(c[:4], str(c[:4])) + (f", cruce {c[4]}" if c[4] != CRUCE_DE_SIEMPRE else "")
 
 
-conds = sorted({cond(f) for f in filas})
-ULTIMA = {c: max(f["generacion"] for f in filas if cond(f) == c) for c in conds}
+# Las condiciones salen de las corridas con evolución: sin evolución no hay cruce, y la línea base de
+# cada cruce es la misma (de() la busca sin mirar el cruce)
+conds = sorted({cond(f) for f in filas if f["evolucion"] == 1}) or sorted({cond(f) for f in filas})
+ULTIMA = {c: max(f["generacion"] for f in filas if cond(f)[:4] == c[:4]) for c in conds}
 
 
 def ventanas(c):
@@ -113,7 +121,8 @@ def tramos(c):
 
 
 def de(c, evo, desde=1, hasta=99, semilla=None):
-    return [f for f in filas if cond(f) == c and f["evolucion"] == evo
+    """Las filas de la condición c; sin evolución, sin mirar el cruce (nunca se cruza)."""
+    return [f for f in filas if (cond(f) == c if evo else cond(f)[:4] == c[:4]) and f["evolucion"] == evo
             and desde <= f["generacion"] <= hasta and (semilla is None or f["semilla"] == semilla)]
 
 
@@ -148,7 +157,7 @@ for c in conds:
 con_sens = [f for f in filas if f["sb"] is not None]
 if not con_sens:
     sys.exit("\n(sin columnas de sensibilidad: CSV de antes de esta medición)")
-conds_sens = sorted({cond(f) for f in con_sens})
+conds_sens = [c for c in conds if any(cond(f)[:4] == c[:4] for f in con_sens)]
 
 print("\n### Sensibilidad del giro (rad/tick, +90° contra −90°), promedio por agente: brújula | comida")
 for c in conds_sens:
@@ -202,6 +211,30 @@ for c in conds_sens:
         partes.append(f"s{s} {bc:+.4f} / {bs:+.4f}, uso {du:+.3f}")
     if n:
         print(f"  {nombre(c)}, gens {u - 4}-{u}: principal {k1} de {n}, secundario {k2} de {n}  ({'; '.join(partes)})")
+
+print("\n### Contra el cruce de siempre (la misma condición con CROSSOVER_RATE 0,95), últimas 5 generaciones: "
+      "sensibilidad a la brújula con evolución, por semilla, y los promedios")
+for c in conds_sens:
+    base = c[:4] + (CRUCE_DE_SIEMPRE,)
+    if c[4] == CRUCE_DE_SIEMPRE or base not in conds_sens:
+        continue
+    u = ULTIMA[c]
+    k = n = 0
+    partes, va, vb = [], [], []
+    for s in semillas:
+        a, b = de(c, 1, u - 4, u, s), de(base, 1, u - 4, u, s)
+        if not a or not b:
+            continue
+        sa, sb_ = media(a, "sb"), media(b, "sb")
+        n += 1
+        k += sa > sb_
+        va.append(sa)
+        vb.append(sb_)
+        partes.append(f"s{s} {sa:+.4f} / {sb_:+.4f}")
+    if n:
+        print(f"  {nombre(c)} contra {nombre(base)}, gens {u - 4}-{u}: mayor en {k} de {n}; promedio "
+              f"{st.mean(va):+.4f} contra {st.mean(vb):+.4f} ({st.mean(va) / st.mean(vb):.2f} veces)  "
+              f"({'; '.join(partes)})")
 
 print("\n### Cuántos cobran algo: % de agentes con fitness > 0 y fitness medio, por ventana")
 for c in conds_sens:
@@ -260,12 +293,14 @@ if con_origen:
     por_id = {(f["semilla"], cond(f), f["generacion"], f["id"]): f for f in filas if f["evolucion"] == 1}
     for c in sorted({cond(f) for f in con_origen}):
         for desde, hasta in tramos(c):
-            for origen in ("elite", "copia", "cruce"):
+            for origen in ("elite", "copia", "cruce", "todos"):
                 partes = []
                 for etiqueta, k in (("sens. brújula", "sb"), ("sens. comida", "sc"), ("camino a la puerta", "camino")):
                     x, y = [], []
                     for f in con_origen:
-                        if (cond(f) != c or f["origen"] != origen or not desde <= f["generacion"] <= hasta
+                        if (cond(f) != c or not desde <= f["generacion"] <= hasta
+                                or (f["origen"] != origen if origen != "todos"
+                                    else f["origen"] not in ("elite", "copia", "cruce"))
                                 or f[k] is None):
                             continue
                         ps = [por_id.get((f["semilla"], c, f["generacion"] - 1, p)) for p in f["padres"]]
@@ -298,7 +333,7 @@ for c in conds_sens:
               f"(en {len(dif)} generaciones); lugar mediano de los < 50 px: {st.median(lug):.0f} de 60")
 
 con_terminos = [f for f in filas if f["f_comida"] is not None]
-conds_t = sorted({cond(f) for f in con_terminos})
+conds_t = [c for c in conds if any(cond(f)[:4] == c[:4] for f in con_terminos)]
 if conds_t:
     print("\n### Qué mueve el fitness: por término, promedio; desvío dentro de la generación (mediana); "
           "Spearman con el fitness (mediana)")

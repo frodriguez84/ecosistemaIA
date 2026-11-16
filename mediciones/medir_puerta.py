@@ -19,12 +19,13 @@ Envuelve, sin consumir azar:
   padres en la generación anterior (padre1, padre2), para medir si heredan la sensibilidad.
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30] [cruce=X]
 acercarse y deslizar le pasan --acercarse y --deslizar a main.py. laboratorio es el laboratorio de la
 brújula (docs/qa/AnalisisQA.md#laboratorio-brujula): antes de main.main() pone en 0 los pesos de la
 comida, la exploración, el anti-círculo, la supervivencia, los cortes y el agua, así pagan solo
 acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube solo el currículo, con
-el fitness de siempre (el control del laboratorio). Deja en SALIDA, por corrida:
+el fitness de siempre (el control del laboratorio). cruce=X fija CROSSOVER_RATE en X (el resto de los
+hijos sale por copia de un padre; la mutación, igual). Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
@@ -44,6 +45,7 @@ acercarse = "acercarse" in sys.argv[6:]
 deslizar = "deslizar" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
+cruce = next((float(a[len("cruce="):]) for a in sys.argv[6:] if a.startswith("cruce=")), None)
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -422,8 +424,12 @@ if laboratorio:
 if laboratorio or curriculo30:
     SimulationConfig.CURRICULO_HASTA_GENERACION = 30  # la brújula apunta a la puerta las 30 generaciones
     print("CURRICULO_HASTA_GENERACION=30")
+if cruce is not None:
+    SimulationConfig.CROSSOVER_RATE = cruce
+    print(f"CROSSOVER_RATE={cruce}")
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
-          f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}{tipo}")
+          f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
+          f"{f'cruce{cruce}_' if cruce is not None else ''}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
 argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
@@ -440,6 +446,7 @@ for f in FILAS:
     f["deslizar"] = int(deslizar)
     f["laboratorio"] = int(laboratorio)
     f["curriculo_hasta"] = SimulationConfig.CURRICULO_HASTA_GENERACION
+    f["cruce"] = SimulationConfig.CROSSOVER_RATE
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["laboratorio"] = int(laboratorio)

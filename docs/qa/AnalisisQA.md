@@ -1835,3 +1835,143 @@ principio; en el laboratorio, sin ese término, giran más.
 - **La puerta fija** se anota aparte ([mejoras futuras](../product/mejoras_futuras.md)): una medida de
   "usa la brújula" que compara caminos sirve con un control que también quede fijo, o con fortalezas que
   se muevan.
+
+---
+
+<a id="laboratorio-menos-cruce"></a>
+
+## El laboratorio de la brújula con menos cruce (2026-11-16)
+
+**La pregunta** (sugerida por el [laboratorio](#laboratorio-brujula)): con solo acercarse pagando, la
+sensibilidad a la brújula sube, pero lento, y la herencia apunta al cruce uniforme peso a peso (95% de
+los hijos), que le pasa al hijo 0,2 a 0,45 de la sensibilidad de los padres, contra ~0,7 de una copia.
+¿Es el cruce lo que frena? Sin cambios en `src/`, `main.py` ni `config.py`.
+
+**Diseño.** El laboratorio igual, cambiando una sola cosa ([LEC-019](../operations/LECCIONES_APRENDIDAS.md)):
+`CROSSOVER_RATE`, fijado desde [`medir_puerta.py`](../../mediciones/medir_puerta.py) con `cruce=X` antes
+de `main.main()` (los demás hijos salen por copia de un padre; la mutación, igual). Dos niveles, 0,2 y
+0,5, con evolución, semillas 1 a 5: 10 corridas, 10 a la vez, 19,5 min. La línea base sin evolución es la
+del laboratorio: sin evolución nunca se cruza. El análisis, `analizar_brujula.py` con las dos carpetas
+(ahora lee varias; el cruce es parte de la condición, y la línea base lo ignora).
+
+**Criterio, fijado antes de medir** (LEC-018):
+- **El cruce frena:** con cruce 0,2, la sensibilidad a la brújula con evolución en las gens 26-30 supera
+  a la del laboratorio (0,95) en 4 de 5 semillas, y su promedio es al menos 1,5 veces el del laboratorio
+  (≥ 0,028).
+- El 0,5 se informa como punto intermedio, sin criterio propio. Aparte, el criterio del laboratorio
+  (≥ 0,02 y más que la línea base, 4 de 5) para cada nivel.
+- **Control de la manipulación:** los hijos por cruce tienen que dar ~20% y ~50%, y la herencia promedio
+  tiene que subir; si no, el resultado no dice nada del cruce.
+
+**Controles.**
+- Las 10 corridas terminaron con `MEDICION inconsistencias=0` (las 10 líneas contadas), y los términos
+  que no pagan dieron 0 en cada agente.
+- El log de cada corrida dice "Cruce: 20.0%" o "Cruce: 50.0%": el cambio llegó al genético.
+- La gen 1 de las 10 es byte a byte la del laboratorio, con su fitness (los mismos cerebros al azar en el
+  mismo mapa y con los mismos pesos); la 2 ya difiere, porque el cruce actúa recién en `evolve`.
+- El análisis sobre las carpetas del laboratorio y del C30 da lo publicado, más la herencia de todos los
+  hijos juntos.
+- **La manipulación se cumplió:** hijos por cruce, 19% y 20% con 0,2 y 50% y 49% con 0,5 (gens 1-15 y
+  16-30; el laboratorio, 93%); la herencia de todos los hijos juntos sube con menos cruce (tabla de
+  abajo).
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py desde el commit de esta sesión)</summary>
+
+| Semilla | Cruce 0,2 | Cruce 0,5 |
+|---|---|---|
+| 1 | `a4acd120fd230a3174241f41c382900807b3ceb2567a7984b215950878406a61` | `ed5d78672615ef995c63ba143e5c22a99a145bf6e465d4d789efc9c02d29af4b` |
+| 2 | `f1a659b70e70bb882e4368c1192d57c55544b3ad8629997a15e48b6939739328` | `7282cf063458d0ce15993995d9886aaee7090a88aeb6bf7d97f8a108c4e31336` |
+| 3 | `2e592d2a0decbe223d6344abac1b994d57e2c37719b2c15b53f0c05226ff18dc` | `480aba988720427b881d427f0ba7ace83e112250a8b50a088d1137965189edd2` |
+| 4 | `6909f46556b6b4ae5798dabdf16a5551411648a69059cfe62c871c25c9381f44` | `95b44f28aa482e235a319e40cf36cbe3dff14b641326b43a6b421aeb798224c7` |
+| 5 | `ff11c1f4243b19dc43e9bee4542bda12d5dbb2437b3c387b6cb937f020917cc5` | `8c674bda325daae79eab0ed4d3efa5db4eae26bd838884393f0ce12df600aef9` |
+
+</details>
+
+### El criterio
+
+Sensibilidad a la brújula con evolución, gens 26-30, por semilla (rad/tick):
+
+| Semilla | Laboratorio (cruce 0,95) | Cruce 0,5 | Cruce 0,2 | Sin evolución |
+|---|---|---|---|---|
+| 1 | +0,0099 | +0,0720 | +0,1109 | +0,0022 |
+| 2 | +0,0058 | +0,0192 | +0,0715 | +0,0001 |
+| 3 | +0,0297 | +0,0159 | +0,0535 | +0,0017 |
+| 4 | +0,0277 | +0,0051 | +0,0496 | +0,0012 |
+| 5 | +0,0197 | +0,0480 | +0,0235 | −0,0025 |
+| **Promedio** | +0,0186 | +0,0321 (1,7 veces) | **+0,0618 (3,3 veces)** | +0,0005 |
+| Mayor que el laboratorio | — | 3 de 5 | **5 de 5** | |
+| Criterio del laboratorio (≥ 0,02 y más que la línea base) | 2 de 5 | 2 de 5 | **5 de 5** | |
+| Secundario (uso con − sin ≥ 0,05) | 3 de 5 | 5 de 5 | 5 de 5 | |
+
+**El cruce frena: sí, por el criterio fijado** (5 de 5 y 3,3 veces). Con 0,2, además, se cumple el
+criterio del laboratorio, en las 5 semillas. El 0,5 queda en el medio.
+
+### Cuánto sube, y cuándo
+
+Sensibilidad a la brújula, promedio por agente | a la comida | % de agentes con más de 0,02 a la brújula:
+
+| | Gens 1-5 | Gens 11-15 | Gens 16-20 | Gens 21-25 | Gens 26-30 | Gen 30 |
+|---|---|---|---|---|---|---|
+| Laboratorio (0,95) | +0,0040 · +0,0019 · 21% | +0,0033 · +0,0015 · 22% | +0,0066 · −0,0050 · 24% | +0,0092 · −0,0004 · 27% | +0,0186 · +0,0042 · 39% | +0,0277 |
+| Cruce 0,5 | +0,0055 · +0,0035 · 23% | +0,0119 · +0,0032 · 32% | +0,0121 · +0,0072 · 31% | +0,0177 · +0,0143 · 36% | +0,0321 · +0,0187 · 47% | +0,0421 |
+| Cruce 0,2 | +0,0071 · +0,0031 · 23% | **+0,0261** · +0,0035 · 43% | +0,0401 · +0,0056 · 58% | +0,0497 · +0,0096 · 70% | **+0,0618** · +0,0159 · **80%** | +0,0657 |
+| Sin evolución | +0,0000 · +0,0008 · 18% | +0,0014 · +0,0010 · 20% | +0,0011 · −0,0007 · 19% | +0,0033 · −0,0000 · 22% | +0,0005 · +0,0004 · 19% | −0,0048 |
+
+Con 0,2 arranca temprano: en las gens 11-15 ya es +0,026, más que la línea base en 5 de 5 semillas.
+
+### Por qué
+
+| | Laboratorio (0,95) | Cruce 0,5 | Cruce 0,2 |
+|---|---|---|---|
+| Hijos por cruce, gens 1-15 / 16-30 | 93% / 93% | 50% / 49% | 19% / 20% |
+| Herencia de la sensibilidad, todos los hijos (pendiente hijo ↔ padres), gens 1-15 / 16-30 | 0,26 / 0,48 | 0,54 / 0,68 | **0,70 / 0,76** |
+| Ídem, solo los hijos por cruce | 0,20 / 0,45 | 0,24 / 0,57 | 0,64 / 0,82 |
+| Selección: sensibilidad ↔ fitness (Spearman, mediana), gens 1-15 / 16-30 | +0,122 / +0,245 | +0,165 / +0,353 | +0,250 / +0,269 |
+| Agentes que cobran algo, gens 1-5 / 11-15 / 26-30 | 43% / 59% / 82% | 44% / 70% / 94% | 53% / 86% / 94% |
+
+### La puerta
+
+Gens 16-30, con evolución (sin evolución, la línea base del laboratorio):
+
+| | Llegan a < 25 px | Golpean ahí | ≥ 1 golpe que contó | La abren | Ticks a < 25 px (mediana) | % de ticks golpeando (todos) | Criterio del ítem 5, gens 26-30 |
+|---|---|---|---|---|---|---|---|
+| Laboratorio (0,95) | 161 | 84 | 75 | 22 | 29 | 32% | 1 de 5 |
+| Cruce 0,5 | 334 | 152 | 143 | 77 | 42 | 20% | **3 de 5** |
+| Cruce 0,2 | **910** | 104 | 102 | 48 | 116 | 15% | 1 de 5 |
+| Sin evolución | 44 | 24 | 22 | 9 | 53 | 35% | — |
+
+### Lectura
+
+1. **El cruce era el freno del aprendiz.** Con cruce 0,2, la sensibilidad a la brújula es 3,3 veces la del
+   laboratorio en las gens 26-30, mayor en las 5 semillas, y pasa el criterio del laboratorio en las 5:
+   gira hacia la brújula el 43% de lo que gira un seguidor, y el 80% de los agentes lo hace con más de 0,02
+   (sin evolución, el 19%). Con 0,5 queda en el medio: hay dosis-respuesta.
+2. **El mecanismo es la herencia.** Con menos cruce, los hijos heredan 0,70 de la sensibilidad en las gens
+   1-15, contra 0,26; hasta los hijos por cruce heredan más (0,64), porque la población sale casi toda de
+   copias y los padres se parecen. Con la herencia alta, la misma selección (+0,12 a +0,25) mueve la
+   población desde temprano.
+3. **La comida, el control, sube también, menos:** +0,0159 con 0,2 (un cuarto de la brújula) y +0,0187
+   con 0,5. La comida no paga en el laboratorio, pero comer da energía para seguir acercándose, o la red
+   generaliza (los sensores 3 y 9 tienen el mismo formato). Lo que más sube es la brújula.
+4. **El cuello de la puerta pasa a ser golpear.** Con 0,2 llegan a la puerta 20 veces más que sin
+   evolución y se quedan más (116 ticks de mediana), pero golpean ahí 104 de 910 y la abren 48. La
+   evolución bajó el golpe en todo el recorrido (15% de los ticks, contra 35% sin evolución): golpear
+   cuesta energía (`HIT_ENERGY_COST`) y paga solo al lado de la puerta, y la red no aprendió todavía a
+   golpear solo ahí. Con 0,5 llegan menos y golpean más: la abren más (77) y el criterio del ítem 5 da 3 de
+   5, el mejor hasta ahora, sin ser 4.
+5. **Todo esto es el laboratorio:** solo acercarse y el puzzle pagan. Con el fitness del juego (el C30),
+   la selección no ve la brújula (+0,02); menos cruce sube la herencia, pero sin selección no hay qué
+   heredar. Falta medirlo.
+
+**Qué sugiere** (para decidir; esta sesión no tocó la simulación):
+- **El laboratorio de 60 generaciones ya no hace falta:** con menos cruce, el aprendiz llega en 30.
+- **Lo siguiente, menos cruce en el juego, medido en dos pasos** (una cosa por vez, LEC-019): (a) el C30
+  con cruce 0,2 y el fitness de siempre, contra el C30: si la sensibilidad no sube, el fitness sigue siendo
+  el bloqueo; (b) el rebalance de [mejoras futuras](../product/mejoras_futuras.md) con cruce 0,2. Cada uno,
+  una tanda de 15 min, solo con evolución (la línea base es la del laboratorio).
+- **`CROSSOVER_RATE` por defecto:** bajarlo en `config.py` cambia todas las corridas y deja atrás las de
+  referencia, como deslizar. Lo decide Fer, con una medición en el juego (comer, caminar, la llave) como la
+  de deslizar.
+- **Golpear en la puerta, el cuello nuevo:** medir antes de cambiar nada por qué baja el golpe (su costo
+  de energía contra lo que paga) y si la red lo condiciona a la distancia al paso (sensor 11), con una
+  sensibilidad como la de la brújula.
