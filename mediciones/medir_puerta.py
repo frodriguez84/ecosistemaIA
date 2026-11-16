@@ -19,13 +19,16 @@ Envuelve, sin consumir azar:
   padres en la generación anterior (padre1, padre2), para medir si heredan la sensibilidad.
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30] [cruce=X]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...]
 acercarse y deslizar le pasan --acercarse y --deslizar a main.py. laboratorio es el laboratorio de la
 brújula (docs/qa/AnalisisQA.md#laboratorio-brujula): antes de main.main() pone en 0 los pesos de la
 comida, la exploración, el anti-círculo, la supervivencia, los cortes y el agua, así pagan solo
 acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube solo el currículo, con
 el fitness de siempre (el control del laboratorio). cruce=X fija CROSSOVER_RATE en X (el resto de los
-hijos sale por copia de un padre; la mutación, igual). Deja en SALIDA, por corrida:
+hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
+antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
+fitness, docs/qa/AnalisisQA.md#rebalance-fitness); van después de los del laboratorio, y un nombre que
+config.py no tiene corta la corrida. Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
@@ -46,6 +49,7 @@ deslizar = "deslizar" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 cruce = next((float(a[len("cruce="):]) for a in sys.argv[6:] if a.startswith("cruce=")), None)
+pesos = next((a[len("pesos="):] for a in sys.argv[6:] if a.startswith("pesos=")), "")
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -427,9 +431,20 @@ if laboratorio or curriculo30:
 if cruce is not None:
     SimulationConfig.CROSSOVER_RATE = cruce
     print(f"CROSSOVER_RATE={cruce}")
+PESOS = {}
+for par in filter(None, pesos.split(",")):
+    k, v = par.split(":")
+    actual = getattr(SimulationConfig, k, None)
+    if isinstance(actual, bool) or not isinstance(actual, (int, float)):
+        sys.exit(f"pesos: {k} no es un parámetro numérico de config.py")  # si no, nadie lo leería
+    PESOS[k] = float(v)
+    setattr(SimulationConfig, k, PESOS[k])
+if PESOS:
+    print(f"PESOS {PESOS}")
+etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, v in PESOS.items()) + "_" if PESOS else ""
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
-          f"{f'cruce{cruce}_' if cruce is not None else ''}{tipo}")
+          f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
 argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
@@ -447,6 +462,7 @@ for f in FILAS:
     f["laboratorio"] = int(laboratorio)
     f["curriculo_hasta"] = SimulationConfig.CURRICULO_HASTA_GENERACION
     f["cruce"] = SimulationConfig.CROSSOVER_RATE
+    f["pesos"] = pesos
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["laboratorio"] = int(laboratorio)

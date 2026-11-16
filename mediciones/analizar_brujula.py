@@ -24,6 +24,9 @@ la selección, en las gens 1-15 y en las 16 a la última.
 Lee una o varias carpetas. El cruce (CROSSOVER_RATE, columna cruce de medir_puerta.py con cruce=X) es
 parte de la condición; la línea base sin evolución lo ignora, porque nunca se cruza. Una condición con
 otro cruce se compara además contra la misma con el de siempre (docs/qa/AnalisisQA.md#laboratorio-menos-cruce).
+Los pesos (columna pesos, de pesos=) también: la línea base los ignora, porque sin evolución el fitness no
+cambia lo que hacen (lo que mira el fitness sin evolución es con el de su corrida), y una condición con
+pesos se compara contra la misma sin ellos (docs/qa/AnalisisQA.md#rebalance-fitness).
 
 Uso: python mediciones/analizar_brujula.py SALIDA [SALIDA ...]
 """
@@ -70,6 +73,7 @@ for f in filas:
     # El currículo hasta la 30: el laboratorio (sin la columna) y su control, curriculo30
     f["c30"] = int(f["laboratorio"] == 1 or f.get("curriculo_hasta") == "30")
     f["cruce"] = float(f.get("cruce") or CRUCE_DE_SIEMPRE)
+    f["pesos"] = f.get("pesos") or ""
     f["origen"] = f.get("origen") or None
     f["padres"] = [int(f[k]) for k in ("padre1", "padre2") if f.get(k)]
     for k in ("dmin", "d0", "dmin_llave", "d0_llave"):
@@ -95,15 +99,16 @@ NOMBRES = {(0, 0, 0, 0): "B", (1, 0, 0, 0): "C", (0, 1, 0, 0): "B deslizando", (
 
 
 def cond(f):
-    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"], f["cruce"]
+    return f["acercarse"], f["deslizar"], f["laboratorio"], f["c30"], f["cruce"], f["pesos"]
 
 
 def nombre(c):
-    return NOMBRES.get(c[:4], str(c[:4])) + (f", cruce {c[4]}" if c[4] != CRUCE_DE_SIEMPRE else "")
+    return (NOMBRES.get(c[:4], str(c[:4])) + (f", cruce {c[4]}" if c[4] != CRUCE_DE_SIEMPRE else "")
+            + (f", pesos {c[5]}" if c[5] else ""))
 
 
 # Las condiciones salen de las corridas con evolución: sin evolución no hay cruce, y la línea base de
-# cada cruce es la misma (de() la busca sin mirar el cruce)
+# cada cruce y cada peso es la misma (de() la busca sin mirar el cruce ni los pesos)
 conds = sorted({cond(f) for f in filas if f["evolucion"] == 1}) or sorted({cond(f) for f in filas})
 ULTIMA = {c: max(f["generacion"] for f in filas if cond(f)[:4] == c[:4]) for c in conds}
 
@@ -212,29 +217,30 @@ for c in conds_sens:
     if n:
         print(f"  {nombre(c)}, gens {u - 4}-{u}: principal {k1} de {n}, secundario {k2} de {n}  ({'; '.join(partes)})")
 
-print("\n### Contra el cruce de siempre (la misma condición con CROSSOVER_RATE 0,95), últimas 5 generaciones: "
-      "sensibilidad a la brújula con evolución, por semilla, y los promedios")
+print("\n### Contra el cruce de siempre (la misma condición con CROSSOVER_RATE 0,95) y contra los pesos de siempre "
+      "(la misma sin pesos=), últimas 5 generaciones: sensibilidad a la brújula con evolución, por semilla, y los "
+      "promedios")
 for c in conds_sens:
-    base = c[:4] + (CRUCE_DE_SIEMPRE,)
-    if c[4] == CRUCE_DE_SIEMPRE or base not in conds_sens:
-        continue
-    u = ULTIMA[c]
-    k = n = 0
-    partes, va, vb = [], [], []
-    for s in semillas:
-        a, b = de(c, 1, u - 4, u, s), de(base, 1, u - 4, u, s)
-        if not a or not b:
+    for base in (c[:4] + (CRUCE_DE_SIEMPRE,) + c[5:], c[:5] + ("",)):
+        if base == c or base not in conds_sens:
             continue
-        sa, sb_ = media(a, "sb"), media(b, "sb")
-        n += 1
-        k += sa > sb_
-        va.append(sa)
-        vb.append(sb_)
-        partes.append(f"s{s} {sa:+.4f} / {sb_:+.4f}")
-    if n:
-        print(f"  {nombre(c)} contra {nombre(base)}, gens {u - 4}-{u}: mayor en {k} de {n}; promedio "
-              f"{st.mean(va):+.4f} contra {st.mean(vb):+.4f} ({st.mean(va) / st.mean(vb):.2f} veces)  "
-              f"({'; '.join(partes)})")
+        u = ULTIMA[c]
+        k = n = 0
+        partes, va, vb = [], [], []
+        for s in semillas:
+            a, b = de(c, 1, u - 4, u, s), de(base, 1, u - 4, u, s)
+            if not a or not b:
+                continue
+            sa, sb_ = media(a, "sb"), media(b, "sb")
+            n += 1
+            k += sa > sb_
+            va.append(sa)
+            vb.append(sb_)
+            partes.append(f"s{s} {sa:+.4f} / {sb_:+.4f}")
+        if n:
+            print(f"  {nombre(c)} contra {nombre(base)}, gens {u - 4}-{u}: mayor en {k} de {n}; promedio "
+                  f"{st.mean(va):+.4f} contra {st.mean(vb):+.4f} ({st.mean(va) / st.mean(vb):.2f} veces)  "
+                  f"({'; '.join(partes)})")
 
 print("\n### Cuántos cobran algo: % de agentes con fitness > 0 y fitness medio, por ventana")
 for c in conds_sens:

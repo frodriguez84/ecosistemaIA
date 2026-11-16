@@ -2060,3 +2060,187 @@ C30):
   los dos niveles de [mejoras futuras](../product/mejoras_futuras.md), el chico (acercarse 40,
   anti-círculo 9) y el grande (exploración y anti-círculo en 0, la comida como está). `medir_puerta.py`
   todavía no tiene cómo fijar esos pesos sueltos: un argumento más, como `cruce=X`.
+
+---
+
+<a id="rebalance-fitness"></a>
+
+## El rebalance del fitness para la brújula, con menos cruce (2026-11-16)
+
+**La pregunta** (sugerida por [menos cruce en el juego](#menos-cruce-juego)): con cruce 0,2 los hijos heredan la
+sensibilidad a la brújula, pero con el fitness del juego la selección no la ve. ¿Alcanza con cambiar los pesos del
+fitness para que la vea, sin dejar de comer? Sin cambios en `src/`, `main.py` ni `config.py`.
+
+**Diseño.** El C30 con cruce 0,2 (el C deslizando con el currículo hasta la 30 y `CROSSOVER_RATE` 0,2, la tanda de
+[menos cruce en el juego](#menos-cruce-juego)) cambiando una sola cosa (LEC-019): los pesos del fitness, con el
+argumento nuevo de [`medir_puerta.py`](../../mediciones/medir_puerta.py), `pesos=NOMBRE:VALOR,...`, que los fija en
+`SimulationConfig` antes de `main.main()` (un nombre que `config.py` no tiene corta la corrida). Los dos niveles de
+[mejoras futuras](../product/mejoras_futuras.md#aparecido-en-el-laboratorio-de-la-brújula--2026-11-16):
+- **Chico,** `pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9`: acercarse de 10 a 40 y anti-círculo de 18 a 9.
+- **Grande,** `pesos=FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`: sale lo que paga caminar hacia cualquier lado;
+  comida, supervivencia, acercarse y el puzzle quedan como están.
+
+Cada nivel con evolución, semillas 1 a 5. El control (el C30 con cruce 0,2) y la línea base sin evolución (la del
+C30: sin evolución nunca se cruza, y el fitness no cambia lo que hacen los cerebros) se regeneran, y sus SHA-256 se
+comparan con los publicados (LEC-011): 20 corridas de 30 generaciones, en dos tandas de 10. El análisis,
+`analizar_brujula.py`, ahora con los pesos en la condición; las manzanas, del CSV de `main.py`.
+
+**Criterio, fijado antes de medir** (gens 26-30, con evolución; como referencia, el control dio +0,0090 de
+sensibilidad promedio, y el laboratorio con cruce 0,2, donde solo paga acercarse, +0,0618):
+1. **Aprende la brújula por el rebalance:** en 4 de 5 semillas, la sensibilidad a la brújula es ≥ 0,02 rad/tick
+   (el tamaño mínimo del laboratorio), mayor que la línea base y mayor que el control de la misma semilla.
+2. **Sin dejar de comer:** manzanas por agente (`manzanas_prom`), promedio de las 5 semillas, al menos el 90% de las
+   del control.
+3. Un nivel pasa si cumple 1 y 2. Si cumple 1 y no 2, aprende la brújula a costa de comer: se informa así, y no se
+   propone para el juego tal cual.
+- **Se lee con la selección** (la medida independiente, LEC-018): la correlación sensibilidad ↔ fitness con
+  evolución tiene que subir desde la del control (−0,03 y +0,03 en las gens 1-15 y 16-30) hacia la del laboratorio
+  (+0,25 y +0,27). Si 1 se cumple sin que suba, no se atribuye al rebalance. La sensibilidad a la comida, al lado.
+- **Control de la manipulación:** el log de cada corrida imprime los pesos; en la gen 1 (los mismos cerebros en el
+  mismo mapa que el control), el comportamiento es el del control celda a celda, y cada término del fitness es el
+  del control por el peso nuevo sobre el viejo, agente por agente; la gen 2 ya difiere.
+- La puerta (el criterio del ítem 5) se informa, sin criterio propio: su cuello es golpear.
+- **Lo esperado,** por la [reconstrucción](#brujula-c-deslizando): el chico probablemente no alcance.
+
+**Cómo se corrió.** Primero el control y la línea base (10 corridas, 17 min), para comprobar que el script con el
+argumento nuevo da lo publicado; después los dos niveles (10 corridas, 17 min). El criterio 1, el 2 y el juego, con un
+script de la sesión sobre los CSV, y cruzados con `analizar_brujula.py` (dan lo mismo).
+
+**Controles.**
+- **Las 20 corridas terminaron con `MEDICION inconsistencias=0`** (las 20 líneas contadas). Los logs de los niveles
+  dicen `PESOS {...}` (5 y 5) y "Cruce: 20.0%" (10); los del control, "Cruce: 20.0%" (5).
+- **El control y la línea base son byte a byte los publicados:** 10 de 10 SHA-256 (los de [menos cruce en el
+  juego](#menos-cruce-juego) y los del [laboratorio](#laboratorio-brujula)). La medición da lo mismo: el control,
+  +0,0090 con las mismas 5 semillas, 41,5 de fitness y 1,04 manzanas; la línea base, la fila sin evolución del
+  laboratorio.
+- **La manipulación llegó, y solo al fitness:** en la gen 1 de las 10 corridas, el CSV de `main.py` es el del control
+  salvo las 4 columnas de fitness, el comportamiento de los 60 agentes es el del control celda a celda, y cada término
+  del fitness es el del control por el peso nuevo sobre el viejo, agente por agente (acercarse × 4 y anti-círculo × 0,5
+  en el chico; exploración y anti-círculo en 0 en el grande). La gen 2 ya difiere en las 10.
+- Un nombre que `config.py` no tiene (`FITNES_ANTI_CIRCLE`) corta la corrida antes de empezar.
+
+<details><summary>SHA-256 de las 10 corridas nuevas (se regeneran con medir_puerta.py desde el commit de esta sesión)</summary>
+
+| Semilla | Chico | Grande |
+|---|---|---|
+| 1 | `9b287f7de1cf36a8d42658e392214cc70234faa020156934e6410c90e190e341` | `9354fbd0727227fbf6a9504b3a769ec2f9ca737d5881704011eacffadd7d6f60` |
+| 2 | `097edc5929995a1b8b227973ff15f76fe62b0982528a3b57e4a8757003737011` | `a155c37676f6aafbcad3511c649c36dc1717ee5f73b1723425a50cc577b14938` |
+| 3 | `f65a6350ec07e504d1955808b0e6484ddc68fb17ecccc76899ccc367edb3716a` | `68fd92479019ec5962dc4585ed3f3faf38349b49dc022bd98074326487e2575e` |
+| 4 | `fa08a7a14c4aa0d9c0ff42fe5a9b720d0c34407a3876a70cff3dce6708a3a04d` | `0787f0f7b3a7324e770758a9396454bbae1c64bd9a34e93996f04c816e47ccd5` |
+| 5 | `cdcd79101754f459b46c971cf25d3d6425fe9a97d7922b192a5c7a250a3d4090` | `498eb3dd37bc3026482986a138698c935d38fda6310af22f941d81bc4dc44c23` |
+
+</details>
+
+### El criterio
+
+Sensibilidad a la brújula con evolución, gens 26-30, por semilla (rad/tick):
+
+| Semilla | Control (C30, cruce 0,2) | Chico | Grande | Sin evolución |
+|---|---|---|---|---|
+| 1 | +0,0179 | −0,0222 | +0,0166 | +0,0022 |
+| 2 | −0,0117 | +0,0027 | **+0,0270** | +0,0001 |
+| 3 | +0,0200 | +0,0149 | +0,0127 | +0,0017 |
+| 4 | −0,0115 | **+0,0561** | −0,0042 | +0,0012 |
+| 5 | +0,0304 | +0,0192 | −0,0483 | −0,0025 |
+| **Promedio** | +0,0090 | +0,0141 (1,6 veces el control) | +0,0008 | +0,0005 |
+| 1. ≥ 0,02, más que la línea base y más que el control | | **1 de 5** | **1 de 5** | |
+| Sin pedir más que el control (el criterio del laboratorio) | 1 de 5 | 1 de 5 | 1 de 5 | |
+| Más que el control | | 2 de 5 | 2 de 5 | |
+| 2. Manzanas por agente (% del control) | 1,04 | 0,92 (**88%**) | 1,04 (100%) | 0,30 |
+
+**Ninguno de los dos niveles pasa.** El chico no cumple el 1 (1 de 5) ni el 2 (88%, pedía 90%: menos manzanas que el
+control en las 5 semillas); el grande cumple el 2, pero no el 1 (1 de 5).
+
+### Cuánto sube, y cuándo
+
+Sensibilidad a la brújula, promedio por agente | a la comida | % de agentes con más de 0,02 a la brújula:
+
+| | Gens 1-5 | Gens 11-15 | Gens 16-20 | Gens 21-25 | Gens 26-30 |
+|---|---|---|---|---|---|
+| Control | −0,0027 · +0,0037 · 17% | +0,0014 · +0,0084 · 17% | −0,0002 · +0,0153 · 17% | +0,0049 · +0,0167 · 24% | +0,0090 · +0,0229 · 33% |
+| Chico | +0,0015 · −0,0002 · 18% | −0,0018 · +0,0032 · 14% | +0,0058 · +0,0083 · 23% | **+0,0137** · +0,0161 · 33% | **+0,0141** · +0,0158 · 36% |
+| Grande | +0,0013 · +0,0037 · 18% | +0,0011 · +0,0090 · 18% | −0,0014 · +0,0180 · 23% | −0,0026 · +0,0194 · 20% | +0,0008 · +0,0201 · 22% |
+| Sin evolución | +0,0000 · +0,0008 · 18% | +0,0014 · +0,0010 · 20% | +0,0011 · −0,0007 · 19% | +0,0033 · −0,0000 · 22% | +0,0005 · +0,0004 · 19% |
+
+El chico sube desde la 16 y se estanca desde la 22, entre +0,012 y +0,017 por generación (el laboratorio con cruce 0,2,
++0,0618 en las 26-30, seguía subiendo). La comida sube en los tres: en el chico, tanto como la brújula; en el control y
+el grande, más.
+
+### Por qué
+
+| | Control | Chico | Grande | Laboratorio, cruce 0,2 |
+|---|---|---|---|---|
+| Selección: sensibilidad a la brújula ↔ fitness (Spearman, mediana), gens 1-15 / 16-30 | −0,027 / +0,025 | +0,050 / **+0,143** | +0,054 / +0,004 | +0,250 / +0,269 |
+| Ídem, a la comida | +0,103 / +0,107 | +0,069 / +0,098 | +0,146 / +0,123 | |
+| Aporte a la generación siguiente por quintil de sensibilidad a la brújula, Q1 → Q5, gens 16-29 | 0,92 · 0,99 · 1,01 · 0,96 · 1,09 | 0,81 · 1,07 · 0,92 · 1,05 · 1,11 | 1,02 · 1,05 · 0,95 · 0,97 · 0,98 | |
+| Herencia de la sensibilidad, todos los hijos (pendiente), gens 1-15 / 16-30 | 0,62 / 0,64 | 0,66 / 0,84 | 0,59 / 0,78 | 0,70 / 0,76 |
+| Acercarse en el fitness, gens 26-30: promedio · desvío dentro de la generación (mediana) · Spearman con el fitness | 1,9 · 1,5 · +0,32 | 9,4 · **6,9** · +0,65 | 1,6 · 1,6 · +0,31 | |
+| La comida, ídem | 7,3 · 7,0 · +0,80 | 6,5 · 6,9 · +0,70 | 7,3 · 7,1 · **+0,85** | |
+| Giran (% de ticks con la llave) · giro medio (rad/tick), gens 26-30 | 46% · 0,020 | 47% · 0,019 | **73% · 0,042** | |
+
+Sin evolución, el giro es 47% · 0,023.
+
+### La puerta y el juego
+
+Gens 16-30, con evolución (sin evolución, la línea base):
+
+| | Llegan a < 25 px | Golpean ahí | ≥ 1 golpe que contó | La abren (por semilla) | Ticks a < 25 px (mediana) | % de ticks golpeando (promedio por agente) |
+|---|---|---|---|---|---|---|
+| Control | 162 | 42 | 40 | 12 (0, 2, 0, 1, 9) | 28,5 | 17% |
+| Chico | **333** | 105 | 97 | 28 (2, 3, 0, 20, 3) | 32 | 23% |
+| Grande | 162 | **89** | 85 | **32** (5, 20, 1, 6, 0) | 29 | 17% |
+| Sin evolución | 44 | 24 | 22 | 9 (4, 1, 3, 0, 1) | 52,5 | 35% |
+
+Gens 26-30, promedio de las 5 semillas (entre paréntesis, en cuántas el nivel supera al control):
+
+| | Control | Chico | Grande | Sin evolución |
+|---|---|---|---|---|
+| Fitness promedio | 41,5 | 41,4 (2 de 5) | 17,0 (0 de 5; sin dos términos, otra escala) | 19,6 |
+| Manzanas por agente | 1,04 | 0,92 (0 de 5) | 1,04 (2 de 5) | 0,30 |
+| Distancia recorrida (px) | 1.077 | 1.079 (2 de 5) | 1.315 (3 de 5) | 328 |
+| Edad (ticks) | 987 | 969 (2 de 5) | 989 (2 de 5) | 891 |
+| Agentes con la puerta abierta, por generación | 0,36 | 0,52 (3 de 5) | 1,16 (4 de 5) | 0,08 |
+| Criterio del ítem 5 (la puerta) | 1 de 5 | 1 de 5 | 2 de 5 | — |
+
+### Lectura
+
+1. **Ninguno de los dos niveles hace que la brújula se aprenda en el juego,** por el criterio fijado: 1 de 5 cada uno,
+   como el control. Lo esperado era que el chico no alcanzara; no alcanza, pero queda más cerca que el grande.
+2. **El chico va en la dirección, sin llegar, y paga con comida.** La selección empieza a ver la brújula (+0,14 en las
+   gens 16-30, la mitad del laboratorio; el control, +0,03) y el quintil que más gira hacia ella deja 1,11 hijos contra
+   0,81 del que menos. La sensibilidad sube desde la 16 y se estanca en ~+0,014 desde la 22: 1,6 veces el control, un
+   cuarto del laboratorio. Una semilla aprende como el laboratorio (la 4: +0,056, y abre la puerta 20 veces en las gens
+   16-30) y dos quedan cerca del umbral (la 3, +0,015; la 5, +0,019). Acercarse pesa ahora en el fitness como la comida
+   (desvío 6,9 cada uno; en el control, 1,5 contra 7,0), y las dos tiran para lados distintos: 12% menos manzanas,
+   menos en las 5 semillas. Llegan a la puerta el doble que el control.
+3. **El grande no hace que la selección vea la brújula** (+0,05 y +0,00). Sacar lo que paga caminar deja el fitness en
+   manos de la comida (Spearman +0,85), y acercarse sigue chico (desvío 1,6). Sin el anti-círculo giran más (73% de los
+   ticks, el doble de giro medio), pero no hacia la brújula. No pierde manzanas, y camina más aunque caminar ya no
+   pague.
+4. **El grande abre la puerta más que el control sin girar hacia la brújula** (32 contra 12 en las gens 16-30; 4 de 5
+   semillas en las 26-30; criterio del ítem 5, 2 de 5): llegan los mismos (162), pero golpean ahí más de la mitad (89,
+   contra 42). Una semilla pone 20 de las 32. Sin medir por qué; una posibilidad es que, sin el anti-círculo, quedarse
+   dando vueltas al lado de la puerta ya no cueste.
+5. **Lo que separa al chico del laboratorio es cuánto pesa acercarse contra lo demás.** La selección ve la brújula en
+   proporción: el laboratorio (paga solo acercarse) +0,27; el chico (acercarse como la comida) +0,14; el control y el
+   grande (acercarse con un desvío de 1,5) ~0. Sacar términos no alcanza si lo que queda no es acercarse.
+6. **El camino a la puerta sube más que la sensibilidad, como advertía la salvedad del
+   [laboratorio](#laboratorio-brujula).** En el chico, el uso (camino a la puerta − al control) con evolución supera al
+   de la línea base en 5 de 5 semillas en las 26-30, también donde la sensibilidad no llega (la 3: +0,20 de uso con
+   +0,015). Con la puerta fija, acercarse también se puede cobrar con una ruta (la red ve x, y y el rumbo). Cuanto más
+   paga acercarse, más pesa.
+
+**Qué sugiere** (para decidir; esta sesión no tocó la simulación):
+- **Ninguno de los dos niveles va a `config.py`:** no pasan.
+- **Si se sigue por el fitness, el paso que falta es juntar los dos:** acercarse 40 sin lo que paga caminar,
+  `pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`, contra el grande (cambia solo acercarse,
+  LEC-019). Quedarían la comida y acercarse, con el mismo peso en el fitness; por lo de arriba, la selección vería la
+  brújula más que en el chico. Una tanda de 17 min, solo con evolución, con este mismo criterio.
+- **El costo en comida es parte de la pregunta, no un ruido:** en el chico, subir acercarse subió la brújula y bajó las
+  manzanas. Si el próximo nivel aprende la brújula comiendo menos, el criterio 2 choca con el 1, y cuánta comida vale
+  la puerta lo decide Fer.
+- **Las fortalezas fijas pesan más con acercarse más pesado** (lectura 6): si el próximo nivel sube el camino a la puerta
+  sin la sensibilidad, sortearlas en cada generación va antes que seguir con los pesos
+  ([mejoras futuras](../product/mejoras_futuras.md#aparecido-en-el-laboratorio-de-la-brújula--2026-11-16)).
+- **El golpe del grande:** si sin el anti-círculo golpean más al lado de la puerta, se ve en la medición del golpe que
+  ya está anotada.
