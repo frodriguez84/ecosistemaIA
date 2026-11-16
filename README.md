@@ -318,10 +318,11 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 
 ### Ayudas para aprender el puzzle
 
-Dos switches en `config.py`, apagados por defecto e independientes, que valen para los dos modos. Apagados, la corrida es la de siempre.
+Tres switches en `config.py`, apagados por defecto e independientes, que valen para los dos modos. Apagados, la corrida es la de siempre.
 
 * **Recompensa por acercarse** (`RECOMPENSA_ACERCARSE`, `--acercarse`): suma al fitness 10 × (pasos que dio + avance en el paso actual) (`FITNESS_ACERCARSE`). El avance va de 0 a 1 y cuenta lo más cerca que llegó al objetivo de la brújula, (distancia al empezar el paso − la más corta) / distancia al empezar; en las puertas, la mitad es ese camino y la otra mitad, los golpes que contaron sobre los necesarios. Quedarse cerca no suma más que pasar una vez, y alejarse después no resta
 * **Currículo** (`CURRICULO`, `--curriculo`): las generaciones 1 a 15 (`CURRICULO_HASTA_GENERACION`) nacen con la llave roja, sin su premio, y desde la 16 sin ella. El mapa no cambia: la brújula apunta a la puerta de madera, que sigue siendo pared hasta que el agente la abre
+* **Deslizar contra lo que choca** (`DESLIZAR`, `--deslizar`): si el paso choca (una pared, un árbol, una casita, una puerta que no abrió, el perímetro o el estanque), el agente se mueve por el eje libre: primero solo en x y, si no, solo en y. Apagado, se queda donde está. Cambia todo el caminar, también hacia la comida. No es una columna del CSV: va en el nombre del archivo (`_deslizar`)
 * **Lo dado al nacer no es un logro**: los avisos de hito, la primera vez del boletín y los pasos de la recompensa cuentan solo los pasos que el agente dio. Las columnas `agentes_*` del CSV cuentan quién llegó al menos a cada paso, también con la llave dada; la columna `etapa_inicial` dice con qué etapa nació la generación
 
 ---
@@ -495,7 +496,8 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--modo guiado\|autonomo` | `guiado`: la red más la conducción escrita a mano; `autonomo`: solo la red. Pisa `MODO`. |
 | `--acercarse` | Prende la recompensa por acercarse al próximo paso del puzzle. Pisa `RECOMPENSA_ACERCARSE`. |
 | `--curriculo` | Prende el currículo: las primeras generaciones nacen con la llave roja. Pisa `CURRICULO`. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion\|sin_evolucion>.csv`. |
+| `--deslizar` | Si el paso choca, el agente se mueve por el eje libre. Pisa `DESLIZAR`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar]_<evolucion\|sin_evolucion>.csv`. |
 
 Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, si la
 recompensa por acercarse estaba prendida, la etapa con la que nació la generación, fitness,
@@ -518,8 +520,8 @@ grupo (modo × evolución): fitness y manzanas por agente en las primeras y las 
 generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
 comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
 guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
-minutos en una máquina de 12 núcleos. `--acercarse` y `--curriculo` pasan a todas las corridas; el
-resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
+minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo` y `--deslizar` pasan a todas las
+corridas; el resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
 1.000 px de recorrido, y en el autónomo aplica el criterio del ítem 5 del BACKLOG (¿aprende a pasar
 la puerta de madera?).
 

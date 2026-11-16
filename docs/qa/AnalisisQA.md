@@ -1273,3 +1273,133 @@ entre las corridas de una semilla):
 - **Golpear (pierde ~la mitad de los que llegan) y el segundo golpe (~un tercio) son factores chicos:**
   bajar `DOOR_HITS_TO_OPEN` a 1 o achicar el cooldown ayudaría a los que llegan, pero hoy llegan 25 de
   4.500.
+
+---
+
+<a id="deslizar-al-chocar"></a>
+
+## Deslizar contra lo que choca — switch, medición y experimento B (2026-11-16)
+
+**Qué cambió** (sugerido por la [medición de la puerta](#medicion-puerta-madera); pedido por Fer, con
+vía libre para cambiar el proyecto): un switch `DESLIZAR` en `config.py`, apagado por defecto, con
+`--deslizar` en `main.py`, `experimento.py` y `mediciones/medir_puerta.py`. Prendido, si el paso
+choca, el agente prueba moverse solo en x y, si no, solo en y (`act()` en
+`src/agents/advanced_agent.py`). Las tres pruebas usan la misma función, `_choca`, que es la
+verificación de siempre sacada de `act()`: obstáculos, las puertas que el agente no abrió, el perímetro
+y el estanque. Vale para los dos modos. No es una columna del CSV (cambiaría el CSV apagado): va en el
+nombre del archivo (`_deslizar`), en el renglón de ayudas del panel, en el encabezado del boletín y en
+"Ayudas prendidas" del resumen del experimento.
+
+**DIAG-30.** El estanque y el perímetro siguen con la caja que va de (x, y) hacia abajo y a la derecha:
+deslizar usa la misma, a propósito (centrarla cambiaría la corrida apagada, y mezclaría dos cambios en
+una medición). Por la derecha o por abajo, el agente desliza a lo largo del estanque con el centro en
+el borde, 5 px del cuerpo encima del agua, lo mismo que deja hoy un paso derecho; nunca más adentro
+(test: desde una grilla de 792 arranques alrededor de una pared y del estanque, en 8 rumbos, ninguno
+termina donde el paso entero chocaría). El estanque no es zona de agua (esas no tienen colisión): lo de
+DIAG-30 es solo visual.
+
+**Controles.**
+- **Apagado, el CSV es el de antes, byte a byte.** Seis corridas de 10 generaciones (guiado semilla 1
+  con evolución y 2 sin; autónomo semilla 1 con y 2 sin; autónomo semilla 3 con `--acercarse
+  --curriculo`; guiado semilla 3 con `--curriculo`), en `f5f2375` antes de tocar el código y después:
+  6 de 6 iguales. Con los mismos tiempos (±3 s): sacar `_choca` no hizo más lenta la corrida.
+- **La medición sin deslizar, con el código nuevo,** da byte a byte las 15 primeras filas de las 10
+  corridas del [experimento B](#experimento-puzzle-b) (`results/experimento_20261115-205826`), y
+  deslizando, las del experimento B con `--deslizar` (`results/experimento_20261116-101649`): el
+  envoltorio no cambió ninguna corrida. Las 20 terminaron con `MEDICION inconsistencias=0`.
+- **Tests** (`tests/test_deslizar.py`, 12): corridos contra el código de antes del switch, 10 fallan
+  y 2 pasan (en una esquina no se mueve; sin choque, el paso es el mismo: valen también sin el
+  switch). Con el código nuevo, 12 de 12.
+
+**La medición** (`mediciones/medir_puerta.py` con y sin `deslizar`, el B: autónomo con `--curriculo`,
+semillas 1 a 5, 15 generaciones, con evolución y sin ella; el embudo, de
+`mediciones/analizar_puerta.py`, sobre los agentes × generación con la llave):
+
+| | Agentes × gen. | < 100 px | < 50 px | < 25 px | Golpearon a < 25 px | ≥ 1 golpe que contó | Abrieron |
+|---|---|---|---|---|---|---|---|
+| B con evolución, gens 1-15 | 4.500 | 237 (5,3%) | 60 (1,3%) | 25 (0,6%) | 12 | 10 | 8 |
+| B sin evolución, gens 1-15 | 4.500 | 187 (4,2%) | 54 (1,2%) | 19 (0,4%) | 11 | 11 | 9 |
+| B deslizando, con evolución, gens 1-15 | 4.500 | 408 (9,1%) | 137 (3,0%) | 76 (1,7%) | 32 | 29 | 17 |
+| B deslizando, sin evolución, gens 1-15 | 4.500 | 253 (5,6%) | 79 (1,8%) | 45 (1,0%) | 22 | 19 | 10 |
+| B con evolución, gens 11-15 | 1.500 | 83 (5,5%) | 23 (1,5%) | 10 (0,7%) | 4 | 4 | 4 |
+| B sin evolución, gens 11-15 | 1.500 | 72 (4,8%) | 22 (1,5%) | 10 (0,7%) | 6 | 6 | 4 |
+| B deslizando, con evolución, gens 11-15 | 1.500 | 170 (11,3%) | 55 (3,7%) | 28 (1,9%) | 10 | 10 | 7 |
+| B deslizando, sin evolución, gens 11-15 | 1.500 | 96 (6,4%) | 32 (2,1%) | 18 (1,2%) | 11 | 10 | 5 |
+
+Las dos primeras filas de cada bloque son las de la [medición de la puerta](#medicion-puerta-madera),
+vueltas a contar con el mismo script (dan lo mismo).
+
+| | B con evolución | B sin evolución | B deslizando, con evolución | B deslizando, sin evolución |
+|---|---|---|---|---|
+| Abrieron, gens 1-15, por semilla | 1/3/2/1/1 | 3/3/1/0/2 | 3/1/4/4/5 | 2/3/3/1/1 |
+| Con evolución abrieron más que su línea base | 2 de 5 semillas | | 4 de 5 | |
+| Ídem, solo gens 11-15 (abrieron) | 3 de 5 (4 contra 4) | | 1 de 5 (7 contra 5) | |
+| Llegan a < 25 px de los que nacen a más de 400 px | 2 de 3.103 | 0 de 3.140 | 27 de 3.105 (abrieron 6) | 5 de 3.140 (1) |
+| Camino hecho, gen 1 (los mismos cerebros), hacia la puerta / el control | 0,031 / 0,059 | 0,031 / 0,059 | 0,058 / 0,099 | 0,058 / 0,099 |
+| Camino hecho, gens 11-15, hacia la puerta / el control | 0,103 / 0,127 | 0,057 / 0,071 | 0,186 / 0,197 | 0,085 / 0,097 |
+| Los que abrieron (gens 1-14): lugar mediano / aporte a la gen. siguiente | 5 / 2,38 | — | 1 / 2,50 | — |
+| Ticks golpeando con la llave: gen 1 → gen 15 | 29,6% → 22,4% | 29,6% → 24,5% | 31,1% → 23,4% | 31,1% → 25,4% |
+
+El seguidor de brújula perfecto, sobre los 300 mapas de las 20 corridas, llega a < 25 px en el 11,5%
+de los arranques sin deslizar y en el 49,7% deslizando (como en la medición de la puerta).
+
+**El experimento B completo con `--deslizar`** (10 corridas, 10 a la vez, en 12 núcleos: 621 s la más
+lenta; el B sin deslizar, 429 s: deslizando, los agentes caminan más ticks y la corrida tarda ~1,5
+veces). Carpeta `results/experimento_20261116-101649`.
+
+`python experimento.py --semillas 1 2 3 4 5 --generaciones 30 --modos autonomo --curriculo --deslizar`
+
+**Ayudas prendidas:** currículo y deslizar al chocar.
+
+| Modo | Evolución | Corridas | Fitness prom., gens 1-5 | Fitness prom., últimas 5 | Diferencia | Manzanas por agente, gens 1-5 | Manzanas por agente, últimas 5 | Diferencia | Edad prom. (ticks), últimas 5 | Agentes con llave roja, últimas 5 | Etapa máxima (0-5) | Cofre abierto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| autonomo | Con evolución | 5 | 21.89 ± 0.68 | 39.67 ± 1.47 | 17.78 ± 1.97 | 0.44 ± 0.04 | 1.06 ± 0.07 | 0.62 ± 0.05 | 982 ± 45 | 5.04 ± 3.18 | 2.8 ± 0.4 | 0 de 5 |
+| autonomo | Sin evolución | 5 | 19.44 ± 0.87 | 19.47 ± 0.78 | 0.02 ± 0.92 | 0.34 ± 0.03 | 0.33 ± 0.06 | -0.02 ± 0.04 | 893 ± 8 | 1.24 ± 0.73 | 2.6 ± 0.5 | 0 de 5 |
+
+- **Autónomo, con evolución contra sin:** la evolución subió más en fitness en 5 de 5 semillas, en manzanas por agente en 5 de 5, y tuvo más agentes con llave roja en las últimas 5 en 5 de 5, más con la puerta de madera abierta en 1 de 5 y más llave roja por 1.000 px en 3 de 5.
+- **Criterio del ítem 5 (puerta de madera):** con evolución, al menos 1 agente por generación con la puerta de madera abierta en las últimas 5 y más que la línea base, en 0 de 5 semillas; secundario, más llave roja por 1.000 px que la línea base, en 3 de 5. Cada uno pide 4 de 5. **El autónomo aprende a pasar la puerta de madera: no.** Secundario: no.
+
+Por corrida, en el `resumen.md` de la carpeta. **Contra el B sin deslizar**, la misma cuenta sobre los
+CSV de las dos carpetas (suma de las 5 semillas, y por semilla):
+
+| | Puerta abierta, gens 1-15 (llave dada) | Puerta abierta, gens 16-30 | Llave roja agarrada, gens 16-30 | Manzanas por agente, últimas 5 | Fitness, diferencia | Etapa máxima |
+|---|---|---|---|---|---|---|
+| B con evolución | 8 (1/3/2/1/1) | 1 (0/0/0/0/1) | 167 (20/32/46/30/39) | 0,77 | 13,15 | 2,2 |
+| B sin evolución | 9 (3/3/1/0/2) | 0 | 53 (6/8/10/12/17) | 0,20 | 0,11 | 2,0 |
+| B deslizando, con evolución | 17 (3/1/4/4/5) | 2 (0/0/1/0/1) | 270 (47/53/48/44/78) | 1,06 | 17,78 | 2,8 |
+| B deslizando, sin evolución | 10 (2/3/3/1/1) | 0 | 82 (11/10/22/14/25) | 0,33 | 0,02 | 2,6 |
+
+Deslizando contra sin deslizar, por semilla: más llave roja en las gens 16-30 en 5 de 5, con evolución
+y sin ella; más manzanas por agente en las últimas 5 en 5 de 5, con y sin; más aperturas de la puerta
+con la llave dada en 4 de 5 con evolución y en 2 de 5 sin.
+
+**Lectura.**
+
+1. **Deslizar abre el camino, para todos.** Con la llave dada, llegan a < 25 px de la puerta 3 veces
+   más con evolución (76 contra 25) y 2,4 veces más sin ella (45 contra 19); desde más de 400 px, 27
+   contra 2. Con los mismos cerebros (gen 1), el camino hecho hacia la puerta casi se duplica: es la
+   mecánica, sin aprender nada. También come más (0,33 contra 0,20 manzanas por agente sin evolución)
+   y agarra más la llave roja (5 de 5 semillas, con evolución y sin ella).
+2. **Con deslizamiento, la evolución abre la puerta más que el azar, pero no aprende a abrirla.** En las
+   15 generaciones del currículo, 17 contra 10 (más en 4 de 5 semillas), cuando sin deslizar era 8
+   contra 9. Pero no crece con las generaciones: en las 11 a 15, 7 contra 5 (más en 1 de 5); y en las
+   16 a 30, con el puzzle entero, 2 contra 0. El criterio del ítem 5 da 0 de 5, como sin deslizar.
+3. **Siguen sin usar la brújula.** Con deslizamiento, la evolución sube el camino hacia la puerta y
+   hacia el punto de control lo mismo (+0,101 y +0,100 sobre su línea base en las gens 11 a 15; en 2 de
+   5 semillas el de la puerta supera al del control, por 0,003 o menos). Lo que aprende es a caminar
+   más, y deslizar hace que caminar pague (llega más lejos sin trabarse). Un seguidor perfecto llega en
+   el 50% de los arranques; los agentes, en el 1,7%.
+4. **Golpear y el segundo golpe, igual que antes:** de los que llegan, golpean ahí entre el 36% y el
+   61%; de los 29 que contaron un golpe con evolución, 12 no dieron el segundo. La evolución sigue
+   golpeando menos (31% → 23% de los ticks).
+5. **La selección elige todavía más a los que abren:** el lugar mediano de los que abrieron es el 1
+   (antes, el 5), y dejan 2,5 hijos-equivalentes contra 0,99 del promedio. Igual que antes, la
+   generación siguiente nace en otro lugar de otro mapa.
+
+**Qué sugiere** (para decidir; deslizar queda apagado por defecto):
+- **Deslizar es una mejora de la mecánica, no del aprendizaje del puzzle.** Mejora comer, la llave y
+  llegar a la puerta en las dos condiciones, y la evolución sigue sumando encima (5 de 5 en fitness,
+  manzanas y llave). Si Fer quiere, puede quedar prendido por defecto; cambiaría todas las corridas de
+  referencia (en [mejoras futuras](../product/mejoras_futuras.md)).
+- **El cuello pasa a ser aprender la brújula,** como anticipaba la medición de la puerta: la presión de
+  selección o un sensor de contra qué chocan (los dos ya en mejoras futuras).

@@ -11,9 +11,10 @@ Envuelve, sin consumir azar:
   generación siguiente (élite y copia, 1; cruce, 0,5 por padre).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse]
-Deja en SALIDA, por corrida: corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y
-generación) y geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar]
+acercarse y deslizar le pasan --acercarse y --deslizar a main.py. Deja en SALIDA, por corrida:
+corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
+geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
 
 Control: el corrida_*.csv tiene que ser byte a byte las primeras filas de la misma corrida sin el
@@ -27,7 +28,8 @@ import os
 import sys
 
 raiz, salida, semilla, tipo, generaciones = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
-acercarse = len(sys.argv) > 6 and sys.argv[6] == "acercarse"
+acercarse = "acercarse" in sys.argv[6:]
+deslizar = "deslizar" in sys.argv[6:]
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -307,18 +309,23 @@ SimpleNeuralNetwork.crossover = crossover
 SimpleNeuralNetwork.copy_from = copy_from
 
 os.makedirs(salida, exist_ok=True)
-nombre = f"s{semilla}_{'acercarse_' if acercarse else ''}{tipo}"
+nombre = f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}{tipo}"
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
 argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
 if acercarse:
     argv.append("--acercarse")
+if deslizar:
+    argv.append("--deslizar")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
 
 for f in FILAS:
     f["acercarse"] = int(acercarse)
+    f["deslizar"] = int(deslizar)
+for g in GEOM:
+    g["deslizar"] = int(deslizar)
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()

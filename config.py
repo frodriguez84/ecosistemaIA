@@ -48,6 +48,9 @@ class SimulationConfig:
     AGENT_ENERGY_GAIN_FOOD = 8      # Energía ganada al comer 
     AGENT_RADIUS = 6             # Tamaño del agente
     HIT_ENERGY_COST = 0.05       # Energía extra que gasta golpear, golpee algo o no
+    # Si el paso choca, el agente se mueve por el eje libre: primero solo en x y, si no, solo en y,
+    # en los dos modos (--deslizar lo prende). Apagado, se queda donde está
+    DESLIZAR = False
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)

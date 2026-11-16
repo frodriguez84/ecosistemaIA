@@ -1,7 +1,7 @@
 """Embudo de la puerta de madera a partir de los agentes_*.csv y geometria_*.csv de medir_puerta.py.
 
-Espera, en la misma carpeta, las corridas de las tres condiciones: B con y sin evolución, y C (con
-`acercarse`) con evolución. Uso: python mediciones/analizar_puerta.py SALIDA
+Toma las condiciones que encuentre en la carpeta: B con y sin evolución, C (con `acercarse`) con
+evolución, y B deslizando (con `deslizar`) con y sin evolución. Uso: python mediciones/analizar_puerta.py SALIDA
 """
 import csv
 import glob
@@ -17,10 +17,11 @@ for ruta in sorted(glob.glob(os.path.join(dir_med, "agentes_s*.csv"))):
     with open(ruta, encoding="utf-8") as f:
         filas.extend(csv.DictReader(f))
 for f in filas:
+    f["deslizar"] = f.get("deslizar") or 0  # los CSV de antes del flag no tienen la columna
     for k in ("semilla", "evolucion", "generacion", "lugar", "en_pool", "elite", "golpes", "abrio",
               "ticks_etapa1", "ticks_25", "ticks_golpe", "ticks_golpe_25", "bloq_agente_inicio",
               "bloq_agente_corte", "bloq_puerta", "ticks_25_post90", "golpe_25_post90", "vivo", "edad",
-              "acercarse"):
+              "acercarse", "deslizar"):
         f[k] = int(f[k])
     for k in ("dmin", "d0", "dmin_llave", "d0_llave"):
         f[k] = float(f[k]) if f.get(k, "") not in ("", "inf") else float("inf")
@@ -30,7 +31,17 @@ for f in filas:
     f["camino_llave"] = ((f["d0_llave"] - f["dmin_llave"]) / f["d0_llave"]
                          if f["d0_llave"] not in (0, float("inf")) else None)
 
-CONDS = [(0, 1, "B con evolución"), (0, 0, "B sin evolución"), (1, 1, "C con evolución (acercarse)")]
+
+def clave(f):
+    return (f["acercarse"], f["deslizar"], f["evolucion"])
+
+
+# (acercarse, deslizar, evolucion): solo las que están en la carpeta
+CONDS = [((0, 0, 1), "B con evolución"), ((0, 0, 0), "B sin evolución"),
+         ((1, 0, 1), "C con evolución (acercarse)"),
+         ((0, 1, 1), "B deslizando, con evolución"), ((0, 1, 0), "B deslizando, sin evolución")]
+CONDS = [(c, nombre) for c, nombre in CONDS if any(clave(f) == c for f in filas)]
+COLUMNAS = " / ".join(nombre for _, nombre in CONDS)
 
 
 def pct(a, b):
@@ -69,67 +80,67 @@ def embudo(grupo, titulo):
     return dict(n=n, c100=len(c100), c50=len(c50), c25=len(c25), g25=len(g25), uno=len(uno), abr=len(abr))
 
 
-for ac, ev, nombre in CONDS:
+for c, nombre in CONDS:
     for desde, hasta in ((1, 15), (1, 5), (11, 15)):
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and desde <= f["generacion"] <= hasta]
+        g = [f for f in filas if clave(f) == c and desde <= f["generacion"] <= hasta]
         if g:
             embudo(g, f"{nombre}, generaciones {desde} a {hasta}")
 
 print("\n### Llegar a < 25 según la distancia al nacer (gens 1 a 15)")
-for ac, ev, nombre in CONDS:
-    g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev]
+for c, nombre in CONDS:
+    g = [f for f in filas if clave(f) == c]
     linea = []
     for a, b in ((0, 100), (100, 200), (200, 400), (400, 2000)):
         s = [f for f in g if a <= f["d0"] < b]
         linea.append(f"{a}-{b}: {sum(1 for f in s if f['dmin'] < 25)}/{len(s)} (abrieron {sum(f['abrio'] for f in s)})")
     print(f"  {nombre}: " + "; ".join(linea))
 
-print("\n### Camino hecho promedio por generación (B evo / B sin / C evo)")
+print(f"\n### Camino hecho promedio por generación ({COLUMNAS})")
 for gen in range(1, 16):
     vals = []
-    for ac, ev, _ in CONDS:
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and f["generacion"] == gen]
+    for c, _ in CONDS:
+        g = [f for f in filas if clave(f) == c and f["generacion"] == gen]
         vals.append(st.mean(f["camino"] for f in g) if g else float("nan"))
     print(f"  g{gen:2d}: " + "  ".join(f"{v:.3f}" for v in vals))
 
-print("\n### Por semilla, gens 11 a 15: camino hecho prom (B evo / B sin / C evo)")
+print(f"\n### Por semilla, gens 11 a 15: camino hecho prom ({COLUMNAS})")
 for s in sorted({f["semilla"] for f in filas}):
     vals = []
-    for ac, ev, _ in CONDS:
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and f["semilla"] == s and f["generacion"] >= 11]
+    for c, _ in CONDS:
+        g = [f for f in filas if clave(f) == c and f["semilla"] == s and f["generacion"] >= 11]
         vals.append(st.mean(f["camino"] for f in g) if g else float("nan"))
     print(f"  s{s}: " + "  ".join(f"{v:.3f}" for v in vals))
 
 print("\n### Puerta contra punto de control (la llave roja, a la que la brújula no apunta), camino hecho prom")
 for desde, hasta in ((1, 1), (1, 5), (11, 15)):
     partes = []
-    for ac, ev, nombre in CONDS:
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and desde <= f["generacion"] <= hasta
+    for c, nombre in CONDS:
+        g = [f for f in filas if clave(f) == c and desde <= f["generacion"] <= hasta
              and f["camino_llave"] is not None]
         partes.append(f"{nombre}: puerta {st.mean(f['camino'] for f in g):.3f}, control {st.mean(f['camino_llave'] for f in g):.3f}")
     print(f"  gens {desde}-{hasta}: " + " | ".join(partes))
-print("  por semilla, gens 11-15 (puerta / control): B evo | B sin | C evo")
+print(f"  por semilla, gens 11-15 (puerta / control): {COLUMNAS}")
 for s in sorted({f["semilla"] for f in filas}):
     partes = []
-    for ac, ev, _ in CONDS:
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and f["semilla"] == s
+    for c, _ in CONDS:
+        g = [f for f in filas if clave(f) == c and f["semilla"] == s
              and f["generacion"] >= 11 and f["camino_llave"] is not None]
         partes.append(f"{st.mean(f['camino'] for f in g):.3f} / {st.mean(f['camino_llave'] for f in g):.3f}")
     print(f"  s{s}: " + " | ".join(partes))
 
-print("\n### Golpear por generación (% de ticks con la llave): B evo / B sin / C evo")
+print(f"\n### Golpear por generación (% de ticks con la llave): {COLUMNAS}")
 for gen in range(1, 16):
     vals = []
-    for ac, ev, _ in CONDS:
-        g = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == ev and f["generacion"] == gen]
+    for c, _ in CONDS:
+        g = [f for f in filas if clave(f) == c and f["generacion"] == gen]
         vals.append(100 * sum(f["ticks_golpe"] for f in g) / max(1, sum(f["ticks_etapa1"] for f in g)))
     print(f"  g{gen:2d}: " + "  ".join(f"{v:5.1f}" for v in vals))
 
 print("\n### Aporte a la generación siguiente (con evolución, gens 1 a 14)")
-for ac, ev, nombre in CONDS:
-    if not ev:
+for c, nombre in CONDS:
+    if not c[2]:
         continue
-    evo = [f for f in filas if f["acercarse"] == ac and f["evolucion"] == 1 and f["aporte"] is not None]
+    evo = [f for f in filas if clave(f) == c and f["aporte"] is not None]
     print(f"  {nombre}:")
     for etiqueta, cond in (("todos", lambda f: True), ("< 50 px", lambda f: f["dmin"] < 50),
                            ("< 25 px", lambda f: f["dmin"] < 25), ("abrieron", lambda f: f["abrio"] == 1),

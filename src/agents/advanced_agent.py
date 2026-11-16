@@ -503,24 +503,17 @@ class AdvancedAgent:
             new_x = self.x + dx
             new_y = self.y + dy
             
-            # Verificar colisiones con obstáculos y con las puertas que el agente no abrió
-            can_move = not self._check_obstacle_collision(new_x, new_y, world.obstacles)
-            if can_move:
-                can_move = not self._check_door_collision(new_x, new_y, world)
-            
-            # Verificar colisión con perímetro
-            if can_move:
-                for perimeter_obj in world.perimeter_obstacles:
-                    if perimeter_obj.collides_with(new_x, new_y, self.radius, self.radius):
-                        can_move = False
-                        break
-            
-            # Verificar colisión con estanque
-            if can_move:
-                for pond_obj in world.pond_obstacles:
-                    if pond_obj.collides_with(new_x, new_y, self.radius, self.radius):
-                        can_move = False
-                        break
+            can_move = not self._choca(new_x, new_y, world)
+
+            # Deslizar (DESLIZAR): si el paso choca, se mueve por el eje libre, primero solo en x y,
+            # si no, solo en y, con las mismas colisiones
+            if not can_move and SimulationConfig.DESLIZAR:
+                if not self._choca(new_x, self.y, world):
+                    new_y = self.y
+                    can_move = True
+                elif not self._choca(self.x, new_y, world):
+                    new_x = self.x
+                    can_move = True
             
             if can_move:
                 # Mantener dentro de la pantalla
@@ -570,6 +563,23 @@ class AdvancedAgent:
             self.death_effect_frames = self.death_effect_max_frames
             self.target_food = None  # Limpiar objetivo al morir
     
+    def _choca(self, x, y, world):
+        """Si el agente, con el centro en (x, y), choca con algo que no lo deja pasar: obstáculos
+        (paredes, árboles y casitas), las puertas que no abrió, el perímetro y el estanque. Con el
+        perímetro y el estanque mira una caja que va de (x, y) hacia abajo y a la derecha, no una
+        centrada en el agente (DIAG-30): por la derecha y por abajo, queda con medio cuerpo encima."""
+        if self._check_obstacle_collision(x, y, world.obstacles):
+            return True
+        if self._check_door_collision(x, y, world):
+            return True
+        for perimeter_obj in world.perimeter_obstacles:
+            if perimeter_obj.collides_with(x, y, self.radius, self.radius):
+                return True
+        for pond_obj in world.pond_obstacles:
+            if pond_obj.collides_with(x, y, self.radius, self.radius):
+                return True
+        return False
+
     def _check_obstacle_collision(self, x, y, obstacles):
         """Verifica colisión con obstáculos (paredes, árboles, casitas y puertas). El agua NO tiene colisión."""
         for obstacle in obstacles:

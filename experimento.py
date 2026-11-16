@@ -9,7 +9,7 @@ comparaciones entre ellos: spec MODO_GUIADO_Y_AUTONOMO, decisión 29; la recompe
 currículo, la puerta de madera y el criterio del ítem 5: spec PUZZLE_APRENDIBLE, decisiones 12 y 13).
 
 Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--modos guiado autonomo]
-                           [--acercarse] [--curriculo] [--paralelo K]
+                           [--acercarse] [--curriculo] [--deslizar] [--paralelo K]
 
 El resumen usa solo la librería estándar (decisión 18).
 """
@@ -253,12 +253,14 @@ def _comparaciones(corridas):
     return lineas
 
 
-def resumen_markdown(corridas, fallidas, comando):
+def resumen_markdown(corridas, fallidas, comando, deslizar=False):
     """Arma el resumen en Markdown: por grupo (modo × evolución), las comparaciones pareadas, por
-    corrida, las que tienen generaciones del currículo en las últimas 5 y las que fallaron."""
-    ayudas = " y ".join(nombre for nombre, clave in (("recompensa por acercarse", "acercarse"),
-                                                     ("currículo", "curriculo"))
-                        if any(corrida[clave] for corrida in corridas)) or "ninguna"
+    corrida, las que tienen generaciones del currículo en las últimas 5 y las que fallaron. deslizar
+    viene del flag: no es una columna del CSV."""
+    ayudas = [nombre for nombre, clave in (("recompensa por acercarse", "acercarse"),
+                                           ("currículo", "curriculo"))
+              if any(corrida[clave] for corrida in corridas)]
+    ayudas = " y ".join(ayudas + (["deslizar al chocar"] if deslizar else [])) or "ninguna"
     lineas = [f"`{comando}`", "",
               f"**Ayudas prendidas:** {ayudas}.", "",
               "**Por grupo** (promedio ± desvío muestral entre semillas):", "",
@@ -340,6 +342,9 @@ def _leer_argumentos(argv):
     parser.add_argument("--curriculo", action="store_true",
                         help="Corre todas con el currículo: las primeras generaciones nacen con la llave "
                              "roja (--curriculo de main.py).")
+    parser.add_argument("--deslizar", action="store_true",
+                        help="Corre todas deslizando contra lo que choca: si el paso choca, se mueven "
+                             "por el eje libre (--deslizar de main.py).")
     parser.add_argument("--paralelo", type=int, default=max(1, (os.cpu_count() or 2) - 1), metavar="K",
                         help="Corridas a la vez. Por defecto, los núcleos menos uno.")
     args = parser.parse_args(argv)
@@ -355,11 +360,13 @@ def _leer_argumentos(argv):
     return args
 
 
-def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, curriculo=False):
+def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, curriculo=False,
+            deslizar=False):
     """Corre main.py sin ventana, con la salida a un log, y devuelve cómo terminó. El CSV y el log se
     llaman como la ruta por defecto de main.py."""
     nombre = (f"corrida_s{semilla}_{modo}{'_acercarse' if acercarse else ''}"
-              f"{'_curriculo' if curriculo else ''}_{'evolucion' if evolucion else 'sin_evolucion'}")
+              f"{'_curriculo' if curriculo else ''}{'_deslizar' if deslizar else ''}_"
+              f"{'evolucion' if evolucion else 'sin_evolucion'}")
     ruta_csv, ruta_log = carpeta / f"{nombre}.csv", carpeta / f"{nombre}.log"
     # -u: el log se escribe a medida que corre, y una corrida cortada no pierde la cola
     comando = [sys.executable, "-u", "main.py", "--sin-ventana", "--generaciones", str(generaciones),
@@ -370,6 +377,8 @@ def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, cu
         comando.append("--acercarse")
     if curriculo:
         comando.append("--curriculo")
+    if deslizar:
+        comando.append("--deslizar")
     inicio = time.monotonic()
     # cwd en la raíz: main.py carga los sprites con una ruta relativa
     with open(ruta_log, "wb") as log:
@@ -394,7 +403,7 @@ def main(argv=None):
     resultados = []
     with ThreadPoolExecutor(max_workers=args.paralelo) as pool:
         futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta, args.acercarse,
-                               args.curriculo)
+                               args.curriculo, args.deslizar)
                    for semilla, modo, evolucion in tareas]
         for futuro in as_completed(futuros):
             resultado = futuro.result()
@@ -408,10 +417,11 @@ def main(argv=None):
     fallidas = sorted((r for r in resultados if r["codigo"] != 0), key=_orden)
     comando = (f"python experimento.py --semillas {' '.join(map(str, args.semillas))} "
                f"--generaciones {args.generaciones} --modos {' '.join(args.modos)}"
-               f"{' --acercarse' if args.acercarse else ''}{' --curriculo' if args.curriculo else ''}")
+               f"{' --acercarse' if args.acercarse else ''}{' --curriculo' if args.curriculo else ''}"
+               f"{' --deslizar' if args.deslizar else ''}")
     texto = (f"# Experimento: modos guiado y autónomo, con evolución y sin ella\n\n"
              f"{datetime.now():%Y-%m-%d} · carpeta `{_ruta_md(carpeta)}`\n\n"
-             + resumen_markdown(corridas, fallidas, comando))
+             + resumen_markdown(corridas, fallidas, comando, args.deslizar))
     (carpeta / "resumen.md").write_text(texto, encoding="utf-8")
     print()
     print(texto)

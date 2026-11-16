@@ -52,7 +52,7 @@ EcosistemaEvolutivo/
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
 ├── mediciones/          ← scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control byte a byte)
-├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, reportes, resumen, registro, boletín, fuentes y pantallas
+├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, deslizar, reportes, resumen, registro, boletín, fuentes y pantallas
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
 ├── assets/fonts/        ← Pixelify Sans e Inter, TTF estáticos con licencia OFL (origen en su LEEME.md)
@@ -105,6 +105,11 @@ EcosistemaEvolutivo/
   Apagadas, la corrida es la de antes. Lo dado al nacer no es un logro: hitos, primera vez del boletín
   y pasos de la recompensa cuentan solo los pasos dados (`etapa_inicial` del agente y del CSV). Spec
   [Que el puzzle se pueda aprender](docs/specs/done/PUZZLE_APRENDIBLE.md).
+- **Deslizar contra lo que choca** (`DESLIZAR`, `--deslizar`; apagado por defecto, en los dos modos):
+  si el paso choca, el agente prueba moverse solo en x y, si no, solo en y, con las mismas colisiones
+  del paso entero (`_choca`, con la caja descentrada del estanque y el perímetro de DIAG-30). No es
+  columna del CSV, así que apagado el CSV es el de antes byte a byte: va en el nombre del archivo, el
+  panel, el boletín y el resumen del experimento ([medición](docs/qa/AnalisisQA.md#deslizar-al-chocar)).
 - **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso del
   agente.
 
@@ -158,9 +163,9 @@ EcosistemaEvolutivo/
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
-  sin guía, y `--acercarse` y `--curriculo` prenden las ayudas). El experimento con los dos modos, con
-  evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige los modos;
-  `--acercarse` y `--curriculo` pasan a todas las corridas).
+  sin guía, `--acercarse` y `--curriculo` prenden las ayudas y `--deslizar`, el deslizamiento). El
+  experimento con los dos modos, con evolución y sin ella, en varias semillas es `python experimento.py`
+  (`--modos` elige los modos; `--acercarse`, `--curriculo` y `--deslizar` pasan a todas las corridas).
 - **El editor tiene que usar el Python del `.venv`.** Con el Python global (Microsoft Store), la
   extensión Pylint marca "Unable to import 'pygame'" aunque el código corra bien.
   `.vscode/settings.json` lo fija; si vuelve a aparecer: `Ctrl+Shift+P` → *Python: Select
@@ -175,7 +180,8 @@ EcosistemaEvolutivo/
   nada. Para hacerlo repetible, el evento se inyecta envolviendo `pygame.event.get` desde un script
   (LEC-004).
 - **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12
-  núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4. Redirigida a
+  núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4 (con `--deslizar`,
+  ~1,5 veces: caminan más ticks). Redirigida a
   archivo, la salida sale con buffer y aparece toda al final: para leer un log mientras corre,
   `python -u` (así lanza las corridas `experimento.py`). Más de 10 corridas a la vez se quedan sin
   memoria virtual y alguna se cae al arrancar; el `wait` de una tanda en segundo plano igual da 0: se

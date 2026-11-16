@@ -149,9 +149,12 @@ def _leer_argumentos(argv):
                         help="Prende el currículo, en los dos modos: las primeras "
                              "CURRICULO_HASTA_GENERACION generaciones nacen con la llave roja. Pisa "
                              "CURRICULO de config.py.")
+    parser.add_argument("--deslizar", action="store_true",
+                        help="Si el paso choca, el agente se mueve por el eje libre (primero solo en x, "
+                             "después solo en y), en los dos modos. Pisa DESLIZAR de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
-                             "[_acercarse][_curriculo]_<evolucion|sin_evolucion>.csv.")
+                             "[_acercarse][_curriculo][_deslizar]_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -199,12 +202,14 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 
 def _ruta_csv_por_defecto(semilla, evolucion):
-    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo]_<evolucion|sin_evolucion>.csv, con el
-    modo y los switches de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11)."""
+    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar]_<evolucion|sin_evolucion>.csv,
+    con el modo y los switches de SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11). Deslizar no
+    es una columna del CSV: va solo en el nombre."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
     curriculo = "_curriculo" if SimulationConfig.CURRICULO else ""
-    return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}_"
-                                   f"{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+    deslizar = "_deslizar" if SimulationConfig.DESLIZAR else ""
+    return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}"
+                                   f"{deslizar}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
 def _ticks_de_generacion(config, generacion):
@@ -284,6 +289,8 @@ def main(argv=None):
         SimulationConfig.RECOMPENSA_ACERCARSE = True
     if args.curriculo:
         SimulationConfig.CURRICULO = True
+    if args.deslizar:
+        SimulationConfig.DESLIZAR = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir

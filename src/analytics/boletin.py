@@ -55,18 +55,18 @@ def veces(valor):
     return f"×{numero(valor, 1)}"
 
 
-def nombre_de_las_ayudas(acercarse, curriculo):
-    """Las ayudas prendidas: "acercarse", "currículo" o "acercarse + currículo"; "" si ninguna (spec
-    PUZZLE_APRENDIBLE, decisión 11). El panel las pone en un renglón propio."""
-    ayudas = (("acercarse", acercarse), ("currículo", curriculo))
+def nombre_de_las_ayudas(acercarse, curriculo, deslizar=False):
+    """Las ayudas prendidas: "acercarse", "currículo", "deslizar" o varias con " + "; "" si ninguna
+    (spec PUZZLE_APRENDIBLE, decisión 11). El panel las pone en un renglón propio."""
+    ayudas = (("acercarse", acercarse), ("currículo", curriculo), ("deslizar", deslizar))
     return " + ".join(nombre for nombre, prendida in ayudas if prendida)
 
 
-def nombre_del_modo(modo, acercarse, curriculo=False):
+def nombre_del_modo(modo, acercarse, curriculo=False, deslizar=False):
     """El modo, y las ayudas prendidas: "autónomo + acercarse + currículo". Lo usa el encabezado del
     boletín."""
     nombre = NOMBRES_DE_MODOS.get(modo, modo)
-    ayudas = nombre_de_las_ayudas(acercarse, curriculo)
+    ayudas = nombre_de_las_ayudas(acercarse, curriculo, deslizar)
     return f"{nombre} + {ayudas}" if ayudas else nombre
 
 
@@ -160,8 +160,11 @@ def armar_boletin(registro):
     poblacion = SimulationConfig.POPULATION_SIZE
 
     minutos = minutos_simulados(sum(fila["ticks"] for fila in historia))
+    # Deslizar no va en el CSV: se lee del switch, que main() pisa con --deslizar
+    modo = nombre_del_modo(primera['modo'], primera['acercarse'], primera['etapa_inicial'] > 0,
+                           SimulationConfig.DESLIZAR)
     subtitulo = " · ".join([
-        f"Modo {nombre_del_modo(primera['modo'], primera['acercarse'], primera['etapa_inicial'] > 0)}",
+        f"Modo {modo}",
         "con evolución" if evolucion else "sin evolución (línea base)",
         f"semilla {primera['semilla']}",
         f"{generaciones} generación" if generaciones == 1 else f"{generaciones} generaciones",
