@@ -15,9 +15,16 @@ Envuelve, sin consumir azar:
 - GeneticAlgorithm.evolve, SimpleNeuralNetwork.crossover y copy_from: qué aporta cada agente a la
   generación siguiente (élite y copia, 1; cruce, 0,5 por padre).
 
+- GeneticAlgorithm.evolve: el origen de cada agente (elite, copia, cruce o inmigrante) y el id de sus
+  padres en la generación anterior (padre1, padre2), para medir si heredan la sensibilidad.
+
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar]
-acercarse y deslizar le pasan --acercarse y --deslizar a main.py. Deja en SALIDA, por corrida:
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [laboratorio] [curriculo30]
+acercarse y deslizar le pasan --acercarse y --deslizar a main.py. laboratorio es el laboratorio de la
+brújula (docs/qa/AnalisisQA.md#laboratorio-brujula): antes de main.main() pone en 0 los pesos de la
+comida, la exploración, el anti-círculo, la supervivencia, los cortes y el agua, así pagan solo
+acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube solo el currículo, con
+el fitness de siempre (el control del laboratorio). Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
@@ -35,6 +42,8 @@ import sys
 raiz, salida, semilla, tipo, generaciones = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
 acercarse = "acercarse" in sys.argv[6:]
 deslizar = "deslizar" in sys.argv[6:]
+laboratorio = "laboratorio" in sys.argv[6:]
+curriculo30 = "curriculo30" in sys.argv[6:]
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -57,7 +66,13 @@ FILAS = []        # una por agente y generación
 FILA_DE = {}      # agente de la última generación cerrada -> su fila (para el aporte)
 GEOM = []         # geometría por generación
 CRUCES = {}       # id(cerebro hijo) -> (padre1, padre2) o (padre, None) en la copia
+ORIGEN = {}       # agente de la generación nueva -> (origen, id padre1, id padre2)
 INCONS = [0]      # predicción del golpe distinta de lo que pasó
+
+# Laboratorio de la brújula: los pesos que van a 0, así pagan solo acercarse y el puzzle
+PESOS_LABORATORIO = dict(FITNESS_FOOD=0.0, FITNESS_EXPLORATION=0.0, FITNESS_ANTI_CIRCLE=0.0, FITNESS_SURVIVAL=0.0,
+                         TREE_CUT_REWARD=0, HUT_CUT_REWARD=0, WATER_PENALTY_MAX=0)
+SIN_PAGA = ("f_supervivencia", "f_comida", "f_exploracion", "f_anticirculo", "f_agua")
 
 
 def nueva():
@@ -87,6 +102,8 @@ def terminos_fitness(a):
     tope = 50.0 + 50.0 * min(1.0, float(a.age) / float(c.BASE_TICKS))
     if abs(min(max(0, min(100, total)), tope) - a.fitness) > 1e-6:
         INCONS[0] += 1  # los términos no suman el fitness del agente
+    if laboratorio and (any(t[k] != 0 for k in SIN_PAGA) or a.cut_rewards != 0):
+        INCONS[0] += 1  # en el laboratorio paga algo más que acercarse y el puzzle
     return t
 
 
@@ -317,6 +334,7 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
                  fitness=round(float(a.fitness), 4), lugar=lugar, en_pool=int(lugar <= k),
                  elite=int(lugar <= SimulationConfig.ELITISM), golpes_puerta=a.golpes_puerta.get('door', (0, 0))[0],
                  abrio=int(a.etapa >= 2 and a.etapa_inicial < 2), aporte='')
+        f['origen'], f['padre1'], f['padre2'] = ORIGEN.get(a, ('', '', ''))
         f.update({k2: round(v, 4) for k2, v in terminos_fitness(a).items()})
         f.update({k2: ('' if v is None else (round(v, 3) if isinstance(v, float) else v)) for k2, v in m.items()})
         FILAS.append(f)
@@ -360,22 +378,27 @@ def evolve(self, agents, generation=1):
             INCONS[0] += 1000
     por_cerebro = {id(a.brain): a for a in agents}
     aporte = {a: 0.0 for a in agents}
+    ORIGEN.clear()
     for hijo in nuevos:
         b = hijo.brain
         padre = por_cerebro.get(id(b))
         if padre is not None and padre.brain is b:
             aporte[padre] += 1.0  # élite: el mismo cerebro
+            ORIGEN[hijo] = ('elite', padre.id, '')
             continue
         par = CRUCES.get(id(b))
         if par is None:
-            continue  # inmigrante: cerebro nuevo
+            ORIGEN[hijo] = ('inmigrante', '', '')  # cerebro nuevo
+            continue
         p1, p2 = par
         a1, a2 = por_cerebro.get(id(p1)), (por_cerebro.get(id(p2)) if p2 is not None else None)
         if p2 is None:
             aporte[a1] += 1.0
+            ORIGEN[hijo] = ('copia', a1.id, '')
         else:
             aporte[a1] += 0.5
             aporte[a2] += 0.5
+            ORIGEN[hijo] = ('cruce', a1.id, a2.id)
     for a, v in aporte.items():
         if a in FILA_DE:
             FILA_DE[a]['aporte'] = v
@@ -392,7 +415,15 @@ SimpleNeuralNetwork.crossover = crossover
 SimpleNeuralNetwork.copy_from = copy_from
 
 os.makedirs(salida, exist_ok=True)
-nombre = f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}{tipo}"
+if laboratorio:
+    for k, v in PESOS_LABORATORIO.items():
+        setattr(SimulationConfig, k, v)
+    print(f"LABORATORIO {PESOS_LABORATORIO}")
+if laboratorio or curriculo30:
+    SimulationConfig.CURRICULO_HASTA_GENERACION = 30  # la brújula apunta a la puerta las 30 generaciones
+    print("CURRICULO_HASTA_GENERACION=30")
+nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
+          f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
 argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
@@ -407,8 +438,11 @@ main.main(argv)
 for f in FILAS:
     f["acercarse"] = int(acercarse)
     f["deslizar"] = int(deslizar)
+    f["laboratorio"] = int(laboratorio)
+    f["curriculo_hasta"] = SimulationConfig.CURRICULO_HASTA_GENERACION
 for g in GEOM:
     g["deslizar"] = int(deslizar)
+    g["laboratorio"] = int(laboratorio)
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()

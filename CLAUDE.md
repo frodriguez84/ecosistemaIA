@@ -133,6 +133,8 @@ EcosistemaEvolutivo/
   también donde el razonamiento dice que da 0 (LEC-016).
 - **Un criterio fijado antes de medir lleva un tamaño mínimo, no solo "K de N semillas",** y se lee con
   un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018).
+- **Un experimento que cambia más de una cosa contra su comparación lleva el control que cambia una
+  sola:** si el efecto aparece donde difieren las dos, sin ese control no se atribuye (LEC-019).
 
 <!-- TODO: ajustar a medida que se fijen (p. ej. type hints, estructura de tests). -->
 

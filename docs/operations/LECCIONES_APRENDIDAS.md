@@ -5,6 +5,21 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-019 — 2026-11-16 — Un experimento que cambia dos cosas contra su comparación no dice cuál pesó
+
+**Qué pasó.** El [laboratorio de la brújula](../qa/AnalisisQA.md#laboratorio-brujula) cambiaba dos cosas
+respecto del C deslizando: el fitness (solo acercarse pagando) y el currículo, extendido de la
+generación 15 a la 30. La sensibilidad a la brújula subió solo en las generaciones 16 a 30, donde
+difieren las dos; en las 1 a 15, donde difiere solo el fitness, fue la misma. Contra el C deslizando, el
+resultado no decía si la subida era por el fitness o por las generaciones de más. Se vio al mirar en qué
+ventana aparecía la subida, antes de escribir la lectura. Se resolvió con un control que cambia una sola
+cosa (el currículo hasta la 30, con el fitness de siempre), con su criterio fijado antes de correrlo: era
+el fitness.
+
+**Regla.** Un experimento que cambia más de una cosa respecto de la corrida con que se compara lleva,
+desde el diseño, el control que cambia una sola. Si el efecto aparece solo donde difieren las dos, sin
+ese control no se atribuye. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código.
+
 ## LEC-018 — 2026-11-16 — Un criterio "más que la línea base en K de N" pasa con márgenes de ruido
 
 **Qué pasó.** En la [medición de la brújula](../qa/AnalisisQA.md#brujula-c-deslizando), el criterio

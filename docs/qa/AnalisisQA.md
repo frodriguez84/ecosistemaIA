@@ -1636,3 +1636,202 @@ golpes de la medición):
   fitness (medido); si ni así sube, lo que falta está en el aprendiz (la mutación, la población, las
   generaciones o cómo entra la brújula a la red). Con un criterio con tamaño mínimo, no solo K de N
   ([LEC-018](../operations/LECCIONES_APRENDIDAS.md)).
+
+---
+
+<a id="laboratorio-brujula"></a>
+
+## Laboratorio de la brújula: si solo paga acercarse, ¿aprenden a girar hacia ella? (2026-11-16)
+
+**La pregunta** (sugerida por la [medición de la brújula](#brujula-c-deslizando)): si seguir la brújula
+es lo único que paga, ¿la evolución aprende a girar hacia ella? Separa dos causas posibles: que el
+fitness no lo pida (hoy pagan la comida, el anti-círculo y la exploración, y acercarse pesa 0,7) o
+que el aprendiz (la red y el genético) no lo encuentre. Sin cambios en `src/`, `main.py` ni
+`config.py`.
+
+**Diseño.** [`mediciones/medir_puerta.py`](../../mediciones/medir_puerta.py) con el argumento
+`laboratorio`: antes de `main.main()` pone en 0 `FITNESS_FOOD`, `FITNESS_EXPLORATION`,
+`FITNESS_ANTI_CIRCLE`, `FITNESS_SURVIVAL`, `TREE_CUT_REWARD`, `HUT_CUT_REWARD` y `WATER_PENALTY_MAX`, y
+sube `CURRICULO_HASTA_GENERACION` a 30, así la brújula apunta a la puerta las 30 generaciones. Pagan
+solo acercarse y el puzzle. Comer sigue dando energía: deja de pagar, no de servir.
+
+**Criterio, fijado antes de medir** ([LEC-018](../operations/LECCIONES_APRENDIDAS.md): tamaño mínimo y
+K de N):
+- **Aprende a girar hacia la brújula:** en las últimas 5 generaciones, la sensibilidad promedio a la
+  brújula con evolución es ≥ 0,02 rad/tick (1/7 de un seguidor) y mayor que su línea base, en 4 de 5
+  semillas.
+- **Secundario:** (camino a la puerta − camino al control) con evolución supera al de la línea base por
+  al menos 0,05, en 4 de 5 semillas.
+- **Lectura acordada:** si se cumple, el aprendiz puede y falta rebalancear el fitness; si no, lo que
+  falta está en el aprendiz, y se mide antes de proponer (¿la sensibilidad sube algo?, ¿la selección
+  elige a los que más giran hacia la brújula?, ¿los hijos la heredan?).
+
+**Salvedad, declarada antes de medir:** la puerta no se mueve en toda la corrida (`world.reset_food`
+regenera los obstáculos y guarda las fortalezas), la llave roja (el control) se sortea en cada
+generación, y la red ve x, y y el rumbo absoluto (sensores 5 a 7). Una ruta aprendida de memoria
+subiría el secundario sin usar la brújula. El principal no tiene ese problema: mide solo el sensor 9.
+
+**Cómo se corrió.**
+1. **El laboratorio:** `medir_puerta.py` con `acercarse deslizar laboratorio`, semillas 1 a 5, con
+   evolución y sin ella, 30 generaciones, 10 a la vez: 15 min.
+2. **El control C30, agregado después de ver el laboratorio** (desvío del diseño, abajo): lo mismo con
+   `acercarse deslizar curriculo30`, el C deslizando con su fitness de siempre y el currículo hasta la
+   30. 15 min.
+3. El análisis, con [`mediciones/analizar_brujula.py`](../../mediciones/analizar_brujula.py) sobre cada
+   carpeta: ahora toma las generaciones de la carpeta y mide en las 1-5, las 11-15 y las últimas 5;
+   imprime el criterio del laboratorio, cuántos agentes cobran algo y la herencia.
+
+**Qué se sumó a la medición** (sin consumir azar): el origen de cada agente (élite, copia, cruce o
+inmigrante) y el id de sus padres, para medir si los hijos heredan la sensibilidad; el argumento
+`curriculo30`; y la columna `curriculo_hasta`.
+
+**Desvío del diseño: el control C30.** En las generaciones 1-15 el laboratorio difiere del C deslizando
+solo en el fitness, y ahí la sensibilidad no subió (0,0033 contra 0,0045). Subió en las 16-30, donde
+difiere en dos cosas: el fitness y el currículo extendido. Para separarlas, el C30 cambia solo el
+currículo. Su criterio, fijado antes de correrlo: la subida es por el fitness si en las gens 26-30 la
+sensibilidad con evolución del laboratorio supera a la del C30 en 4 de 5 semillas y el promedio del C30
+queda por debajo de la mitad del laboratorio; si llega a la mitad o más, las generaciones de más explican
+una parte o todo.
+
+**Controles.**
+- **Las 20 corridas terminaron con `MEDICION inconsistencias=0`** (las 20 líneas contadas, LEC-017).
+  En el laboratorio eso incluye que los términos `f_*` sumen el fitness con los pesos del laboratorio y
+  que supervivencia, comida, exploración, anti-círculo, agua y cortes den 0 en cada agente.
+- **El laboratorio sin evolución, gens 1-15, es el C deslizando sin evolución**
+  (`results/experimento_20261116-105457`) salvo `fitness_*`: 0 celdas distintas en las 5 semillas. La
+  gen 1 con evolución, también (los mismos cerebros al azar en el mismo mapa).
+- **El C30, gens 1-15, es byte a byte el C deslizando,** con evolución y sin ella (10 de 10): hasta la 15
+  no cambia nada. Sin evolución, en las 30 generaciones, es el laboratorio salvo `fitness_*` (0 celdas) y
+  con la misma sensibilidad agente por agente: el fitness no cambia lo que hacen los cerebros al azar, y
+  la línea base sirve para los dos.
+- **La medición reproduce la publicada:** la sensibilidad del C30 en las gens 1-5 y 11-15 (+0,0018 y
+  +0,0045) y la de sin evolución (+0,0000 y +0,0014) son las de la [medición de la
+  brújula](#brujula-c-deslizando).
+
+Los `agentes_*.csv` quedaron en el scratchpad de la sesión, que no sobrevive: se regeneran con
+`medir_puerta.py` desde el commit de esta sesión. Los SHA-256 de los `corrida_*.csv`, para comprobar que
+la regeneración da las mismas corridas (LEC-011):
+
+<details><summary>SHA-256 de las 20 corridas</summary>
+
+| Semilla | Laboratorio, con evolución | Laboratorio, sin evolución | C30, con evolución | C30, sin evolución |
+|---|---|---|---|---|
+| 1 | `1d55ba5a82e1dd84737b822113d800a2c6836cc58df662e7be9e0e125ecac900` | `145912a0f0d78c67e9ec84a88497781440644571a450e092b1eade22adfc1c2f` | `32778f807eb7476309385053c34e891c2b93e48a4299e173c19498f167224874` | `80d0e840e2be8ca9e8956080f069d6dd339fadc2c3b22ca5dce7fdbdd09c5074` |
+| 2 | `3e7e8127d9090187550d4597d7ce2bf475879936de2cd2612cd478e6ff63fc4b` | `a7913b8e66542343cdb12281573ec3aa75fad95f9d4348617080db5458b1b1c2` | `f57eb9cb92efdf9567885dd59340b778ac65508540aecb8ca8b110529fb11615` | `92a0294bf736b6bc3d40d102dfedaded37d24857d661ea49ec30c9803589a501` |
+| 3 | `bd53a4078b2baf3db22960624321f3e365608a6fabbb3d270545d00a4802096a` | `850417627045a5717b0967e8e9289cbd4772b7d600c1f573cf0b154be2e7913e` | `a5582519e5c4616037d35bda7182312c1eb31fe450b8d87b53b9041a10a6bc69` | `089f47c36078ddde9ad534983992eff7ae287b0789f6389ab0c787b06e20ba31` |
+| 4 | `fa312fde94f350fd8aa262517c5137ccb4953b95bb05df46e2ecbe49569b6ad3` | `2450d60c8aaa2afdf983bffa1654cdebd5e7e7b7da4b14dc19188a76259c5608` | `279af2cf22cf07766c7e48a4e96cc6aaa18c49cb46197277e10162063a037055` | `5550064f5dcb6df4ead6063d7f742213c55c9cf543b4278a7f6637a64eda0098` |
+| 5 | `29cd62a9eda1b8faecf2dbca26fe80114319037576061d2baaa003fc98f0a4a0` | `3b1d94feea5626eaed6be8752803d668a0e2543967fe666ca0d66779f4aa26d4` | `2f6d72004ee54927481d1b8c3cbd75ef7320e6842faf145cc58fff163d8fe112` | `6d4ea3695b84fa67a205039610de7880bd369c7e38a2ce50e077c29acba37541` |
+
+</details>
+
+### El criterio
+
+Gens 26-30, por semilla (rad/tick; "sí" si cumple):
+
+| Semilla | Sensibilidad con / sin evolución | Principal | Uso con − sin | Secundario | C30: sensibilidad con evolución | C30: uso con − sin |
+|---|---|---|---|---|---|---|
+| 1 | +0,0099 / +0,0022 | no | −0,017 | no | −0,0063 | −0,108 |
+| 2 | +0,0058 / +0,0001 | no | +0,008 | no | +0,0044 | +0,088 |
+| 3 | +0,0297 / +0,0017 | sí | +0,122 | sí | +0,0033 | +0,035 |
+| 4 | +0,0277 / +0,0012 | sí | +0,090 | sí | −0,0013 | +0,032 |
+| 5 | +0,0197 / −0,0025 | no (0,0197) | +0,057 | sí | +0,0121 | +0,044 |
+| **Criterio** | | **2 de 5** | | **3 de 5** | | |
+
+**Aprende a girar hacia la brújula: no, por el criterio fijado** (pide 4 de 5 en los dos). Con evolución,
+la sensibilidad supera a su línea base en las 5 semillas, pero en 3 no llega al tamaño mínimo.
+
+**El control C30, por su criterio: la subida es por el fitness.** El laboratorio supera al C30 en 5 de 5
+semillas, y el C30 queda en +0,0024 de promedio, por debajo de la mitad del laboratorio (+0,0093 de
++0,0186), y cerca de la línea base (+0,0005).
+
+### Cuánto sube, y cuándo
+
+Sensibilidad a la brújula, promedio por agente | a la comida (el control) | % de agentes con más de 0,02
+a la brújula:
+
+| | Gens 1-5 | Gens 11-15 | Gens 16-20 | Gens 21-25 | Gens 26-30 |
+|---|---|---|---|---|---|
+| Laboratorio, con evolución | +0,0040 · +0,0019 · 21% | +0,0033 · +0,0015 · 22% | +0,0066 · −0,0050 · 24% | +0,0092 · −0,0004 · 27% | **+0,0186** · +0,0042 · **39%** |
+| C30, con evolución | +0,0018 · +0,0013 · 21% | +0,0045 · +0,0028 · 23% | +0,0076 · +0,0027 · 26% | +0,0065 · +0,0028 · 23% | +0,0024 · +0,0023 · 18% |
+| Sin evolución (la misma en los dos) | +0,0000 · +0,0008 · 18% | +0,0014 · +0,0010 · 20% | +0,0011 · −0,0007 · 19% | +0,0033 · −0,0000 · 22% | +0,0005 · +0,0004 · 19% |
+
+Por generación, el laboratorio sube desde la 16 y sigue subiendo al final: +0,0140 en la 24, +0,0164 en
+la 28, +0,0228 en la 29 y **+0,0277 en la 30** (1/5 de un seguidor). En las gens 11-15, para comparar con
+el C deslizando: +0,0033 contra +0,0045, más que la línea base en 4 de 5 semillas; el criterio "usa la
+brújula" de la medición anterior da 2 de 5 (el C deslizando, 4 de 5).
+
+### Por qué sube en uno y no en el otro
+
+| | Laboratorio | C30 |
+|---|---|---|
+| Selección: sensibilidad a la brújula ↔ fitness dentro de la generación (Spearman, mediana; % con r > 0), gens 1-15 | +0,122 (80%) | +0,032 (63%) |
+| Ídem, gens 16-30 | **+0,245 (92%)** | +0,019 (52%) |
+| Aporte a la generación siguiente por quintil de sensibilidad, Q1 → Q5, gens 16-29 | 0,80 · 0,91 · 1,01 · 1,08 · 1,17 | 1,02 · 1,06 · 0,93 · 0,97 · 0,99 |
+| Herencia en el cruce: pendiente hijo ↔ promedio de los padres, gens 1-15 / 16-30 | 0,20 / 0,45 | 0,22 / 0,43 |
+| Herencia en la copia (un padre, con mutación o no), gens 1-15 / 16-30 | 0,67 / 0,79 | 0,65 / 0,69 |
+| Élite (el mismo cerebro, en otro mapa): el techo de lo que se puede heredar, gens 1-15 / 16-30 | 0,54 / 0,72 | 0,57 / 0,62 |
+
+Sin evolución, la correlación sensibilidad ↔ fitness es +0,056 y +0,067 en el laboratorio: los cerebros
+al azar que giran hacia la brújula se acercan más, y con solo acercarse pagando eso se ve en el fitness.
+En el cruce entran el 95% de los hijos (`CROSSOVER_RATE`), y la copia el 5%.
+
+### Qué más cambia
+
+| | Laboratorio, con evolución | C30, con evolución | Sin evolución |
+|---|---|---|---|
+| Agentes que cobran algo (fitness > 0), gens 1-5 / 11-15 / 26-30 | 43% / 59% / 82% | 100% (cobran todos) | 33% / 36% / 35% (laboratorio) |
+| Giran (% de ticks) · giro medio · avanzan, gens 26-30 | 68% · 0,035 · 74% | 42% · 0,021 · 88% | 47% · 0,023 · 24% |
+| Llegan a < 25 px de la puerta / la abren, gens 16-30 | 161 / 22 | 185 / 28 | 44 / 9 |
+| Ídem, gens 26-30 | 85 / 13 | 56 / 8 | 21 / 2 |
+| Criterio del ítem 5 (la puerta) en las 26-30 | 1 de 5 | 1 de 5 | — |
+
+En el C30, en las gens 26-30, el que más gira tiene menos anti-círculo (−0,64), y giran menos que al
+principio; en el laboratorio, sin ese término, giran más.
+
+### Lectura
+
+1. **El criterio fijado no se cumple:** principal 2 de 5 y secundario 3 de 5. Por la lectura acordada,
+   lo que falta está en el aprendiz; lo de abajo dice que falta también en el fitness.
+2. **El fitness es el primer bloqueo.** Con el fitness de hoy y las mismas 30 generaciones (C30), la
+   selección no ve la brújula (+0,02 a +0,03) y la sensibilidad no sube (+0,0024, como la línea base).
+   Con solo acercarse pagando, la selección la ve (+0,12 y +0,25; el quintil que más gira deja 1,17
+   hijos contra 0,80 del que menos) y la sensibilidad sube en las 5 semillas, a +0,0186 en las 26-30 y
+   +0,0277 en la 30, el doble de agentes que la línea base con más de 0,02 (39% contra 19%).
+3. **El aprendiz puede, pero lento.** En 30 generaciones llega al 13% de un seguidor en promedio
+   (19% en la 30) y sigue subiendo; arranca recién después de la 15, aunque la selección ya la veía
+   (+0,12). Lo que lo frena se ve en la herencia, que es la misma con los dos fitness: el cruce uniforme
+   peso a peso, en el 95% de los hijos, pasa al hijo 0,2 de la sensibilidad de los padres al principio y
+   0,45 al final, cuando la población ya se parece; una copia pasa ~0,65 a 0,8, cerca del techo (la élite,
+   el mismo cerebro en otro mapa, 0,54 a 0,72). Y la señal llega por pocos: en las gens 1-5 cobra algo el
+   43% de los agentes; el resto empata en 0 y entra al pool por el orden de la lista.
+4. **La comida, el control, casi no se mueve** (+0,0042 en el laboratorio, +0,0023 en el C30): lo que
+   sube en el laboratorio es la brújula, cuatro veces más.
+5. **La puerta, no:** el criterio del ítem 5 da 1 de 5 en los dos. En las 26-30 el laboratorio llega
+   (85) y abre (13) más que el C30 (56 y 8) y que la línea base (21 y 2); en las 16-30, el C30 llega más
+   (185 contra 161) sin girar hacia la brújula: camina más (avanza el 88% de los ticks).
+6. **El secundario no mide la brújula solo, como advertía la salvedad.** En el laboratorio el uso sube
+   en las semillas donde sube la sensibilidad (3, 4 y 5); pero en el C30 sube en 4 de 5 (+0,03 a +0,09)
+   con la sensibilidad en ~0. La puerta fija y la llave roja que se mueve dejan subir el uso por otro
+   camino (una ruta de memoria con x, y y el rumbo, o caminar más hacia el lado de la fortaleza). Se lee
+   junto con la sensibilidad.
+
+**Qué sugiere** (para decidir; esta sesión no tocó la simulación):
+- **Rebalancear el fitness solo no alcanza:** aun con acercarse como única paga, 30 generaciones no
+  llegan al criterio. Tiene sentido junto con un aprendiz más rápido.
+- **Primero, medir el freno del aprendiz** con el laboratorio, desde `mediciones/` y sin tocar `src/`:
+  (a) **menos cruce** (`CROSSOVER_RATE` 0,5 o 0,2: más hijos por copia y mutación, que heredan ~0,7 en
+  lugar de ~0,2 a 0,45); si sube más rápido que el laboratorio, el freno es el cruce. (b) **Más
+  generaciones** (60): si sigue subiendo y pasa el criterio, el aprendiz llega, lento. (a) es otra tanda
+  de 15 min; (b), de ~1 h.
+- **Después, el rebalance, medido como este laboratorio:** el C deslizando con el currículo hasta la 30,
+  contra el C30, con el cambio del aprendiz que haya salido de (a) o (b). Dos niveles: el chico,
+  acercarse más pesado (40 en lugar de 10) y el anti-círculo más liviano (9 en lugar de 18); y el grande,
+  exploración y anti-círculo en 0 con la comida como está (sale lo que paga caminar hacia cualquier
+  lado). El chico probablemente no alcance: la [reconstrucción de la medición
+  anterior](#brujula-c-deslizando) da, con acercarse a 100, una correlación sensibilidad ↔ fitness de
+  +0,075, menos que la del laboratorio en sus gens 1-15 (+0,12). Criterio a fijar antes, por ejemplo:
+  sensibilidad en las 26-30 por encima de la mitad del laboratorio y del C30 en 4 de 5 semillas, sin
+  perder manzanas por agente contra el C30.
+- **La puerta fija** se anota aparte ([mejoras futuras](../product/mejoras_futuras.md)): una medida de
+  "usa la brújula" que compara caminos sirve con un control que también quede fijo, o con fortalezas que
+  se muevan.
