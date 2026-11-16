@@ -51,6 +51,7 @@ EcosistemaEvolutivo/
 ├── config.py            ← SimulationConfig: parámetros centralizados (tres no se leen, ver Notas)
 ├── experimento.py       ← los dos modos, con evolución y sin ella, en varias semillas → resumen.md
 ├── requirements.txt
+├── mediciones/          ← scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control byte a byte)
 ├── tests/               ← pytest: humo de main.py (los dos modos y las ayudas), reglas, puzzle, modos, acercarse, currículo, reportes, resumen, registro, boletín, fuentes y pantallas
 ├── results/             ← CSV y logs de las corridas (en .gitignore)
 ├── assets/sprites/      ← sprites de personajes y entorno
@@ -176,7 +177,9 @@ EcosistemaEvolutivo/
 - **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12
   núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4. Redirigida a
   archivo, la salida sale con buffer y aparece toda al final: para leer un log mientras corre,
-  `python -u` (así lanza las corridas `experimento.py`).
+  `python -u` (así lanza las corridas `experimento.py`). Más de 10 corridas a la vez se quedan sin
+  memoria virtual y alguna se cae al arrancar; el `wait` de una tanda en segundo plano igual da 0: se
+  cuentan las salidas de cada corrida (LEC-017).
 
 ---
 

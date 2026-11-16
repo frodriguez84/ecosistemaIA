@@ -1147,3 +1147,129 @@ respuesta al ítem 5 (PUZZLE-QA-16, corregida). Los IDs `PUZZLE-NN` son los del 
 - **Con el currículo, "Hasta dónde llegaron: nadie agarró la llave roja"** aunque los 60 la tengan: es
   cierto (nadie la agarró) y es la decisión 10; el embudo dice "dada al nacer".
 - **Los CSV del experimento A no tienen `etapa_inicial`:** corrieron antes del bloque B.
+
+---
+
+<a id="medicion-puerta-madera"></a>
+
+## Dónde se traba la puerta de madera — medición (2026-11-16)
+
+**La pregunta** (ítem de [mejoras futuras](../product/mejoras_futuras.md), decidido por Fer el
+2026-11-15, antes del ítem 6 del BACKLOG): con la llave roja dada a los 60 agentes durante 15
+generaciones, la evolución abre la puerta de madera lo mismo que cerebros al azar (8 contra 9 en el
+[experimento B](#experimento-puzzle-b)). ¿El cuello es el camino (no llegan a menos de 25 px del
+centro), golpear (llegan y no golpean), los golpes que no cuentan (cooldown, distancia) o la selección
+(los que la abren no pasan sus genes)?
+
+**Método.** Sin cambios en `src/`, `main.py` ni `config.py`. El script
+[`mediciones/medir_puerta.py`](../../mediciones/medir_puerta.py) corre `main.main()` con los flags del
+experimento y envuelve, sin consumir azar (el embudo lo arma
+[`mediciones/analizar_puerta.py`](../../mediciones/analizar_puerta.py)):
+- `AdvancedAgent.act`: con la posición después de moverse (la que mira el golpe) y la llave (etapa 1),
+  la distancia al centro de la puerta, (100, 140), la del primer tick (dónde nació), los ticks a menos
+  de 25 px y los ticks con golpear > 0,5, en total y a menos de 25 px. Además, la distancia a un **punto
+  de control**: la llave roja, que está en el mapa, a la que la brújula no apunta y que con la etapa 1
+  no se agarra.
+- `AdvancedAgent._try_hit_door`: cada golpe a menos de 25 px, si contó o qué lo frenó: el cooldown de
+  120 ticks del agente (que al empezar la generación corre desde el tick 0) o el de 90 de la puerta.
+- `main._fila_csv`: fitness, lugar en el ranking (el mismo orden estable que `evolve`) y si entra en
+  los 36 del meeting pool; la geometría de la puerta en el mapa de la generación.
+- `GeneticAlgorithm.evolve`, `SimpleNeuralNetwork.crossover` y `copy_from`: el aporte de cada agente a
+  la generación siguiente (élite y copia, 1; cada padre de un cruce, 0,5).
+- Un **seguidor de brújula perfecto**, sobre el mapa de cada generación: desde una grilla de arranques
+  cada 25 px en la zona donde nacen los agentes, avanza 3 px por tick derecho al centro de la puerta,
+  con las colisiones de `act()`. Dos variantes: como hoy (si el paso choca, no se mueve) y deslizando
+  (si choca, prueba moverse solo en x y, si no, solo en y).
+
+Autónomo con `--curriculo`, semillas 1 a 5, 15 generaciones: con evolución y sin ella (la configuración
+del B) y con evolución y `--acercarse` (la del C, cuya línea base es la del B salvo el fitness). 4.500
+agentes × generación en cada una, todos con la llave.
+
+**Control.** Los 15 CSV son byte a byte las 15 primeras filas de sus corridas en
+`results/experimento_20261115-205826` (B) y `results/experimento_20261115-210549` (C), fuera de git: el
+envoltorio no cambió la corrida. Cada golpe a menos de 25 px se predijo (cuenta o no, y por qué) antes
+de llamar al original: 0 diferencias. El ranking coincide con el orden de `evolve`, y el aporte suma 60
+por generación (57 en la 6 y la 12, por los 3 inmigrantes).
+
+**Geometría.** La puerta (20 × 20) y los muros de la pared sur frenan el centro de un agente (radio 6)
+a 16 px del centro de la puerta, de frente y por abajo. Lo libre a menos de 25 px es una franja de unos
+9 px de alto debajo de la puerta: 235 px² (mediana de 225 mapas; 29 px² en uno, con un obstáculo
+enfrente). En línea recta se entra a la franja solo desde un cono de ~50° por debajo; desde el costado,
+la pared frena a más de 25 px.
+
+**El embudo** (agentes × generación con la llave):
+
+| | Agentes × gen. | < 100 px | < 50 px | < 25 px | Golpearon a < 25 px | ≥ 1 golpe que contó | Abrieron |
+|---|---|---|---|---|---|---|---|
+| B con evolución, gens 1-15 | 4.500 | 237 (5,3%) | 60 (1,3%) | 25 (0,6%) | 12 | 10 | 8 |
+| B sin evolución, gens 1-15 | 4.500 | 187 (4,2%) | 54 (1,2%) | 19 (0,4%) | 11 | 11 | 9 |
+| C con evolución, gens 1-15 | 4.500 | 248 (5,5%) | 67 (1,5%) | 27 (0,6%) | 14 | 12 | 6 |
+| B con evolución, gens 1-5 | 1.500 | 69 (4,6%) | 14 (0,9%) | 4 (0,3%) | 4 | 4 | 2 |
+| B con evolución, gens 11-15 | 1.500 | 83 (5,5%) | 23 (1,5%) | 10 (0,7%) | 4 | 4 | 4 |
+| B sin evolución, gens 1-5 | 1.500 | 58 (3,9%) | 12 (0,8%) | 2 (0,1%) | 1 | 1 | 1 |
+| B sin evolución, gens 11-15 | 1.500 | 72 (4,8%) | 22 (1,5%) | 10 (0,7%) | 6 | 6 | 4 |
+| C con evolución, gens 1-5 | 1.500 | 68 (4,5%) | 13 (0,9%) | 5 (0,3%) | 1 | 1 | 1 |
+| C con evolución, gens 11-15 | 1.500 | 96 (6,4%) | 27 (1,8%) | 13 (0,9%) | 7 | 6 | 4 |
+
+Las 8 y 9 aperturas son las del experimento B; las 6, las del C.
+
+| | B con evolución | B sin evolución | C con evolución |
+|---|---|---|---|
+| Distancia mínima a la puerta, mediana (al nacer, ~540 px) | 496 px | 517 px | 498 px |
+| Llegan a < 25 px: de los que nacen a menos de 100 px / a más de 400 px | 12 de 131 / 2 de 3.103 | 13 de 123 / 0 de 3.140 | 17 de 131 / 1 de 3.103 |
+| Camino hecho, gens 11-15, (al nacer − mínima) / al nacer: hacia la puerta / hacia el punto de control | 0,103 / 0,127 | 0,057 / 0,071 | 0,107 / 0,121 |
+| Ticks golpeando con la llave: gen 1 → gens 11-15 | 29,6% → 21,6% | 29,6% → 27,0% | 29,6% → 29,9% |
+| Los que abrieron: en el pool / aporte a la gen. siguiente, promedio (el de todos, 0,99) | 8 de 8 / 2,38 | 9 de 9 / — | 6 de 6 / 1,70 (5; el sexto abrió en la 15) |
+
+**Seguidor de brújula perfecto** (225 mapas: 15 corridas × 15 generaciones; la generación 1 se repite
+entre las corridas de una semilla):
+
+| | Llega a < 25 px | Lo más cerca (mediana de cada mapa; la del medio entre mapas) |
+|---|---|---|
+| Como hoy: si el paso choca, no se mueve | 11,8% de los arranques (de 0% a 32% según el mapa) | 354 px |
+| Deslizando contra lo que choca | 50,1% (de 16% a 75%) | 19 px |
+
+**Lectura.**
+
+1. **El cuello es el camino, por dos órdenes de magnitud.** El 99,4% de los agentes con la llave nunca
+   llega a menos de 25 px; lo más cerca que llegan tiene una mediana de ~500 px, con evolución y sin
+   ella. Después del camino, los factores son chicos: de los que llegan, golpea ahí la mitad; de los que
+   golpean ahí, casi todos cuentan un golpe; de los que cuentan uno, 7 de cada 10 dan el segundo.
+2. **Los que llegan, nacieron cerca.** De los que nacen a menos de 100 px de la puerta, llega 1 de cada
+   10; de los que nacen a más de 400 px (dos de cada tres), 3 en 9.346 entre las tres condiciones.
+   Ninguno de los 23 que abrieron nació a más de 400 px.
+3. **No usan la brújula.** Con evolución, el camino hecho hacia la puerta casi se duplica (0,057 →
+   0,103 en las generaciones 11 a 15, más que la línea base en 5 de 5 semillas), pero hacia el punto de
+   control sube lo mismo (0,071 → 0,127; ×1,8 en los dos): caminan más, no van hacia la puerta. Con
+   evolución, en las 5 semillas del B, el camino hacia el control es mayor que hacia la puerta. Con la
+   recompensa por acercarse (C), igual: 0,107 hacia la puerta y 0,121 hacia el control, los dos 0,050
+   arriba de la línea base.
+4. **Aunque la usaran, el mapa no la deja pagar.** Un seguidor de brújula perfecto llega en el 12% de
+   los arranques: la línea recta choca con un muro, un árbol, una casita o el estanque, y como chocar no
+   desliza, queda trabado ahí (mediana: 354 px de la puerta). Deslizando, llega en el 50%, y entra a la
+   franja de la puerta por la pared sur. Con la mecánica de hoy, seguir la brújula casi nunca paga, así
+   que la selección no tiene con qué empujar a aprenderla.
+5. **Golpear pierde la mitad, y la evolución golpea menos.** De los que llegan a < 25 px, golpean ahí
+   entre el 48% y el 58%. Con evolución, en el B, golpear baja de 30% a 22% de los ticks (cuesta
+   energía; dentro de cada generación, golpear más y el fitness tienen una correlación de −0,14, la
+   mediana); en el C no baja (~29%): los golpes que cuentan suman al término de acercarse.
+6. **Los golpes que no cuentan casi no pierden a nadie.** Los frenan el cooldown de 120 ticks del
+   agente al empezar la generación (los que nacen cerca llegan antes del tick 120 y esperan empujando
+   la puerta: varios la abrieron con golpes en los ticks 120 y 210) y los 90 de la puerta entre golpes.
+   El corte de árboles no frenó ninguno. Lo que se pierde es el segundo golpe: de 33 que contaron uno,
+   10 se fueron antes del segundo (6 en el C), y solo 2 volvieron a estar a < 25 px cuando ya podían
+   darlo, sin golpear.
+7. **La selección sí elige a los que abren, pero no hay qué heredar.** Los 23 quedaron en el pool
+   (lugar mediano entre 5 y 7) y, con evolución, dejaron 2,4 (B) y 1,7 (C) hijos-equivalentes, contra
+   0,99 del promedio. Abrieron porque nacieron cerca, y la generación siguiente nace en otro lugar.
+
+**Qué sugiere** (para decidir el paso siguiente; esta medición no tocó código):
+- **El cambio que más abre el camino es que chocar deslice:** si el paso choca, moverse por el eje
+  libre. Lleva al seguidor perfecto del 12% al 50% y lo mete en la franja de la puerta. Cambia la
+  simulación en los dos modos (también comer y caminar); con un switch, se mide como las ayudas: el B
+  con y sin deslizar, la puerta y el camino hacia la puerta contra el punto de control.
+- **Si con deslizamiento siguen sin usar la brújula,** el problema pasa a ser aprenderla: la presión
+  de selección (ya en mejoras futuras) o un sensor de contra qué chocan.
+- **Golpear (pierde ~la mitad de los que llegan) y el segundo golpe (~un tercio) son factores chicos:**
+  bajar `DOOR_HITS_TO_OPEN` a 1 o achicar el cooldown ayudaría a los que llegan, pero hoy llegan 25 de
+  4.500.

@@ -5,6 +5,20 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-017 — 2026-11-16 — Una tanda en segundo plano termina con 0 aunque se caiga una corrida
+
+**Qué pasó.** En la [medición de dónde se traba la puerta de madera](../qa/AnalisisQA.md#medicion-puerta-madera),
+15 corridas a la vez en segundo plano (`for …; do python … & done; wait`). La tanda terminó con código
+0, pero una (semilla 3, con evolución) se había caído al arrancar, importando scipy: "DLL load failed
+while importing _lsoda: El archivo de paginación es demasiado pequeño". `wait` sin argumentos devuelve
+0 aunque un proceso falle. Se vio porque había 14 líneas finales del script en lugar de 15, y el control
+byte a byte de esa corrida no encontró su CSV. Corrida sola, salió bien. Con 10 a la vez no pasó.
+
+**Regla.** De una tanda en paralelo se cuentan las salidas (una línea final por corrida, un CSV por
+corrida), no el código de salida de la tanda. En esta máquina, no más de 10 corridas a la vez. Aplicada
+en [`CLAUDE.md`](../../CLAUDE.md) § Notas, junto al tiempo de una corrida sin ventana, y en el ítem de
+[mejoras futuras](../product/mejoras_futuras.md) sobre las corridas del humo que se caen.
+
 ## LEC-016 — 2026-11-15 — Una celda que obviamente vale 0 se cuenta igual
 
 **Qué pasó.** En el bloque B de [Que el puzzle se pueda aprender](../specs/done/PUZZLE_APRENDIBLE.md),
