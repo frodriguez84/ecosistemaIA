@@ -1975,3 +1975,88 @@ Gens 16-30, con evolución (sin evolución, la línea base del laboratorio):
 - **Golpear en la puerta, el cuello nuevo:** medir antes de cambiar nada por qué baja el golpe (su costo
   de energía contra lo que paga) y si la red lo condiciona a la distancia al paso (sensor 11), con una
   sensibilidad como la de la brújula.
+
+---
+
+<a id="menos-cruce-juego"></a>
+
+## Menos cruce en el juego, con su fitness (2026-11-16)
+
+**La pregunta** (sugerida por el [laboratorio con menos cruce](#laboratorio-menos-cruce)): en el
+laboratorio, bajar el cruce hizo que la red aprendiera la brújula. ¿Alcanza con eso en el juego, con el
+fitness de siempre, o el fitness sigue siendo el bloqueo? Sin cambios en `src/`, `main.py` ni
+`config.py`.
+
+**Diseño.** El C30 (C deslizando con el currículo hasta la 30, el control del
+[laboratorio](#laboratorio-brujula)) cambiando una sola cosa (LEC-019): `cruce=0.2`. 5 corridas con
+evolución, semillas 1 a 5, 5 a la vez: 12 min. La línea base sin evolución es la del C30 (nunca se cruza).
+El análisis, `analizar_brujula.py` con las carpetas del C30 y de esta tanda.
+
+**Criterio, fijado antes de medir** (gens 26-30):
+- **Aprende en el juego con menos cruce:** sensibilidad a la brújula con evolución ≥ 0,02 y mayor que la
+  línea base, en 4 de 5 semillas.
+- **Sube algo:** mayor que el C30 (cruce 0,95) en 4 de 5 semillas y promedio ≥ 0,0093 (la mitad del
+  laboratorio, el umbral del control C30).
+- Si ninguno, el fitness sigue siendo el bloqueo y menos cruce solo no alcanza.
+- Control de la manipulación: ~20% de hijos por cruce y más herencia que el C30.
+
+**Controles.** Las 5 corridas terminaron con `MEDICION inconsistencias=0` (las 5 líneas contadas) y su log
+dice "Cruce: 20.0%". La gen 1 de las 5 es byte a byte la del C30; la 2 ya difiere. Hijos por cruce: 19% y
+20% (gens 1-15 y 16-30). SHA-256 de las corridas, de la semilla 1 a la 5 (se regeneran con
+`medir_puerta.py ... curriculo30 cruce=0.2` desde el commit de esta sesión):
+`54ab8cc3df1227884247a29b3ba079108b122959b710c0387ab3ce59fc3d9c15`,
+`431d73fbdf7b05c973c94f5550fba79ad520329ad66df25ab4110f6d05605a9e`,
+`0339ec31df26de4975371f54da01f238e3148f10613036a248435c6f6a3134e5`,
+`b3e981907c57b665cdb47cd1d28366d089f48b4de68cb13116920c5b6f39b003`,
+`3161db730a8245c94a8f3a07d4cfba8d0882fa8198522c45d3c71de1c72dc832`.
+
+**El criterio** (sensibilidad a la brújula con evolución, gens 26-30, rad/tick):
+
+| Semilla | C30 (cruce 0,95) | C30, cruce 0,2 | Sin evolución |
+|---|---|---|---|
+| 1 | −0,0063 | +0,0179 | +0,0022 |
+| 2 | +0,0044 | −0,0117 | +0,0001 |
+| 3 | +0,0033 | +0,0200 (apenas por debajo de 0,02) | +0,0017 |
+| 4 | −0,0013 | −0,0115 | +0,0012 |
+| 5 | +0,0121 | +0,0304 | −0,0025 |
+| **Promedio** | +0,0024 | +0,0090 | +0,0005 |
+| Aprende (≥ 0,02 y más que la línea base) | 0 de 5 | **1 de 5** | |
+| Sube algo (más que el C30, 4 de 5, y promedio ≥ 0,0093) | | **3 de 5, 0,0090** | |
+
+**Aprende en el juego con menos cruce: no. Sube algo: no** (3 de 5 y 0,0090, por poco).
+
+**Por qué** (con evolución):
+
+| | C30 (cruce 0,95) | C30, cruce 0,2 | Laboratorio, cruce 0,2 |
+|---|---|---|---|
+| Selección: sensibilidad ↔ fitness (Spearman, mediana), gens 1-15 / 16-30 | +0,032 / +0,019 | −0,027 / +0,025 | +0,250 / +0,269 |
+| Herencia de la sensibilidad, todos los hijos, gens 1-15 / 16-30 | 0,27 / 0,46 | 0,62 / 0,64 | 0,70 / 0,76 |
+
+**El juego** (gens 26-30, promedio de las 5 semillas; entre paréntesis, en cuántas el cruce 0,2 supera al
+C30):
+
+| | C30 (cruce 0,95) | C30, cruce 0,2 | Sin evolución |
+|---|---|---|---|
+| Fitness promedio | 40,0 | 41,5 (4 de 5) | 19,6 |
+| Manzanas por agente | 1,04 | 1,04 (2 de 5) | 0,30 |
+| Distancia recorrida (px) | 1.221 | 1.077 | 328 |
+| Edad (ticks) | 974 | 987 | 891 |
+| Criterio del ítem 5 (la puerta) | 1 de 5 | 1 de 5 | — |
+
+**Lectura.**
+1. **Con el fitness del juego, menos cruce no alcanza:** la herencia sube como en el laboratorio (de 0,27
+   a 0,62), pero la selección no ve la brújula (−0,03 y +0,03, como el C30), así que no hay nada que
+   heredar hacia ese lado. Sin selección, la sensibilidad se mueve para los dos lados: dos semillas
+   terminan en −0,012, girando al revés de la brújula, y tres por arriba; el promedio queda en +0,009.
+2. **El fitness es el bloqueo,** como decía el [laboratorio](#laboratorio-brujula); el cruce era el freno
+   cuando el fitness sí la pedía. Hacen falta las dos cosas.
+3. **En el juego, menos cruce no empeora nada visible:** el mismo fitness (+1,5) y las mismas manzanas,
+   camina un 12% menos y vive un poco más. No mide la llave roja (con el currículo hasta la 30 nacen con
+   ella), y es una sola variante: para la decisión de `CROSSOVER_RATE` por defecto, falta la medición del
+   juego completo.
+
+**Qué sugiere** (para decidir; esta sesión no tocó la simulación):
+- **Lo siguiente es el rebalance con cruce 0,2,** contra este C30 con cruce 0,2 (una sola cosa cambiada):
+  los dos niveles de [mejoras futuras](../product/mejoras_futuras.md), el chico (acercarse 40,
+  anti-círculo 9) y el grande (exploración y anti-círculo en 0, la comida como está). `medir_puerta.py`
+  todavía no tiene cómo fijar esos pesos sueltos: un argumento más, como `cruce=X`.
