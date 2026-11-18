@@ -139,7 +139,8 @@ EcosistemaEvolutivo/
   semilla y con varias semillas. Si la línea base mejora igual, no es aprendizaje (LEC-001 en
   [docs/operations/LECCIONES_APRENDIDAS.md](docs/operations/LECCIONES_APRENDIDAS.md)).
 - **Una tabla que compara experimentos se llena con la misma cuenta en cada fila,** sobre los CSV,
-  también donde el razonamiento dice que da 0 (LEC-016).
+  también donde el razonamiento dice que da 0 (LEC-016). Una proyección de lo que hace un cambio
+  cambia solo lo que el cambio toca: si promedia también la variable con que se mide, sobreestima (LEC-021).
 - **Un criterio fijado antes de medir lleva un tamaño mínimo, no solo "K de N semillas",** y se lee con
   un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018).
 - **Un experimento que cambia más de una cosa contra su comparación lleva el control que cambia una

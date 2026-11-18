@@ -5,6 +5,20 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-021 — 2026-11-16 — Una proyección que promedia más de lo que toca el cambio lo sobreestima
+
+**Qué pasó.** En el [ruido del fitness](../qa/AnalisisQA.md#ruido-fitness), la selección veía la brújula +0,15 con un
+episodio y +0,27 con el promedio de 5. Ese +0,27 promediaba las dos variables, el fitness y la sensibilidad a la
+brújula, y varias evaluaciones solo promedian el fitness. La sensibilidad también es ruidosa (se repite 0,44 entre
+episodios), y promediarla sube la correlación por sí sola. La sugerencia y el pedido de la sesión siguiente se armaron
+sobre el +0,27. Se vio al fijar el criterio de [varias evaluaciones](../qa/AnalisisQA.md#varias-evaluaciones), antes de
+correr: había que llenar las filas con una evaluación y con cinco con la misma cuenta, y con la sensibilidad de un
+episodio la proyección daba +0,14. Medido: +0,145.
+
+**Regla.** Una proyección de lo que hace un cambio cambia solo lo que el cambio toca; la variable con que se lo mide
+queda con la misma cuenta que en la comparación. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código,
+junto a la de LEC-016.
+
 ## LEC-020 — 2026-11-16 — Un test de una propiedad del mundo puede pasar de suerte
 
 **Qué pasó.** Con las [fortalezas móviles](../qa/AnalisisQA.md#fortalezas-moviles), los tests de "nada nace

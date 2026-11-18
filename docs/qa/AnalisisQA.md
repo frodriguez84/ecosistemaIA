@@ -2782,6 +2782,10 @@ móviles dio +0,13 en las gens 16-30, con otro método) y +0,27 con el promedio 
 laboratorio con cruce 0,2 (+0,25 y +0,27), donde la brújula se aprendió en 5 de 5. Por semilla, de +0,12, +0,39, +0,16,
 +0,07 y +0,02 a +0,07, +0,51, +0,36, +0,14 y +0,28: sube en 4 de 5.
 
+> **Corrección (2026-11-16, [varias evaluaciones](#varias-evaluaciones)):** el +0,27 promedia también la sensibilidad, que
+> varias evaluaciones no tocan. Con la sensibilidad de un episodio contra el fitness promedio, la misma cuenta que el
+> +0,15, da +0,14 (mediana; promedio de las semillas, +0,18). Medido con K = 5: +0,145 (LEC-021).
+
 **Lectura.**
 1. **El fitness de los evolucionados es mayormente suerte** (Spearman 0,05, las 5 semillas < 0,3, el control positivo en 5
    de 5). El AG elige el pool casi al azar (61% contra 60%) y la élite es el ganador de una lotería. Con un solo episodio,
@@ -2805,3 +2809,270 @@ laboratorio con cruce 0,2 (+0,25 y +0,27), donde la brújula se aprendió en 5 d
 - **Acercarse 80, no:** sube el término más ruidoso sin subir lo que se repite.
 - **Barato, si hace falta saber cuándo cae:** la misma medición con `congelar=10` o `congelar=15` (~10 min). Si a la mitad
   de la corrida el ranking todavía se repite, varias evaluaciones hacen falta solo al final.
+
+---
+
+<a id="varias-evaluaciones"></a>
+
+## Varias evaluaciones por agente: el promedio de 5 episodios contra más generaciones (2026-11-16)
+
+**La pregunta** (sugerida por el [ruido del fitness](#ruido-fitness), decidida por Fer; en
+[mejoras futuras](../product/mejoras_futuras.md#de-una-charla-con-fer--2026-11-16)): en los cerebros de la gen 30, el
+ranking del fitness se repite 0,05 entre episodios y el pool queda como el azar. Si cada cerebro juega 5 episodios por
+generación y la selección usa el promedio de su fitness, ¿se aprende la brújula? ¿Y mejor que gastando los mismos ticks en
+más generaciones? Medición de una sesión, sin cambios en `src/`, `main.py` ni `config.py`: Fer eligió medir primero, y si
+pasa, el switch va en otra sesión.
+
+**Diseño.** Dos argumentos nuevos en `medir_puerta.py`:
+- **`evaluaciones=K`** (con evolución): GENERACIONES son las del AG, y `main.py` corre K × GENERACIONES, una fila del CSV
+  por episodio. Después de los episodios 1 a K − 1 de cada generación, `evolve()` devuelve agentes nuevos con los mismos
+  cerebros (lo de `congelar`), en un orden barajado con un azar propio (`random.Random(semilla × 1000 + episodio)`); el
+  primer episodio de cada generación queda en el orden de `evolve`, la élite primera, como con una evaluación. Después del
+  K-ésimo corre el `evolve` real, con la generación del AG (los inmigrantes van cada 6) y con el promedio: `evolve`
+  recalcula el fitness (`genetic_algorithm.py:55`), así que `_calculate_fitness` se envuelve solo durante esa llamada.
+  Cada episodio dura y nace como su generación del AG (envuelve `_ticks_de_generacion` y `_fijar_etapa_inicial`), con
+  mapa, fortalezas, lugar de nacimiento y rumbo nuevos (`reset_food` regenera el mapa en cada llamada).
+- **`reloj=R`, el control de igual costo** (una evaluación): la generación n dura y nace como la ⌈n/R⌉, el mismo reloj que
+  el episodio n con `evaluaciones=R`; desde la 151, como la 30 (2.220 ticks de límite y la llave roja). Lo único que cambia
+  contra K = 5 es seleccionar después de cada episodio, con su fitness, en vez de después de cada 5, con el promedio.
+  Cruce, mutación e inmigrantes van por generación del AG, como siempre: 5 veces más en los mismos ticks, que es la
+  alternativa que se compara. Decidido con Fer: con el reloj de siempre el límite de ticks llega a ~7.600 en la 150 y el
+  currículo se corta en la 30.
+
+**Las corridas** (semillas 1 a 5, la condición de las [móviles](#fortalezas-moviles): `acercarse deslizar
+fortalezas-moviles curriculo30 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`):
+- **K = 5:** `evolucion 30 ... evaluaciones=5`: 30 generaciones del AG, 150 episodios.
+- **Control de igual costo:** `evolucion 180 ... reloj=5`, leído hasta igualar los ticks (abajo).
+- **Comparación:** la tanda publicada de las móviles (una evaluación, 30 generaciones), en
+  `results/medicion_fortalezas_moviles_20261116/`. Sus 5 SHA-256 son los publicados.
+- **Línea base:** la publicada sin evolución, con las móviles (5 SHA-256 iguales a los publicados). Sin evolución no hay
+  selección: `medir_puerta.py` no acepta `evaluaciones` sin evolución.
+
+**Igual costo, en ticks simulados** (la suma de la columna `ticks`, por semilla). T(e) son los ticks de K = 5 hasta su
+episodio e, y T_C(n) los del control hasta su generación n.
+- El control se lee hasta la primera generación con T_C(n) ≥ T(150). Si ninguna de las 180 llega, se dice y se lee en la
+  180.
+- Las ventanas del control son las mismas en ticks. La de las gens 26-30 de K = 5 (episodios 126-150): las generaciones
+  del control que terminan después de T(125), hasta el corte. La de las gens 16-30 (episodios 76-150): las que terminan
+  después de T(75). La comparación, en sus gens 26-30 y 16-30.
+
+**Qué se mide** (la misma cuenta en cada fila, LEC-016; `mediciones/analizar_evaluaciones.py`):
+- **Sensibilidad a la brújula:** la de `analizar_brujula.py`: `sens_brujula / sens_ticks` por fila de agente, promedio de
+  las filas de la ventana (con K = 5, cada cerebro cuenta una vez por episodio).
+- **Manzanas por agente:** `manzanas_prom` del CSV de `main.py`, promedio de las filas de la ventana.
+- **Lo que ve la selección:** en cada selección (una generación del AG), el Spearman entre la sensibilidad de **un
+  episodio** de cada agente y el fitness con que lo eligió la selección (con K = 5, `fitness_prom`; con una evaluación, el
+  de su episodio), con 10 agentes o más. Una cuenta por episodio, mediana de todas las de la ventana: con una evaluación es
+  la de `analizar_brujula.py` (+0,132 en las móviles, gens 16-30).
+- **Por qué la sensibilidad de un episodio** (visto al releer los datos del ruido, antes de correr): la sensibilidad también
+  es ruidosa (se repite 0,44 entre episodios), y promediarla sube el Spearman por sí sola. En los cerebros congelados de la
+  gen 30 (`results/medicion_ruido_fitness_20261116/`), contra el fitness promedio de los 5 episodios, la sensibilidad de un
+  episodio da +0,143 (mediana de semilla y episodio; promedio de las semillas, +0,179) y la promediada, +0,271. Con un
+  episodio en los dos lados, +0,144. El "+0,27" del ruido promediaba las dos: **con la misma cuenta, lo proyectado para K
+  = 5 es +0,14 a +0,18, no +0,27.** La promediada contra `fitness_prom` se informa aparte, solo para K = 5.
+
+**Criterio, fijado antes de correr** (el de las móviles, con el control nuevo y un tamaño mínimo, LEC-018):
+1. **Aprende la brújula:** en 4 de 5 semillas, la sensibilidad en las gens 26-30 es ≥ 0,02 rad/tick y mayor que la de la
+   misma semilla en la línea base, en las móviles y en el control. **Tamaño mínimo:** el promedio de las 5 semillas es al
+   menos 1,5 veces el de las móviles (+0,0268: al menos +0,040) y al menos 1,5 veces el del control (si el del control da
+   menos de +0,0268, alcanza con +0,040).
+2. **Sin dejar de comer:** manzanas por agente en las gens 26-30, promedio de las 5 semillas, al menos el 90% de las de las
+   móviles (1,09: al menos 0,98).
+3. **Pasa si cumple 1 y 2.**
+- **Se lee con la selección:** lo que ve la selección en las gens 16-30 sube al menos +0,03 sobre las móviles (+0,132) y
+  sobre el control, en la mediana, y sobre las móviles en 4 de 5 semillas. Si 1 se cumple sin eso, no se atribuye a que la
+  selección vea la brújula. Como lo proyectado es poco, puede que la selección sea mejor en general (elija mejor por comida
+  y por acercarse) y la brújula suba con eso: se mira en los términos del fitness.
+- **Contra el control:** si el control llega a lo mismo o más, la respuesta es "más generaciones, no más evaluaciones". La
+  teoría simple dice que por tick gana una evaluación ([ruido](#ruido-fitness), el ajuste a la propuesta).
+- La puerta (el criterio del ítem 5) se informa, sin criterio propio.
+
+**Controles.**
+- **Sin el argumento, `medir_puerta.py` da lo mismo que antes, y con `evaluaciones=1` también.** Tres corridas cortas
+  (semilla 1 con la condición, 3 generaciones; semilla 2 sin evolución y sin flags, 2; la 1 con `congelar=2`, 4): los 9 CSV
+  con el mismo SHA-256 desde f7aba32 y con el código nuevo, y los 3 de la primera con `evaluaciones=1`. **Hecho: iguales.**
+- **Una prueba corta antes de la tanda** (K = 5 con 3 generaciones; `reloj=5` con 7). **Hecha:** el episodio 1 es byte a
+  byte la gen 1 publicada (el CSV de `main.py`, y las 60 filas de agentes en las 55 columnas comunes, salvo `aporte`); cada
+  cerebro juega 5 episodios con un solo hash; `lugar_prom` es el del promedio recalculado desde el CSV; la élite siguiente
+  es la primera del promedio, y los 68 y 69 padres de las copias y los cruces están en el pool del promedio (en el del quinto
+  episodio, 60 y 61). En el control, las gens 1-4 son byte a byte las publicadas y la 5 dura 960 ticks (la publicada, 1.135).
+- **En la tanda:** lo mismo en las 5 semillas. Además, el `evolve` real corre después de los episodios 5, 10, …, 145 (29
+  veces), sin ningún cruce, copia ni mutación afuera de él y con alguno adentro; cada episodio dura a lo sumo el límite de su
+  generación del AG, y todos nacen con la llave roja. En el control, el límite de la ⌈n/5⌉, hasta la 30.
+- **La mutación adaptativa:** cuántas selecciones tienen desvío / media del fitness < 0,15, donde la mutación sube 2,5 veces.
+  Con el promedio el desvío baja: se informa por condición.
+- Las 10 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+
+**Tiempo:** las 10 corridas a la vez, con `python -u`; unas 1 a 1,5 h.
+
+**Cómo se corrió.** Las 10 corridas en una tanda, en 1 h 45 min (de 20:56 a 22:41). La salida, en
+`results/medicion_varias_evaluaciones_20261116/` (fuera del repo). Las tablas, con `mediciones/analizar_evaluaciones.py`,
+probado antes de leer nada nuevo contra la tanda publicada, vestida de `evaluaciones=1` y `reloj=1`: reproduce sus
+números (+0,0268 de sensibilidad, 1,089 manzanas, +0,132 de selección, 46 puertas) y, con K = 1, las tres columnas dan
+igual. Lo demás (la trayectoria, la puerta, el ítem 5), con un script de la sesión.
+
+**Controles.**
+- **Las 10 corridas terminaron con `MEDICION inconsistencias=0`** (las 10 líneas contadas), y sus logs dicen los pesos y
+  `CROSSOVER_RATE=0.2` (10 de 10). Las 5 de K = 5: `episodios=150 evolve=29` (después de los episodios 5, 10, …, 145),
+  `llamadas_ag_afuera=0` y de 2.193 a 2.226 adentro.
+- **Lo de antes, byte a byte:** el episodio 1 de K = 5 es la gen 1 publicada (el CSV de `main.py` y las filas de agentes)
+  y las gens 1-4 del control son las publicadas (también las de agentes, con `aporte`), 5 de 5; desde ahí difieren.
+- **Cada cerebro jugó 5 episodios con un solo hash** en las 150 generaciones del AG (30 por semilla). `lugar_prom` es el
+  del promedio recalculado desde el CSV (0 diferencias), la élite siguiente es la primera del promedio (145 de 145), y los
+  10.149 padres de las copias y los cruces están en el pool del promedio; en el del quinto episodio, 7.561 (el 74%): **la
+  selección usó el promedio.**
+- **Los límites:** ningún episodio de K = 5 pasa el de su generación del AG, y ninguna generación del control el de la
+  ⌈n/5⌉ (hasta la 30); llegan al límite 296 de 750 episodios y 262 de 900 generaciones. Todos nacen con la llave roja.
+- **La mutación adaptativa no se disparó nunca:** 0 de 145 selecciones con K = 5, 0 de 765 en el control y 0 de 145 en
+  las móviles tienen desvío / media < 0,15. No hay mutación de más que explique una diferencia.
+- **El costo:** K = 5 gastó de 181.106 a 192.005 ticks; el control los iguala en las 5 semillas, entre la generación 149 y
+  la 161 (corrió hasta la 180). Las móviles, de 36.356 a 39.855. La línea base y la comparación son las publicadas (sus 10
+  SHA-256, iguales).
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py ... evaluaciones=5 o reloj=5 desde el commit de esta sesión)</summary>
+
+| Semilla | K = 5, `corrida_*.csv` | K = 5, `agentes_*.csv` |
+|---|---|---|
+| 1 | `c7168e6ec8492a2ff6d7efc19f849902190c3bb7c7e0c85cdb8d2010e3c25edc` | `dfdc4fc96f9785babc7c286bf3dc55a01f4450bb6add76dddf7ffd71e7e67c3f` |
+| 2 | `f50011a9762f4a95cd395e89a6147ff157db0789efed84c1e114c38a48d1cdd1` | `cbf86468eac9ff224bf381bbdd652571e97fd0c951dc50c9393abac25766ac8c` |
+| 3 | `6b4e562f05b310b096776a30ec08fb24d965d544f5cc53c21262b6ef1981ff20` | `7b4b49d9f67b9e3624d57ba24062ac639059d6ac378b4147f9fadb1697829226` |
+| 4 | `720c49da5ea97348a2bb13a4dfc66fb44318e6af7877da28b46f5b8a4c42c932` | `a1b24c9ec4a589b7403334412fe3f1eaf0f75f1125c05847349a8237d51fc404` |
+| 5 | `b90b7ba7095e40842f13166e71c741ab8d1749c9e9b4513edb4d5a7907565cdc` | `bc47bdcee4b2b771d0ba58405dfbec099cf7b289083480d44b255414645c3d9f` |
+
+| Semilla | Control, `corrida_*.csv` | Control, `agentes_*.csv` |
+|---|---|---|
+| 1 | `03104bbbd7f0b9b7bb76321c46746e3e5514c934e631710be91a3ff34b8ab270` | `42bf67751e14267b8699cfaef061bb891bc3ae466c55a75ad92be90882530d02` |
+| 2 | `f48e8eb3562b6866942a6426c986b2fdaaddbee1dda443527a9d0f859776aed0` | `f6eff96722f5d367ed13ed1e838bf800c3c7bae097ca897c661afbacee5abe85` |
+| 3 | `3749e38f7c7c9837ccc7e5fd5d878538c0031ac07ca90ded31f8e610ca0c0a19` | `71ba4a0ea32b33182528c9ed2dc673ec84964630771b090e4b658f1e9311bbce` |
+| 4 | `19a03f5029164c62e9c09422d50751654acce078d16d35e2bc3c37eda21e6036` | `ec19367946c2a772d79969765c2e812437cf70cd12a2af840589077e18681697` |
+| 5 | `f5aa8af8d51e34dbdf963579181c94a4eee0c7b6e7cb96ee70a9e02c8485bd70` | `72ddcffdc2fdd3c732f12e79a31c5e770f5b78d6dac8f55021a45ba5c7be2e3d` |
+
+</details>
+
+**El criterio** (sensibilidad a la brújula, gens 26-30 de K = 5 y de las móviles; en el control, su ventana en ticks, que
+según la semilla empieza entre la generación 123 y la 135 y termina entre la 149 y la 161; rad/tick):
+
+| Semilla | K = 5 | Control de igual costo | Móviles (una evaluación) | Sin evolución (móviles) |
+|---|---|---|---|---|
+| 1 | +0,0586 | **+0,0888** | +0,0123 | +0,0010 |
+| 2 | +0,0378 | **+0,1091** | +0,0620 | −0,0023 |
+| 3 | +0,0315 | **+0,0492** | +0,0265 | +0,0034 |
+| 4 | +0,0174 | **+0,1009** | −0,0064 | +0,0015 |
+| 5 | +0,0024 | +0,0062 | +0,0398 | −0,0004 |
+| **Promedio** | +0,0296 | **+0,0708** | +0,0268 | +0,0007 |
+| 1. ≥ 0,02 y mayor que la línea base, las móviles y el control | **0 de 5** | | | |
+| Tamaño mínimo: pide +0,106 (1,5 veces el control) | 1,10 veces las móviles, 0,42 veces el control | | | |
+| 2. Manzanas por agente (% de las móviles) | 1,145 (**105%**) | 1,056 (97%) | 1,089 | 0,311 |
+
+**No pasa.** K = 5 pierde contra el control en las 5 semillas, y por mucho: el control aprende la brújula 2,4 veces más
+con los mismos ticks. Sin el control en la cuenta, K = 5 pasa 0,02 y les gana a la línea base y a las móviles en 2 de 5
+(la 1 y la 3), con un promedio 1,10 veces el de las móviles: casi lo mismo por generación, a 5 veces el costo. Come un
+poco más (105%).
+
+**Lo que ve la selección** (gens 16-30 de K = 5 y de las móviles; en el control, su ventana en ticks):
+
+| | K = 5 | Control | Móviles | Sin evolución |
+|---|---|---|---|---|
+| Sensibilidad de un episodio ↔ fitness de la selección (mediana) | +0,145 | **+0,230** | +0,132 | −0,017 |
+| Por semilla | +0,25 · +0,10 · +0,20 · +0,14 · +0,09 | +0,39 · +0,21 · +0,18 · +0,30 · +0,12 | +0,14 · +0,26 · +0,15 · +0,03 · +0,12 | |
+| Informativo, K = 5: la sensibilidad promedio de los 5 episodios ↔ `fitness_prom` | +0,211 | | | |
+| Informativo, K = 5: sensibilidad ↔ fitness del mismo episodio (lo que vería una evaluación) | +0,127 | | | |
+
+**No sube:** +0,013 sobre las móviles (pedía +0,03) y sobre ellas en 3 de 5 semillas. Promediar el fitness lleva lo que
+ve la selección de +0,127 (un episodio) a +0,145: lo que decía la proyección corregida antes de correr (+0,14 a +0,18).
+Con la sensibilidad también promediada, +0,211, debajo del +0,27 del ruido. La selección del control ve la brújula mucho
+más (+0,23), con un solo episodio. Lo más probable, sin medirlo: no es que su fitness tenga menos ruido, sino que su
+población aprendió más, y en ella acercarse y abrir la puerta pagan (abajo).
+
+**Cuánto sube, y cuándo** (por sexto de los ticks de K = 5, promedio de las semillas: sensibilidad · % de agentes con
+más de 0,02 · agentes con la puerta abierta, por episodio o generación):
+
+| | 1/6 | 2/6 | 3/6 | 4/6 | 5/6 | 6/6 |
+|---|---|---|---|---|---|---|
+| K = 5 | +0,003 · 22% · 0,11 | +0,009 · 28% · 0,10 | +0,014 · 36% · 0,16 | +0,018 · 43% · 0,19 | +0,021 · 47% · 0,14 | +0,030 · 59% · 0,18 |
+| Control | +0,009 · 30% · 0,30 | +0,028 · 47% · 2,81 | +0,047 · 61% · 4,38 | +0,057 · 70% · 3,85 | +0,067 · 76% · 6,14 | **+0,072 · 78% · 6,63** |
+
+El control va adelante desde el primer sexto y la diferencia crece. En la mitad del costo ya está más arriba que K = 5
+al final.
+
+**Por qué gana el control:** lo que dijo la teoría simple, fijado antes de correr ([ruido](#ruido-fitness), el ajuste a
+la propuesta). Con un ranking que se repite r entre episodios, una evaluación elige con precisión ~√r y cinco con
+√(5r / (1 + 4r)). En los ticks de un episodio por cerebro, una evaluación hace 5 selecciones y K = 5 hace una: empuja
+√(5 (1 + 4r)) veces más, de 2,4 (r = 0,04, el de las gens 26-30) a 3,5 (r = 0,35, el de las 1-5). Medido: 2,4 veces. La
+selección de un episodio es floja, pero cinco flojas empujan más que una precisa, y cada generación trae además su
+mutación.
+
+**La puerta y el juego** (abrir la puerta, gens 16-30 de K = 5 y de las móviles, y la ventana en ticks del control; los
+términos, en las últimas 5 o su ventana):
+
+| | K = 5 | Control | Móviles | Sin evolución |
+|---|---|---|---|---|
+| Abren la puerta de madera (por semilla) | 66 (7, 1, 2, 42, 14) | **2.188** (1.057, 362, 1, 767, 1) | 46 (10, 35, 0, 0, 1) | 11 |
+| Por episodio o generación | 0,18 | **5,48** | 0,61 | 0,15 |
+| Criterio del ítem 5 (≥ 1 por generación en la ventana final y más que la línea base) | 0 de 5 | **3 de 5** | 2 de 5 | — |
+| Comida · acercarse · supervivencia · puzzle · fitness · edad | 8,0 · 10,2 · 9,5 · 0,1 · 24,5 · 983 | 7,4 · **18,4** · 9,0 · **2,9** · 32,1 · 928 | 7,4 · 9,0 · 9,1 · 0,4 · 22,8 · 942 | 2,1 · 0,5 · 8,8 · 0,1 · 20,1 · 894 |
+
+En las 180 generaciones que corrió, el control de las semillas 1, 2 y 4 pasa la puerta de madera de forma sostenida:
+desde la generación 90, alguien la abre en 91 de 91 generaciones en la 1 y en la 4, y en 63 de 91 en la 2. La llave
+dorada se la llevan 993, 569 y 804 agentes (en 134, 108 y 108 generaciones), y 4 abren la puerta de hierro (3 en la
+semilla 2, 1 en la 4). Nadie abre el cofre. Las semillas 3 y 5 abren la puerta de madera 3 veces cada una. Con K = 5,
+la llave dorada la agarran de 0 a 6 agentes por semilla en los 150 episodios.
+
+**El control, más largo** (por número de generación, promedio de las 5 semillas: sensibilidad · manzanas · puerta abierta
+por generación):
+
+| Gens 26-30 | 56-60 | 86-90 | 116-120 | 145-149 |
+|---|---|---|---|---|
+| +0,015 · 1,05 · 0,9 | +0,040 · 1,07 · 3,7 | +0,052 · 1,04 · 5,5 | +0,070 · 1,04 · 7,9 | +0,076 · 1,03 · 5,3 |
+
+- **En sus gens 26-30 está más abajo que las móviles** (+0,015 contra +0,027), y en los ~38.000 ticks de las móviles (su
+  generación 36 a 39), en +0,020. El control cambia dos cosas contra las móviles, el largo y el reloj (con el lento, sus
+  primeras 20 generaciones duran 960 ticks), y a igual costo que ellas no va adelante: **lo que pesa es el largo.** Para
+  atribuirlo del todo falta la corrida larga con el reloj de siempre (LEC-019).
+- **Cuándo pasa 0,02 para quedarse** (media de 5 generaciones, arriba en las 5 siguientes): la semilla 1 en la 14, la 2
+  en la 22, la 4 en la 51 y la 3 en la 95; la 5, nunca (+0,011 en las 145-149).
+
+**El ruido, por generación** (con K = 5, el ranking del fitness entre los 5 episodios de una generación: Spearman,
+mediana de las generaciones del tramo; responde el ítem "en qué generación se vuelve suerte" de mejoras futuras, con la
+población de K = 5):
+
+| Gens 1-5 | 6-10 | 11-15 | 16-20 | 21-25 | 26-30 |
+|---|---|---|---|---|---|
+| 0,35 | 0,23 | 0,15 | 0,08 | 0,07 | 0,04 |
+
+Cae a medida que la población converge: debajo de 0,3 desde la 6 y debajo de 0,1 desde la 16. Con el promedio de los 5,
+por Spearman-Brown, de 0,73 a 0,17.
+
+**Lectura.**
+1. **Varias evaluaciones no sirven: por tick, pierden.** K = 5 da 0 de 5 contra el control y pierde en las 5 semillas
+   (+0,030 contra +0,071). Contra las móviles, a igual número de generaciones, gana apenas (1,10 veces, 2 de 5) por 5
+   veces el costo.
+2. **Promediar el fitness casi no hace visible la brújula** (+0,145 contra +0,127 con un episodio y +0,132 en las
+   móviles), como decía la proyección corregida antes de correr. El "+0,27" del ruido salía de promediar también la
+   sensibilidad (LEC-021).
+3. **Más generaciones gana, por mucho, como decía la teoría fijada antes:** 2,4 veces la sensibilidad, en 5 de 5
+   semillas (la cuenta simple da de 2,4 a 3,5). La selección de un episodio es débil pero se acumula.
+4. **Corrido 5 veces más largo, el juego aprende la brújula y pasa la puerta.** El control es lo mejor medido:
+   - +0,071, por encima del laboratorio con cruce 0,2 (+0,062);
+   - 4 de 5 semillas ≥ 0,02 y por encima de la línea base y de las móviles;
+   - el 78% de los agentes arriba de 0,02;
+   - el 97% de la comida de las móviles;
+   - la puerta se abre 5 veces por generación (ítem 5: 3 de 5, el mejor), y tres semillas llegan a la llave dorada.
+
+   No era la hipótesis: es el control, con el reloj lento y el currículo hasta el final. A los ticks de las móviles no va
+   adelante, así que lo que pesa es el largo. La semilla 5 no aprende ni en 150 generaciones, y la 3 tarda hasta la 95.
+5. **El ruido crece a medida que la población converge:** el ranking se repite 0,35 en las gens 1-5 y 0,04 en las 26-30.
+   Con 30 generaciones se cortaba la corrida justo cuando la selección ya era casi a ciegas y la brújula recién subía.
+
+**Qué sugiere** (lo decide Fer):
+- **El switch de varias evaluaciones no va:** por tick, pierde contra más generaciones. El ítem se cierra en mejoras
+  futuras.
+- **Lo siguiente: las corridas largas como condición propia, con su criterio fijado.** La condición de las móviles a 150
+  generaciones con el reloj de siempre, contra este control (el mismo largo con el reloj lento) y una línea base larga.
+  Diría si el reloj importa y dejaría la referencia nueva para lo que sigue. ~2 h de corridas, sin código (`medir_puerta.py`
+  ya corre cualquier largo).
+- **Con la puerta abriéndose, el cuello se corre:** en el control, tres semillas llegan a la llave dorada y cuatro agentes
+  abren la puerta de hierro; nadie, el cofre. El embudo de la puerta de hierro y del cofre se mide sobre estos CSV, sin
+  correr nada.
+- **Las semillas 3 y 5:** por qué una tarda 95 generaciones y la otra no aprende en 150 (¿se quedan en comer?), sobre
+  estos CSV.

@@ -20,9 +20,11 @@ Envuelve, sin consumir azar:
 
 - Con congelar=G, los cerebros de la generación G juegan las generaciones G + 1 a la última como
   episodios: el ruido del fitness (docs/qa/AnalisisQA.md#ruido-fitness).
+- Con evaluaciones=K, cada cerebro juega K episodios por generación y la selección usa el promedio de su
+  fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -39,7 +41,20 @@ mutación ni inmigrantes, en un orden barajado con un azar propio (el de la list
 primero en cada tick); esas generaciones duran lo que la G y nacen con la etapa de la G (el currículo).
 Cada una es un episodio: mapa, lugar de nacimiento y estado nuevos. agentes_*.csv suma pesos_hash (los
 pesos: los clones repiten hash), orden (lugar en la lista) y cerebro (desde la G, el id de su agente en
-la G); control: cada cerebro está una vez por episodio, con el hash de la G. Deja en SALIDA, por corrida:
+la G); control: cada cerebro está una vez por episodio, con el hash de la G.
+evaluaciones=K (con evolucion, sin congelar ni reloj; GENERACIONES son las generaciones del AG, y main.py
+corre K × GENERACIONES, una fila del CSV por episodio): después de los episodios 1 a K − 1 de cada
+generación, evolve() devuelve agentes nuevos con los mismos cerebros, como congelar, en un orden barajado
+con un azar propio (el primer episodio queda en el orden de evolve); después del K-ésimo llama al evolve
+real con la generación del AG, y adentro el fitness de cada agente es el promedio de su cerebro en los K
+episodios (evolve lo recalcula: se envuelve _calculate_fitness solo durante esa llamada). La duración y
+el currículo de cada episodio son los de su generación del AG. agentes_*.csv suma gen_real, episodio,
+pesos_hash, orden, cerebro (el id de su agente en el episodio 1) y, en el episodio K, fitness_prom y el
+lugar, el pool y la élite con el promedio (lugar_prom, en_pool_prom, elite_prom); controles: cada cerebro
+juega una vez cada episodio con el mismo hash, el orden de evolve es el del promedio, evolve corre solo
+después del K-ésimo y nada cruza, copia ni muta afuera de él. reloj=R (el control de igual costo, con una
+evaluación): la generación n dura y nace como la ⌈n/R⌉, el mismo reloj que con evaluaciones=R; desde la
+TOPE_RELOJ·R + 1, como la TOPE_RELOJ (así el currículo no se corta si el control sigue). Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
 cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
@@ -67,6 +82,16 @@ pesos = next((a[len("pesos="):] for a in sys.argv[6:] if a.startswith("pesos="))
 congelar = next((int(a[len("congelar="):]) for a in sys.argv[6:] if a.startswith("congelar=")), None)
 if congelar is not None and (tipo != "evolucion" or int(generaciones) <= congelar):
     sys.exit("congelar=G va con evolucion y con GENERACIONES mayor que G")  # sin evolución no se llama a evolve
+evaluaciones = next((int(a[len("evaluaciones="):]) for a in sys.argv[6:] if a.startswith("evaluaciones=")), 1)
+reloj = next((int(a[len("reloj="):]) for a in sys.argv[6:] if a.startswith("reloj=")), None)
+if evaluaciones < 1 or (reloj is not None and reloj < 2):
+    sys.exit("evaluaciones=K va con K de 1 en adelante, y reloj=R con R de 2 en adelante")
+if evaluaciones > 1 and (tipo != "evolucion" or congelar is not None or reloj is not None):
+    sys.exit("evaluaciones=K (K > 1) va con evolucion, sin congelar ni reloj")  # sin evolución no hay selección
+if reloj is not None and congelar is not None:
+    sys.exit("reloj=R va sin congelar")
+TOPE_RELOJ = 30  # con reloj=R: la última generación de la tanda con evaluaciones=R que controla
+RELOJ = evaluaciones if evaluaciones > 1 else reloj  # None: el reloj de siempre
 os.chdir(raiz)  # main.py carga los sprites con ruta relativa
 sys.path.insert(0, raiz)
 
@@ -94,7 +119,13 @@ INCONS = [0]      # predicción del golpe distinta de lo que pasó
 SLOT = {}         # con congelar=G: cerebro -> id de su agente en la generación G
 HASH_G = {}       # id del agente de la generación G -> hash de los pesos de su cerebro
 CONGELADO = [False]
-LLAMADAS_AG = [0]  # cruces, copias o mutaciones después de congelar: tiene que quedar en 0
+LLAMADAS_AG = [0]  # cruces, copias o mutaciones después de congelar o, con evaluaciones=K, afuera del evolve real: 0
+SUMA = {}         # con evaluaciones=K: cerebro -> suma de su fitness en los episodios de la generación
+CUENTA = {}       # cerebro -> episodios que jugó en la generación
+PROMEDIO = {}     # cerebro -> su fitness promedio, después del episodio K (lo que ve el evolve real)
+DENTRO_AG = [False]  # adentro del evolve real
+LLAMADAS_DENTRO = [0]  # cruces, copias y mutaciones adentro del evolve real
+EVOLVE_EN = []    # los episodios después de los que corrió el evolve real
 
 
 def hash_pesos(cerebro):
@@ -363,6 +394,12 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
     k = max(2, int(len(agents) * max(0.05, min(0.95, SimulationConfig.MEETING_POOL_FRACTION))))
     posicion = {a: i for i, a in enumerate(agents)}  # quién actúa primero en cada tick
     FILA_DE.clear()
+    ep = (generacion - 1) % evaluaciones + 1  # con evaluaciones=K, el episodio dentro de la generación del AG
+    if evaluaciones > 1 and ep == 1:
+        SLOT.clear()
+        HASH_G.clear()
+        SUMA.clear()
+        CUENTA.clear()
     for lugar, a in enumerate(orden, start=1):
         m = MED.get(a, nueva())
         f = dict(semilla=semilla_, evolucion=int(evolucion), generacion=generacion, ticks_gen=ticks,
@@ -382,12 +419,34 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
                 f['cerebro'] = SLOT.get(a.brain, '')
                 if HASH_G.get(f['cerebro']) != f['pesos_hash']:
                     INCONS[0] += 1  # no es un cerebro de la generación G, o le cambiaron los pesos
+        if evaluaciones > 1:
+            f['gen_real'], f['episodio'] = (generacion - 1) // evaluaciones + 1, ep
+            f['pesos_hash'], f['orden'] = hash_pesos(a.brain), posicion[a]
+            if ep == 1:
+                SLOT[a.brain] = a.id
+                HASH_G[a.id] = f['pesos_hash']
+            f['cerebro'] = SLOT.get(a.brain, '')
+            if HASH_G.get(f['cerebro']) != f['pesos_hash']:
+                INCONS[0] += 1  # no es un cerebro del episodio 1, o le cambiaron los pesos
+            SUMA[a.brain] = SUMA.get(a.brain, 0.0) + float(a.fitness)
+            CUENTA[a.brain] = CUENTA.get(a.brain, 0) + 1
+            if CUENTA[a.brain] != ep:
+                INCONS[0] += 1  # el cerebro jugó más o menos episodios que este
+            f.update(fitness_prom='', lugar_prom='', en_pool_prom='', elite_prom='')
         FILAS.append(f)
         FILA_DE[a] = f
-    if congelar is not None and generacion > congelar:
+    if (congelar is not None and generacion > congelar) or evaluaciones > 1:
         cerebros = [FILA_DE[a]['cerebro'] for a in agents]
         if set(cerebros) != set(HASH_G) or len(set(cerebros)) != len(agents):
-            INCONS[0] += 1  # cada cerebro de la G, una vez por episodio
+            INCONS[0] += 1  # cada cerebro de la G (o del episodio 1), una vez por episodio
+    if evaluaciones > 1 and ep == evaluaciones:
+        # El ranking que va a usar el evolve real: el promedio, con el mismo orden estable
+        PROMEDIO.clear()
+        PROMEDIO.update({b: s / evaluaciones for b, s in SUMA.items()})
+        por_promedio = sorted(agents, key=lambda a: PROMEDIO[a.brain], reverse=True)
+        for lugar, a in enumerate(por_promedio, start=1):
+            FILA_DE[a].update(fitness_prom=round(PROMEDIO[a.brain], 4), lugar_prom=lugar, en_pool_prom=int(lugar <= k),
+                              elite_prom=int(lugar <= SimulationConfig.ELITISM))
     dmin, area = geometria(world)
     fin, fin_desliza = seguidor(world)
     cx, cy = centro_puerta(world)
@@ -407,15 +466,22 @@ _cross = SimpleNeuralNetwork.crossover
 _copy = SimpleNeuralNetwork.copy_from
 
 
+def prohibida():
+    """Una llamada de cruce, copia o mutación donde no tiene que haber: después de congelar o, con
+    evaluaciones=K, afuera del evolve real. Y cuenta las de adentro."""
+    LLAMADAS_DENTRO[0] += int(DENTRO_AG[0])
+    return int(CONGELADO[0] or (evaluaciones > 1 and not DENTRO_AG[0]))
+
+
 def crossover(self, other):
-    LLAMADAS_AG[0] += int(CONGELADO[0])
+    LLAMADAS_AG[0] += prohibida()
     hijo = _cross(self, other)
     CRUCES[id(hijo)] = (self, other)
     return hijo
 
 
 def copy_from(self, other):
-    LLAMADAS_AG[0] += int(CONGELADO[0])
+    LLAMADAS_AG[0] += prohibida()
     resultado = _copy(self, other)
     CRUCES[id(self)] = (other, None)
     return resultado
@@ -425,34 +491,63 @@ _mutate = SimpleNeuralNetwork.mutate
 
 
 def mutate(self, mutation_rate=0.1):
-    LLAMADAS_AG[0] += int(CONGELADO[0])
+    LLAMADAS_AG[0] += prohibida()
     return _mutate(self, mutation_rate)
 
 
-def congelados(agents, generation):
-    """Con congelar=G, desde la generación G + 1: agentes nuevos (estado en cero) con los mismos
-    cerebros, sin selección, cruce, mutación ni inmigrantes. El orden de la lista, quién actúa primero
-    en cada tick, se baraja con un azar propio que no toca el de la corrida: si quedara fijo, la
-    ventaja de actuar primero se repetiría entre episodios y se contaría como del cerebro."""
-    CONGELADO[0] = True
+def clones(agents, generation, origen):
+    """Agentes nuevos (estado en cero) con los mismos cerebros, sin selección, cruce, mutación ni
+    inmigrantes. El orden de la lista, quién actúa primero en cada tick, se baraja con un azar propio
+    que no toca el de la corrida: si quedara fijo, la ventaja de actuar primero se repetiría entre
+    episodios y se contaría como del cerebro."""
     ORIGEN.clear()
     nuevos = []
     for a in agents:
         hijo = AdvancedAgent(0, 0, a.brain)
-        ORIGEN[hijo] = ('congelado', a.id, '')
+        ORIGEN[hijo] = (origen, a.id, '')
         nuevos.append(hijo)
     random.Random(semilla * 1000 + generation).shuffle(nuevos)
     return nuevos
 
 
+def congelados(agents, generation):
+    """Con congelar=G, desde la generación G + 1: los cerebros de la G, en clones()."""
+    CONGELADO[0] = True
+    return clones(agents, generation, 'congelado')
+
+
+_calc = AdvancedAgent._calculate_fitness
+
+
+def fitness_promedio(self):
+    """Con evaluaciones=K, solo adentro del evolve real: el fitness del agente es el promedio de su
+    cerebro en los K episodios de la generación. Llama al original antes, por si algo depende de eso."""
+    _calc(self)
+    self.fitness = PROMEDIO[self.brain]
+    return self.fitness
+
+
 def evolve(self, agents, generation=1):
     if congelar is not None and generation >= congelar:
         return congelados(agents, generation)
+    if evaluaciones > 1 and generation % evaluaciones:
+        return clones(agents, generation, 'episodio')  # el episodio siguiente de la misma generación
     CRUCES.clear()
-    nuevos = _evolve(self, agents, generation)
-    # agents ya quedó ordenado por evolve: control del lugar que se anotó en _fila_csv
+    if evaluaciones > 1:
+        EVOLVE_EN.append(generation)
+        DENTRO_AG[0] = True
+        AdvancedAgent._calculate_fitness = fitness_promedio
+        try:
+            nuevos = _evolve(self, agents, generation // evaluaciones)  # la generación del AG: los inmigrantes
+        finally:
+            AdvancedAgent._calculate_fitness = _calc
+            DENTRO_AG[0] = False
+    else:
+        nuevos = _evolve(self, agents, generation)
+    # agents ya quedó ordenado por evolve: control del lugar que se anotó en _fila_csv (con el promedio)
+    clave = 'lugar_prom' if evaluaciones > 1 else 'lugar'
     for lugar, a in enumerate(agents, start=1):
-        if a in FILA_DE and FILA_DE[a]['lugar'] != lugar:
+        if a in FILA_DE and FILA_DE[a][clave] != lugar:
             INCONS[0] += 1000
     por_cerebro = {id(a.brain): a for a in agents}
     aporte = {a: 0.0 for a in agents}
@@ -505,6 +600,30 @@ if congelar is not None:
     main._fijar_etapa_inicial = fijar_etapa_inicial
     SimpleNeuralNetwork.mutate = mutate
     print(f"CONGELAR={congelar}: los cerebros de la generación {congelar} juegan de la {congelar + 1} a la {generaciones}")
+if RELOJ is not None:
+    _ticks_r = main._ticks_de_generacion
+    _etapa_r = main._fijar_etapa_inicial
+    tope = int(generaciones) if evaluaciones > 1 else TOPE_RELOJ
+
+    def gen_de_reloj(n):
+        """La generación cuya duración y currículo usa la n de main.py: la ⌈n/R⌉, hasta el tope."""
+        return min(-(-n // RELOJ), tope)
+
+    def ticks_de_generacion_r(config, generacion):
+        return _ticks_r(config, gen_de_reloj(generacion))
+
+    def fijar_etapa_inicial_r(agents, generacion):
+        _etapa_r(agents, gen_de_reloj(generacion))
+
+    main._ticks_de_generacion = ticks_de_generacion_r
+    main._fijar_etapa_inicial = fijar_etapa_inicial_r
+    if evaluaciones > 1:
+        SimpleNeuralNetwork.mutate = mutate
+        print(f"EVALUACIONES={evaluaciones}: {generaciones} generaciones de {evaluaciones} episodios"
+              f" ({int(generaciones) * evaluaciones} en main.py)")
+    else:
+        print(f"RELOJ={reloj}: la generación n dura y nace como la n/{reloj} redondeada para arriba,"
+              f" hasta la {TOPE_RELOJ}")
 
 os.makedirs(salida, exist_ok=True)
 if laboratorio:
@@ -532,9 +651,10 @@ nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if desliz
           f"{'moviles_' if moviles else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
-          f"{f'congelar{congelar}_' if congelar is not None else ''}{tipo}")
+          f"{f'congelar{congelar}_' if congelar is not None else ''}"
+          f"{f'evaluaciones{evaluaciones}_' if evaluaciones > 1 else ''}{f'reloj{reloj}_' if reloj else ''}{tipo}")
 ruta_csv = os.path.join(salida, f"corrida_{nombre}.csv")
-argv = ["--sin-ventana", "--generaciones", generaciones, "--semilla", str(semilla), "--modo", "autonomo",
+argv = ["--sin-ventana", "--generaciones", str(int(generaciones) * evaluaciones), "--semilla", str(semilla), "--modo", "autonomo",
         "--curriculo", "--csv", ruta_csv]
 if acercarse:
     argv.append("--acercarse")
@@ -556,6 +676,10 @@ for f in FILAS:
     f["pesos"] = pesos
     if congelar is not None:
         f["congelar"] = congelar
+    if evaluaciones > 1:
+        f["evaluaciones"] = evaluaciones
+    if reloj:
+        f["reloj"] = reloj
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
@@ -573,4 +697,12 @@ if congelar is not None:
     episodios = len({f["generacion"] for f in FILAS if f["generacion"] > congelar})
     print(f"CONGELADO episodios={episodios} cerebros={len(HASH_G)} distintos={len(set(HASH_G.values()))}"
           f" llamadas_ag={LLAMADAS_AG[0]}")
+if evaluaciones > 1:
+    INCONS[0] += LLAMADAS_AG[0]
+    esperado = list(range(evaluaciones, evaluaciones * int(generaciones), evaluaciones))
+    if EVOLVE_EN != esperado:
+        INCONS[0] += 1  # el evolve real corre solo después del episodio K de cada generación, menos la última
+    print(f"EVALUACIONES episodios={len({f['generacion'] for f in FILAS})} evolve={len(EVOLVE_EN)}"
+          f" (despues de los episodios {EVOLVE_EN[:2]}...{EVOLVE_EN[-1:]}) llamadas_ag_afuera={LLAMADAS_AG[0]}"
+          f" adentro={LLAMADAS_DENTRO[0]}")
 print(f"MEDICION inconsistencias={INCONS[0]} filas={len(FILAS)}")
