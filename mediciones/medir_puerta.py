@@ -24,14 +24,17 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
 brújula (docs/qa/AnalisisQA.md#laboratorio-brujula): antes de main.main() pone en 0 los pesos de la
 comida, la exploración, el anti-círculo, la supervivencia, los cortes y el agua, así pagan solo
 acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube solo el currículo, con
-el fitness de siempre (el control del laboratorio). cruce=X fija CROSSOVER_RATE en X (el resto de los
+el fitness de siempre (el control del laboratorio). curriculo=N fija CURRICULO_HASTA_GENERACION en N (va
+sin curriculo30; con laboratorio, pisa el 30): con N = 30 es curriculo30, y una corrida larga con N igual
+a sus generaciones nace con la llave hasta el final (docs/qa/AnalisisQA.md#corridas-largas).
+cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
 fitness, docs/qa/AnalisisQA.md#rebalance-fitness); van después de los del laboratorio, y un nombre que
@@ -77,6 +80,9 @@ deslizar = "deslizar" in sys.argv[6:]
 moviles = "fortalezas-moviles" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
+curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
+if curriculo is not None and (curriculo30 or curriculo < 1):
+    sys.exit("curriculo=N va sin curriculo30, con N de 1 en adelante")
 cruce = next((float(a[len("cruce="):]) for a in sys.argv[6:] if a.startswith("cruce=")), None)
 pesos = next((a[len("pesos="):] for a in sys.argv[6:] if a.startswith("pesos=")), "")
 congelar = next((int(a[len("congelar="):]) for a in sys.argv[6:] if a.startswith("congelar=")), None)
@@ -633,6 +639,9 @@ if laboratorio:
 if laboratorio or curriculo30:
     SimulationConfig.CURRICULO_HASTA_GENERACION = 30  # la brújula apunta a la puerta las 30 generaciones
     print("CURRICULO_HASTA_GENERACION=30")
+if curriculo is not None:
+    SimulationConfig.CURRICULO_HASTA_GENERACION = curriculo  # con laboratorio, pisa el 30
+    print(f"CURRICULO_HASTA_GENERACION={curriculo}")
 if cruce is not None:
     SimulationConfig.CROSSOVER_RATE = cruce
     print(f"CROSSOVER_RATE={cruce}")
@@ -650,6 +659,7 @@ etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, 
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
           f"{'moviles_' if moviles else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
+          f"{f'curriculo{curriculo}_' if curriculo is not None else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
           f"{f'congelar{congelar}_' if congelar is not None else ''}"
           f"{f'evaluaciones{evaluaciones}_' if evaluaciones > 1 else ''}{f'reloj{reloj}_' if reloj else ''}{tipo}")

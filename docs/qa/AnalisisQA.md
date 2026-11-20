@@ -1094,6 +1094,14 @@ currículo de nacer con la llave hacen que el autónomo aprenda la puerta de mad
 la evolución la abre tanto como el azar. Lo que sigue es una decisión de Fer (en
 [mejoras futuras](../product/mejoras_futuras.md), la medición que diría dónde se traba).
 
+**Nota (2026-11-20), sin reabrir el spec:** con más generaciones, sí. La condición de las
+[fortalezas móviles](#fortalezas-moviles) (deslizar, las móviles, acercarse 40 sin lo que paga caminar,
+cruce 0,2), corrida 150 generaciones con el currículo hasta el final, pasa este criterio en 5 de 5
+semillas: 10,3 agentes por generación con la puerta de madera abierta en las gens 146-150, contra 0,04
+de su línea base, y en una semilla llegan al cofre ([corridas largas](#corridas-largas)). Es la primera
+condición que lo pasa. Con la llave roja dada al nacer en las 150 generaciones: si la encuentran solos
+no se midió.
+
 ---
 
 <a id="qa-puzzle-aprendible"></a>
@@ -3076,3 +3084,281 @@ por Spearman-Brown, de 0,73 a 0,17.
   correr nada.
 - **Las semillas 3 y 5:** por qué una tarda 95 generaciones y la otra no aprende en 150 (¿se quedan en comer?), sobre
   estos CSV.
+
+---
+
+<a id="corridas-largas"></a>
+
+## Las corridas largas como condición propia: 150 generaciones con el reloj de siempre (2026-11-20)
+
+**La pregunta** (sugerida por [varias evaluaciones](#varias-evaluaciones), lectura 4; el ítem de
+[mejoras futuras](../product/mejoras_futuras.md#aparecido-con-varias-evaluaciones--2026-11-16)): el control de igual
+costo de varias evaluaciones, la condición de las móviles corrida ~150 generaciones con `reloj=5`, es lo mejor medido en
+el juego (brújula +0,071 en 4 de 5 semillas; la puerta de madera sostenida en 3 de 5). Pero cambia dos cosas contra las
+[móviles](#fortalezas-moviles) publicadas (30 generaciones): el largo y el reloj. Con `reloj=5`, la generación n dura y
+nace como la ⌈n/5⌉: el límite de ticks crece cada 20 generaciones en vez de cada 4, y el currículo sigue hasta el final.
+¿Aprende igual con el reloj de siempre? Si sí, lo que pesa es el largo (LEC-019), y la corrida larga queda como la
+referencia nueva. Medición de una sesión, sin cambios en `src/`, `main.py` ni `config.py`.
+
+**Diseño.** Cambia una sola cosa contra cada comparación:
+- **Contra las móviles publicadas, el largo:** las 30 primeras generaciones de la corrida larga son las publicadas, byte a
+  byte (en los controles); desde la 31 sigue con el reloj de siempre (`main._ticks_de_generacion`: 960 + 180 ×
+  ⌊(n − 1)/4⌋ ticks de límite, 7.620 en la 150).
+- **Contra el control de varias evaluaciones, el reloj:** el mismo largo, con el reloj lento. El control ya está corrido
+  (`results/medicion_varias_evaluaciones_20261116/`, `*_reloj5_evolucion.csv`, 180 generaciones; sus SHA-256, en
+  [varias evaluaciones](#varias-evaluaciones)) y no se vuelve a correr.
+- **El currículo, hasta el final.** `curriculo30` lo corta en la 30: desde la 31 nacerían sin la llave roja, la brújula
+  apuntaría a la llave y la sensibilidad, que se mide con la etapa 1, dejaría de medirse. Argumento nuevo en
+  `medir_puerta.py`, el único código de la sesión: **`curriculo=N`** fija `CURRICULO_HASTA_GENERACION` en N (va sin
+  `curriculo30`; con N = 30 es `curriculo30`). En el control tampoco se corta (`TOPE_RELOJ`).
+- **La comida no reaparece dentro de una generación** (`world.py:380`): la generación termina cuando se mueren todos de
+  hambre o en el límite. En el control, entre las gens 21 y 150, la más larga duró 2.132 ticks; con el reloj de siempre
+  el límite casi no va a cortar. Costo estimado: ~200.000 ticks por semilla. El control gastó de 177.221 a 192.754 hasta
+  su generación 150, y de 216.644 a 235.050 hasta la 180.
+
+**Las corridas** (semillas 1 a 5, la condición de las móviles con el currículo hasta el final):
+- **Larga:** `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=150 cruce=0.2
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`.
+- **Línea base larga:** `sin_evolucion 150 acercarse deslizar fortalezas-moviles curriculo=150`. Sin evolución, el cruce
+  y los pesos no cambian lo que hacen los agentes.
+- **Comparaciones:** el control (`reloj=5`) y las móviles publicadas (`results/medicion_fortalezas_moviles_20261116/`).
+
+**Qué se mide** (la misma cuenta en cada fila que en [varias evaluaciones](#varias-evaluaciones), LEC-016 y LEC-021):
+- **Sensibilidad a la brújula:** `sens_brujula / sens_ticks` por fila de agente, promedio de las filas de la ventana.
+- **Manzanas por agente:** `manzanas_prom` del CSV de `main.py`, promedio de las filas de la ventana.
+- **Lo que ve la selección:** dentro de cada generación con 10 agentes o más, el Spearman entre la sensibilidad y el
+  fitness; mediana de las generaciones del tramo.
+- **La puerta:** `agentes_puerta_madera` del CSV de `main.py` (con el currículo, los que la abrieron; se cruza con
+  `abrio` de `agentes_*.csv`).
+- **El costo:** la suma de la columna `ticks`, por semilla.
+
+**Criterio, fijado antes de correr** (ventana: gens 146-150; LEC-018). Como referencia, ya medido: el control, en sus
+gens 146-150, da +0,075 de sensibilidad (de +0,010 a +0,118) y 1,05 manzanas.
+1. **Aprende la brújula:** en 4 de 5 semillas, la sensibilidad es ≥ 0,02 rad/tick y mayor que la de la línea base larga
+   de la misma semilla. **Tamaño mínimo:** el promedio de las 5, al menos 1,5 veces el de las móviles (+0,0268: al menos
+   +0,040).
+2. **Sin dejar de comer:** manzanas por agente, promedio de las 5 semillas, al menos el 90% de las de las móviles (1,089:
+   al menos 0,98).
+3. **Pasa la puerta** (el criterio del ítem 5, ahora como criterio): en 4 de 5 semillas, al menos 1 agente por generación
+   con la puerta de madera abierta, en promedio, y más que la línea base larga (un empate no cuenta).
+- **Queda como la referencia nueva si cumple 1 y 2.** El 3 es un veredicto aparte: si se cumple, es la primera condición
+  que pasa el criterio del ítem 5.
+4. **El reloj** (la pregunta de LEC-019), con la sensibilidad, en dos lecturas:
+   - **a igual generación:** las gens 146-150 de la larga y del control;
+   - **a igual costo en ticks:** por semilla, el presupuesto P es el menor entre T_L(150) y T_C(180), los ticks
+     acumulados de la larga y del control. La corrida que gastó P se lee en sus últimas 5 generaciones; la otra, hasta su
+     primera generación con T(n) ≥ P, en las que terminan después del comienzo de esas 5 (las ventanas en ticks de
+     varias evaluaciones).
+
+   En cada lectura, con q = promedio de la larga / promedio del control:
+   - **el reloj importa:** q < 0,67 o q > 1,5, y la larga del mismo lado del control (arriba si q > 1,5; abajo si
+     q < 0,67) en 4 de 5 semillas;
+   - **no se distingue:** q entre 0,67 y 1,5;
+   - **sin decidir:** q afuera, pero del mismo lado en menos de 4 de 5.
+
+   Con 5 semillas, que 4 de 5 queden del mismo lado sale por azar el 37,5% de las veces (de cualquiera de los dos): por
+   eso va con el tamaño. Lo esperado, por el control a los ticks de las móviles (no iba adelante): no se distingue.
+- **Se lee con:**
+  - **la selección**, por tramo de 30 generaciones, en la larga, el control y la línea base; en las 16-30 la larga tiene
+    que dar el +0,132 de las móviles;
+  - **la trayectoria:** cuándo pasa 0,02 cada semilla para quedarse (la media de las gens n − 4 a n ≥ 0,02, y también la
+    de cada una de las 5 ventanas siguientes: la cuenta que da lo publicado del control, la 1 en la 14, la 2 en la 22, la
+    4 en la 51, la 3 en la 95 y la 5 nunca), y la sensibilidad en las gens 26-30, 56-60, 86-90, 116-120 y 146-150.
+- **Se informan, sin criterio:** la puerta sostenida (desde la 90, en cuántas generaciones alguien la abre), la llave
+  dorada, la puerta de hierro y el cofre; los términos del fitness; la puerta y la comida contra el control; el costo y
+  cuántas generaciones llegan al límite.
+
+**Controles.**
+- **Sin el argumento, `medir_puerta.py` da lo mismo que antes. Hecho:** las tres corridas cortas de las sesiones
+  anteriores (semilla 1 con la condición y `curriculo30`, 3 generaciones; semilla 2 sin evolución y sin flags, 2; la 1 con
+  `congelar=2`, 4): los 9 CSV con el mismo SHA-256 desde c8009f1 y con el código nuevo. Con `curriculo=30` en lugar de
+  `curriculo30`, la primera da los mismos 3 archivos (mismo nombre, mismos bytes). Con `curriculo=2` (sin evolución, 3
+  generaciones), `etapa_inicial` es 1, 1 y 0: la manipulación llega. `curriculo30 curriculo=5` corta con un error.
+- **En la tanda:**
+  - las primeras 30 generaciones son las publicadas: el `corrida_*.csv` de la larga, cortado en la cabecera y 30 filas, da
+    el SHA-256 publicado de las móviles, y el de la línea base larga, el de la publicada sin evolución (5 de 5 cada uno);
+    en `agentes_*.csv` y `geometria_*.csv`, las gens 1-30 son las publicadas, salvo `curriculo_hasta` (150 contra 30) y el
+    `aporte` de la gen 30 (en la publicada no hubo selección después);
+  - todos nacen con la llave roja (`etapa_inicial` = 1 en las 150 generaciones de las 10);
+  - ninguna generación pasa su límite;
+  - los logs dicen `CURRICULO_HASTA_GENERACION=150` (10 de 10), y los pesos y `CROSSOVER_RATE=0.2` (las 5 con evolución);
+  - las 10 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+- **El script de análisis,** probado antes de leer nada nuevo: contra la tanda publicada de las móviles (+0,0268 de
+  sensibilidad, 1,089 manzanas, +0,132 de selección) y contra el control (lo publicado de "El control, más largo" y la
+  trayectoria).
+
+**Tiempo:** las 10 corridas a la vez, con `python -u`; ~2 h.
+
+**Cómo se corrió.** Las 10 corridas en una tanda, en 1 h 23 min (de 18:07 a 19:30). La salida, en
+`results/medicion_corridas_largas_20261120/` (fuera del repo). Las tablas, con `mediciones/analizar_largas.py`
+(`python mediciones/analizar_largas.py LARGA CONTROL MOVILES`, las tres carpetas), probado antes de leer nada nuevo:
+- con la tanda publicada de las móviles en el lugar de la larga, da sus números: +0,0268 de sensibilidad, 1,089
+  manzanas, +0,132 de selección (gens 16-30) y el criterio del ítem 5 en 2 de 5;
+- contra el control, la tabla de "El control, más largo" y la trayectoria publicadas (14, 22, 95, 51 y nunca).
+
+Dos números publicados en [varias evaluaciones](#varias-evaluaciones) salen con otra cuenta, sin cambiar lo que se leyó
+ahí: el +0,076 del control en sus gens 145-149 es +0,0755 (un redondeo), y el +0,020 a los ~38.000 ticks de las móviles
+es la media de las 5 generaciones hasta el corte (+0,0204); con la ventana en ticks del criterio, +0,0186. Los dos,
+debajo de las móviles (+0,027).
+
+**Controles, hechos.**
+- **Las 10 corridas terminaron con `MEDICION inconsistencias=0`** (las 10 líneas contadas), con 9.000 filas de agentes
+  cada una (150 × 60). Los logs dicen `CURRICULO_HASTA_GENERACION=150` (10 de 10), y los pesos y `CROSSOVER_RATE=0.2`
+  (las 5 con evolución).
+- **Las primeras 30 generaciones son las publicadas:** el `corrida_*.csv` cortado en la cabecera y 30 filas da el
+  SHA-256 publicado, 5 de 5 en la larga (el de las móviles) y 5 de 5 en la línea base larga (el de la publicada sin
+  evolución). En `agentes_*.csv` y `geometria_*.csv`, las gens 1-30 son las publicadas salvo `curriculo_hasta` y el
+  `aporte` de la gen 30 (10 de 10).
+- **Todos nacen con la llave roja** (`etapa_inicial` = 1 en las 1.500 generaciones), ninguna generación pasa su límite,
+  y `agentes_puerta_madera` es, en cada generación, la suma de `abrio` (0 diferencias).
+- **La mutación adaptativa no se disparó:** 0 de 149 selecciones con desvío / media del fitness < 0,15, en cada una de
+  las 5 largas.
+- **El costo:** la larga gastó de 190.522 a 206.013 ticks (lo estimado: ~200.000); de 8 a 13 de sus 150 generaciones
+  llegan al límite, y la más larga desde la 21 duró de 1.946 a 2.204 ticks. El control, hasta su generación 150, de
+  177.221 a 192.754 (llegan al límite de 42 a 61); la línea base larga, de 208.901 a 217.402.
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py ... curriculo=150 desde el commit de esta sesión)</summary>
+
+| Semilla | Larga, `corrida_*.csv` | Larga, `agentes_*.csv` |
+|---|---|---|
+| 1 | `466685df6d88e605291defdc8488b58b259d5fd18047d361637bc60dc411afe2` | `e7a685bea695530b510fd2b4f4b22d3ac00ee027f85804f77f80b7f7740428e4` |
+| 2 | `39fadb1d7bc68643c40fe10f1379d724589ce68dc39db556e9439e61b0157a62` | `3b95cd9945f5a1e6aeb9ad98d1e0d4f32d09373b61d7fa42b99a94395cfdcfae` |
+| 3 | `e506b2ae98769b214b600f76b96914d334dabc944e2c30e0cc0ff4373ff4aa9e` | `a1e8d4a29b5b17a9c0d4f0ab3e4c28f2d1b99d59cf40648eb46279d163fac2aa` |
+| 4 | `4c090493607ebbd4dc0fd4bad3ea5be8928a532fc805c0361d7dca2311afbc9d` | `929e1804ecd931cec0e3fc61db7be585740ee8939caca11d6a68a33dc9697e55` |
+| 5 | `21998dbdc1801908b94b0103607ab3c13e970cf8e722971432c5f5f9d7187a79` | `48e624f57a48d5f6d23154f1e430845c0ba7250a5f67289229b0aa370644a43d` |
+
+| Semilla | Línea base larga, `corrida_*.csv` | Línea base larga, `agentes_*.csv` |
+|---|---|---|
+| 1 | `4cbe6f3c1ee4fa7a860f245ed405c85713d3045ff04ec16d7468ad360e1c43b2` | `5823eae76b9a0ed8ab3d10e3b40212d3b1b54befb5becccc44c135643f36684c` |
+| 2 | `b06de46e0f341ba6c0623e4ffdfb8c01539067fb478a77fb7a08153d282c403f` | `0928dae6955728625a3a9f1a80c146c8ed2f598d474bb6411c083763faa47f13` |
+| 3 | `cb2c343305f21df035d072e12e7abd5bad7f3827d8fd609fc4fc9beaf29a140d` | `7d2eff00f0b492c44cd3e92be3fced03861a24b71fef7f914cd0bb4a9be98112` |
+| 4 | `5d3c087ff8b228d079a84c893a5c92b354b935302216e2ec04ae3652edfe2fe3` | `16139001dc16d19704994be90baf208b011b31ad1c30b6c4f42c74b8e647f0e3` |
+| 5 | `fef18951e0113c24419767703f7a19039ee0eba158e501d72a4193ac4fa29170` | `8c4bd1da8daba33e9556d4fe5dabf6156d1b4274fa76eba396a0f101cfa72fa1` |
+
+</details>
+
+**El criterio** (gens 146-150; las móviles y su línea base, en sus gens 26-30; sensibilidad a la brújula en rad/tick ·
+manzanas por agente · agentes por generación con la puerta de madera abierta):
+
+| Semilla | Larga | Línea base larga | Control (reloj lento) | Móviles (30 gens) | Sin evolución (móviles) |
+|---|---|---|---|---|---|
+| 1 | **+0,0830** · 1,213 · 12,0 | −0,0008 · 0,400 · 0,2 | +0,0965 · 0,983 · 15,2 | +0,0123 · 1,010 · 1,2 | +0,0010 · 0,270 · 0,4 |
+| 2 | **+0,0980** · 1,073 · 8,0 | +0,0020 · 0,383 · 0 | +0,1183 · 0,897 · 0,2 | +0,0620 · 0,937 · 4,8 | −0,0023 · 0,303 · 0 |
+| 3 | **+0,1116** · 0,987 · 13,4 | −0,0003 · 0,370 · 0 | +0,0485 · 1,203 · 0 | +0,0265 · 1,210 · 0 | +0,0034 · 0,277 · 0,4 |
+| 4 | **+0,0902** · 1,063 · 15,0 | +0,0012 · 0,357 · 0 | +0,1041 · 1,067 · 15,2 | −0,0064 · 1,150 · 0 | +0,0015 · 0,380 · 0,6 |
+| 5 | **+0,0510** · 1,160 · 3,0 | −0,0008 · 0,383 · 0 | +0,0100 · 1,117 · 0 | +0,0398 · 1,137 · 0 | −0,0004 · 0,323 · 0 |
+| **Promedio** | **+0,0868 · 1,099 · 10,3** | +0,0003 · 0,379 · 0,04 | +0,0755 · 1,053 · 6,1 | +0,0268 · 1,089 · 1,2 | +0,0007 · 0,311 · 0,28 |
+
+1. **Aprende la brújula: 5 de 5** (≥ 0,02 y mayor que la línea base larga; pide 4). Promedio +0,0868: 3,2 veces el de
+   las móviles (pide 1,5, +0,040). **Cumple.**
+2. **Sin dejar de comer:** 1,099 manzanas, el 101% de las móviles (pide el 90%, 0,98). **Cumple.**
+3. **Pasa la puerta: 5 de 5** (al menos 1 por generación y más que la línea base larga; pide 4), de 3,0 a 15,0 por
+   generación. **Cumple.**
+
+**Pasa los tres, en las 5 semillas: es la referencia nueva, y la primera condición que pasa el criterio del ítem 5.**
+Las móviles daban 2 de 5, y el control, 3 de 5 en su ventana en ticks y 2 de 5 en sus gens 146-150 (la semilla 2 la abre
+0,2 veces por generación).
+
+**4. El reloj** (sensibilidad; q = promedio de la larga / promedio del control):
+
+| Lectura | Larga | Control | q | La larga, arriba / abajo del control | Veredicto |
+|---|---|---|---|---|---|
+| A igual generación (146-150) | +0,0868 | +0,0755 | 1,15 | 2 / 3 | **No se distingue** |
+| A igual costo en ticks | +0,0868 | +0,0715 | 1,21 | 3 / 2 | **No se distingue** |
+
+A igual costo, el presupuesto lo pone la larga en las 5 semillas (P = T_L(150)): se lee en sus gens 146-150, y el
+control, según la semilla, entre la 152-156 y la 164-170 (+0,0924, +0,1115, +0,0520, +0,0856 y +0,0161). Ahí la comida
+es la misma (1,099 contra 1,093) y la puerta, parecida (10,3 contra 8,5 por generación).
+
+**El reloj no importa, como se esperaba: lo que pesaba en el control era el largo** (LEC-019, ahora con la comparación
+que cambia una sola cosa). A igual generación, la larga queda debajo del control por poco en las semillas 1, 2 y 4 (de
+0,014 a 0,020) y muy arriba en la 3 y la 5 (+0,063 y +0,041), las dos que el control no aprendió.
+
+**Lo que ve la selección** (Spearman entre la sensibilidad y el fitness dentro de cada generación; mediana del tramo):
+
+| Gens | 1-30 | 16-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|---|
+| Larga | +0,112 | +0,132 | +0,214 | +0,295 | +0,307 | **+0,358** |
+| Control (reloj lento) | +0,094 | +0,119 | +0,195 | +0,219 | +0,247 | +0,220 |
+| Línea base larga | −0,022 | −0,017 | −0,008 | +0,005 | −0,031 | −0,006 |
+
+En las 16-30, la larga da el +0,132 de las móviles: son las mismas generaciones. Sube en cada tramo y desde la 61 queda
+arriba del control; en las 121-150, en 4 de 5 semillas, y empata en la 1 (+0,36 · +0,25 · +0,32 · +0,36 · +0,42, contra
++0,36 · +0,24 · +0,18 · +0,27 · +0,14). La línea base, en cero.
+
+**La trayectoria** (cuándo pasa 0,02 para quedarse; entre paréntesis, los ticks acumulados hasta esa generación):
+
+| Semilla | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Larga | 48 (61.331) | 18 (21.419) | 24 (29.174) | 37 (49.609) | 19 (23.824) |
+| Control (reloj lento) | 14 (13.440) | 22 (21.474) | 95 (113.465) | 51 (55.554) | nunca |
+| Línea base larga | nunca | nunca | nunca | nunca | nunca |
+
+Por ventana (promedio de las 5 semillas: sensibilidad · manzanas · puerta por generación):
+
+| Gens | 26-30 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|
+| Larga | +0,027 · 1,09 · 1,2 | +0,062 · 1,14 · 4,6 | +0,081 · 1,06 · 6,6 | +0,089 · 1,06 · 12,2 | +0,087 · 1,10 · 10,3 |
+| Control (reloj lento) | +0,015 · 1,05 · 0,9 | +0,040 · 1,07 · 3,7 | +0,052 · 1,04 · 5,5 | +0,070 · 1,04 · 7,9 | +0,075 · 1,05 · 6,1 |
+| Línea base larga | +0,001 · 0,31 · 0,3 | 0,000 · 0,30 · 0,0 | 0,000 · 0,31 · 0,1 | 0,000 · 0,34 · 0,0 | 0,000 · 0,38 · 0,0 |
+
+- **Las 5 largas pasan 0,02 para quedarse,** de la generación 18 a la 48. En ticks, antes que el control en 3 semillas
+  (la 3, la 4 y la 5), igual en la 2 y después en la 1: tampoco acá se distingue el reloj.
+- **Por semilla, la larga y el control no se parecen.** Son corridas distintas desde la generación 5 (comparten las 4
+  primeras): las semillas 3 y 5, que en el control tardan 95 generaciones o no aprenden, en la larga pasan en la 24 y en
+  la 19; la 1, la más rápida del control, es la más lenta de la larga. Lo que tarda es la corrida, no la semilla.
+- **Por número de generación, la larga va adelante** desde el principio, pero sus generaciones duran más (hasta la 30,
+  de 36.356 a 39.855 ticks, contra ~30.600 del control). Sube hasta la 90 y ahí se aplana en ~+0,09, aunque la selección
+  la ve cada vez más. Por qué se aplana no se midió.
+
+**La puerta y el puzzle** (gens 1-150, sin criterio; agentes que llegan a cada paso, sumados):
+
+| | Abren la puerta de madera (generaciones con alguno) | Desde la 90, generaciones con alguien que la abre | Agarran la llave dorada | Abren la puerta de hierro | Abren el cofre |
+|---|---|---|---|---|---|
+| Larga, semilla 1 | 318 (91) | 44 de 61 | 137 | 0 | 0 |
+| Larga, semilla 2 | 1.294 (127) | 59 de 61 | 656 | 0 | 0 |
+| Larga, semilla 3 | 601 (86) | 57 de 61 | 229 | 0 | 0 |
+| Larga, semilla 4 | 1.474 (118) | 61 de 61 | 855 | 8 | **6** |
+| Larga, semilla 5 | 286 (57) | 42 de 61 | 151 | 0 | 0 |
+| Control, semillas 1 a 5 | 1.272 · 699 · 3 · 827 · 3 | 61 · 41 · 1 · 61 · 0 | 664 · 400 · 2 · 511 · 0 | 0 · 1 · 0 · 0 · 0 | 0 |
+| Línea base larga, semillas 1 a 5 | 17 · 13 · 9 · 10 · 12 | 6 · 3 · 4 · 3 · 8 | 7 · 3 · 2 · 1 · 4 | 0 | 0 |
+
+- **La semilla 4 abre el cofre:** un agente en la generación 67 y cinco en la 114 (la etapa 5 de `agentes_*.csv` da lo
+  mismo). Es la primera vez que se abre en el modo autónomo, en lo registrado en este archivo.
+- **Con la puerta de madera abierta en las 5 semillas, el cuello se corre a la puerta de hierro:** en las 5, 2.028
+  agentes agarran la llave dorada y 8 abren la puerta de hierro.
+- **Todo esto, con la llave roja dada al nacer** (el currículo hasta el final). Si la encuentran solos no se midió.
+
+**Términos del fitness** (gens 146-150, promedio de las filas de agentes y de las semillas):
+
+| | Comida | Acercarse | Supervivencia | Puzzle | Fitness | Edad (ticks) |
+|---|---|---|---|---|---|---|
+| Larga | 7,59 | 23,21 | 8,91 | 4,52 | 37,11 | 907 |
+| Control (reloj lento) | 7,44 | 19,04 | 9,03 | 2,94 | 32,43 | 928 |
+| Línea base larga | 2,26 | 0,46 | 8,87 | 0,02 | 20,19 | 904 |
+
+**Lectura.**
+1. **Con el reloj de siempre, 150 generaciones pasan los tres criterios en las 5 semillas:** aprenden la brújula
+   (+0,087, 3,2 veces las móviles), comen como las móviles (101%) y pasan la puerta de madera (10,3 agentes por
+   generación). Es la referencia nueva, y la primera condición que pasa el criterio del ítem 5, con la llave roja dada
+   al nacer.
+2. **El reloj no se distingue** (q = 1,15 a igual generación y 1,21 a igual costo), como se esperaba: lo que pesaba en
+   el control era el largo. Ahora está atribuido (LEC-019).
+3. **Lo que tarda es la corrida, no la semilla:** las semillas 3 y 5, que el control no aprendió, aprenden en la larga,
+   y la 1 hace al revés. Con 5 corridas por condición, que una o dos se queden es esperable; la diferencia entre la larga
+   y el control está casi toda en esas dos.
+4. **La selección ve la brújula cada vez más** (+0,13 en las gens 16-30, +0,36 en las 121-150), pero la sensibilidad se
+   aplana desde la 90 en ~+0,09.
+5. **Con la llave dada, la puerta de madera deja de ser el cuello.** Las 5 semillas llegan a la llave dorada, y la 4, al
+   cofre (la primera vez en el autónomo). El cuello pasa a la puerta de hierro.
+
+**Qué sugiere** (lo decide Fer):
+- **Medir lo que sigue con 150 generaciones y el reloj de siempre:** ~200.000 ticks por semilla, las 10 corridas en
+  ~1 h 25 min. El reloj lento no hace falta. Prender algo por defecto (el largo, deslizar, las móviles) lo decide Fer.
+- **El embudo después de la puerta**, sobre estos CSV, sin correr nada (ya tiene su ítem): ahora con 5 semillas que
+  pasan la puerta y una que llega al cofre.
+- **Las semillas 3 y 5:** su ítem queda casi respondido (lectura 3). Lo que queda, si interesa, es por qué una corrida
+  se queda, con las del control.
+- **Sin la llave dada:** con 150 generaciones, ¿encuentran la llave roja solos si el currículo se corta (en la 15 o en la
+  30)? La brújula apunta a la llave hasta que la agarran. Es lo que falta para que el autónomo pase la puerta sin ayuda
+  (en [mejoras futuras](../product/mejoras_futuras.md#aparecido-con-las-corridas-largas--2026-11-20)).
