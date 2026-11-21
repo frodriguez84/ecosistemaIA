@@ -3362,3 +3362,313 @@ Por ventana (promedio de las 5 semillas: sensibilidad · manzanas · puerta por 
 - **Sin la llave dada:** con 150 generaciones, ¿encuentran la llave roja solos si el currículo se corta (en la 15 o en la
   30)? La brújula apunta a la llave hasta que la agarran. Es lo que falta para que el autónomo pase la puerta sin ayuda
   (en [mejoras futuras](../product/mejoras_futuras.md#aparecido-con-las-corridas-largas--2026-11-20)).
+
+---
+
+<a id="sin-la-llave-dada"></a>
+## Sin la llave dada: la corrida larga con el currículo cortado en la 30 (2026-11-20)
+
+**La pregunta** (sugerida por [corridas largas](#corridas-largas), "Qué sugiere"; el ítem de
+[mejoras futuras](../product/mejoras_futuras.md#aparecido-con-las-corridas-largas--2026-11-20)): la condición de las
+móviles a 150 generaciones pasa la brújula, la comida y la puerta de madera en 5 de 5 semillas, pero con la llave roja
+dada al nacer en las 150. Con el currículo cortado, nacen sin la llave y la brújula apunta a ella hasta que la agarran:
+¿la encuentran solos y pasan la puerta? Medición de una sesión; el único código, un argumento de `medir_puerta.py`.
+
+**Diseño.** Cambia una sola cosa contra la larga (LEC-019): el currículo, hasta la 30 en lugar de hasta la 150. Con 30
+(y no 15), las primeras 30 generaciones son las de la larga y las de las móviles publicadas, que también cortaban en la
+30: lo único que cambia es desde la 31, donde nacen en la etapa 0. Con 15 cambiaría también el tramo 16-30.
+
+**Cómo se mide la brújula sin la llave dada.** `medir_puerta.py` mide la sensibilidad (cuánto cambia el giro si el
+sensor 9 marca el objetivo a +90° contra −90°: `sens_brujula / sens_ticks`) solo en la etapa 1. Con la llave dada son
+los 60, desde que nacen hasta que abren la puerta. Sin la llave dada serían solo los que la encontraron: en una corrida
+corta (semilla 3, la condición con `curriculo=2`), 2 y 3 de 60 en las gens 3 y 4, una muestra chica y elegida por haber
+llegado. Además, la red ve la etapa (el sensor 8 es etapa / 5): la brújula hacia la llave (sensor 8 en 0) es otra zona de
+entrada que hacia la puerta (0,2), y lo aprendido hacia la puerta no tiene por qué servir hacia la llave.
+- **Argumento nuevo, `sens-etapa0`:** mide la misma sensibilidad también en la etapa 0, cuando la brújula apunta a la
+  llave roja, en tres columnas propias de `agentes_*.csv` (`sens_ticks0`, `sens_brujula0`, `sens_comida0`). Las de la
+  etapa 1 no cambian y, sin el argumento, los CSV son los de antes.
+- **La medida del criterio, la sensibilidad antes de abrir la puerta:** por fila de agente,
+  (`sens_brujula` + `sens_brujula0`) / (`sens_ticks` + `sens_ticks0`); promedio de las filas de la ventana. Mide a los
+  60 de cada generación, como en la larga, y con la llave dada (la etapa 0 no existe) es la medida de siempre: contra la
+  larga es la misma cuenta (LEC-016).
+- **Se informan, sin criterio:** la de la etapa 0 sola (hacia la llave) y la de la etapa 1 sola (hacia la puerta, solo
+  los que encontraron la llave).
+
+**Las corridas** (semillas 1 a 5):
+- **Sin la llave dada:** `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30
+  sens-etapa0 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`.
+- **Su línea base:** `sin_evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0`.
+- **Comparación:** la larga (`results/medicion_corridas_largas_20261120/`; sus SHA-256, en
+  [corridas largas](#corridas-largas)), que no se vuelve a correr.
+
+**Qué se mide** (la misma cuenta en cada fila):
+- **La llave roja:** `agentes_llave_roja` del CSV de `main.py`, promedio por generación. Desde la 31 cuenta solo a los
+  que la agarraron (nadie nace con ella). Por 1.000 px: dividida por `distancia_prom` × 1.000, la cuenta de
+  `experimento.py`, que separa encontrarla de caminar más.
+- **La sensibilidad a la brújula:** la de antes de abrir la puerta (arriba).
+- **Manzanas por agente** (`manzanas_prom`), **la puerta de madera** (`agentes_puerta_madera`, se cruza con `abrio`) y
+  **lo que ve la selección** (dentro de cada generación con 10 agentes o más, el Spearman entre la sensibilidad y el
+  fitness; mediana del tramo), como en [corridas largas](#corridas-largas).
+
+**Criterio, fijado antes de correr** (ventana: gens 146-150; LEC-018):
+1. **Encuentran la llave roja:** en 4 de 5 semillas, más agentes por generación con la llave roja que la línea base de la
+   misma semilla. **Tamaño mínimo:** el promedio de las 5, al menos el doble que el de la línea base. Solo no dice si es
+   por la brújula o por caminar más: con 30 generaciones, deslizando y sin aprender la brújula, la evolución ya la
+   agarraba 3,4 veces más que el azar (282 contra 82 en las gens 16-30, [experimento C deslizando](#brujula-c-deslizando)).
+   Eso lo dicen el 4 y la llave por 1.000 px.
+2. **Pasan la puerta** (el criterio del ítem 5): en 4 de 5 semillas, al menos 1 agente por generación con la puerta de
+   madera abierta, en promedio, y más que la línea base (un empate no cuenta).
+3. **Sin dejar de comer:** manzanas por agente, promedio de las 5 semillas, al menos el 90% de las de la larga (1,099: al
+   menos 0,989).
+4. **Siguen la brújula:** en 4 de 5 semillas, la sensibilidad antes de abrir la puerta es ≥ 0,02 rad/tick y mayor que la
+   de la línea base de la misma semilla. **Tamaño mínimo:** el promedio de las 5, al menos +0,040 (el que se le pidió a
+   la larga: 1,5 veces el de las móviles).
+- **Pasa sin la llave dada si cumple los cuatro.** El 2, solo, es el veredicto del ítem 5 sin la llave dada.
+- **Lo esperado:** la llave y la brújula, probablemente: acercarse a la llave paga lo mismo que acercarse a la puerta
+  (`FITNESS_ACERCARSE` por el avance en el paso). La puerta, sin decidir: la abren solo los que encontraron la llave, con
+  el tiempo que les queda.
+- **Se lee con:**
+  - **la selección**, por tramo (1-30, 16-30, 31-60, 61-90, 91-120, 121-150), en la corrida sin la llave, la larga y la
+    línea base; en las 1-30 tiene que dar lo de la larga, que son las mismas generaciones (+0,132 en las 16-30);
+  - **la trayectoria:** cuándo pasa 0,02 para quedarse (la cuenta de [corridas largas](#corridas-largas)), en las 150
+    generaciones y desde la 31 (la primera n desde la 35 con las seis ventanas dentro de las 31-150); y por ventana, en las
+    26-30, 31-35 (la primera después del corte: cuánto de lo aprendido hacia la puerta sirve hacia la llave), 56-60,
+    86-90, 116-120 y 146-150;
+  - **contra la larga**, sin criterio: la sensibilidad, la comida y la puerta, con q = sin la llave / larga.
+- **Se informan, sin criterio:** la sensibilidad en la etapa 0 y en la etapa 1 por separado; la llave roja por 1.000 px;
+  la llave dorada, la puerta de hierro y el cofre; los términos del fitness; el costo.
+
+**Controles.**
+- **Sin el argumento, `medir_puerta.py` da lo mismo que antes. Hecho:** las tres corridas cortas de las sesiones
+  anteriores (semilla 1 con la condición y `curriculo30`, 3 generaciones; semilla 2 sin evolución y sin flags, 2; la 1
+  con `congelar=2`, 4) y una con la etapa 0 (semilla 3, la condición con `curriculo=2`, 4): los 12 CSV con el mismo
+  SHA-256 desde 5b4ddae y con el código nuevo. Con `sens-etapa0`, esa y una sin evolución (semilla 2, `deslizar
+  fortalezas-moviles curriculo=1`, 3 generaciones) dan los mismos `corrida_*.csv` y `geometria_*.csv`, y
+  `agentes_*.csv` sin las tres columnas nuevas es el de sin el argumento, byte a byte. Las columnas de la etapa 0 dan 0
+  mientras nacen con la llave; después del corte miden a los 60 (con la medida de antes, a 1, 2 o 3 de 60). El forward
+  en lote y el giro, controlados también en la etapa 0: `inconsistencias=0` en las 7 corridas.
+- **En la tanda:**
+  - las primeras 30 generaciones son las publicadas: el `corrida_*.csv` cortado en la cabecera y 30 filas da el SHA-256
+    publicado de las móviles, y el de la línea base, el de la publicada sin evolución (5 de 5 cada uno); en
+    `agentes_*.csv` y `geometria_*.csv`, las gens 1-30 son las publicadas, salvo el `aporte` de la gen 30 y las columnas
+    nuevas (que ahí dan 0);
+  - `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, en las 10;
+  - `agentes_llave_roja` es, en cada generación, los agentes con etapa ≥ 1 de `agentes_*.csv`, y
+    `agentes_puerta_madera`, la suma de `abrio`;
+  - desde la 31, cada fila de agente tiene ticks en la etapa 0;
+  - ninguna generación pasa su límite;
+  - los logs dicen `CURRICULO_HASTA_GENERACION=30` (10 de 10), y los pesos y `CROSSOVER_RATE=0.2` (las 5 con evolución);
+  - las 10 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+- **El script de análisis** (`mediciones/analizar_sin_llave.py`, con las funciones de `analizar_largas.py`), probado
+  antes de leer nada nuevo: con la larga en el lugar de la corrida nueva tiene que dar sus números (+0,0868 · 1,099 ·
+  10,3; la selección, +0,358 en las 121-150; la trayectoria, 48, 18, 24, 37 y 19).
+
+**Tiempo:** las 10 corridas a la vez, con `python -u`; ~1 h 30 min.
+
+**Cómo se corrió.** Las 10 corridas en una tanda, en 1 h 25 min (de 20:53 a 22:18). La salida, en
+`results/medicion_sin_llave_20261120/` (fuera del repo). Las tablas, con `mediciones/analizar_sin_llave.py`
+(`python mediciones/analizar_sin_llave.py NUEVA LARGA PUBLICADA`, las tres carpetas), probado antes de leer nada nuevo:
+con la larga en el lugar de la corrida nueva da sus números (+0,0868 · 1,099 · 10,3; la selección, +0,358 en las
+121-150; la trayectoria, 48, 18, 24, 37 y 19) y 0 errores en sus controles. "En la puerta" se agregó al script después
+de leer el criterio, para que esas cuentas se puedan regenerar.
+
+**Controles, hechos.**
+- **Las 10 corridas terminaron con `MEDICION inconsistencias=0`** (las 10 líneas contadas), con 9.000 filas de agentes
+  cada una. Los logs dicen `CURRICULO_HASTA_GENERACION=30` (10 de 10), y los pesos y `CROSSOVER_RATE=0.2` (las 5 con
+  evolución).
+- **Las primeras 30 generaciones son las publicadas:** el `corrida_*.csv` cortado en la cabecera y 30 filas da el
+  SHA-256 publicado, 5 de 5 con evolución (el de las móviles) y 5 de 5 en la línea base (el de la publicada sin
+  evolución). En `agentes_*.csv` y `geometria_*.csv`, las gens 1-30 son las publicadas salvo el `aporte` de la gen 30 y
+  las columnas nuevas (10 de 10); y en las 5 con evolución, `agentes_*.csv` de las gens 1-30 es el de la larga en las
+  columnas comunes, con el `aporte` de la 30.
+- **`etapa_inicial`** es 1 en las gens 1-30 y 0 en las 31-150; desde la 31, todas las filas de agentes tienen ticks en la
+  etapa 0, y hasta la 30, ninguna. Ninguna generación pasa su límite. `agentes_llave_roja` es, en cada generación, los
+  agentes con etapa ≥ 1 de `agentes_*.csv`, y `agentes_puerta_madera`, la suma de `abrio`. 0 diferencias en las 10.
+- **El costo:** sin la llave, de 185.704 a 206.994 ticks por semilla (de 8 a 13 generaciones en el límite), como la
+  larga (de 190.522 a 206.013); su línea base, de 205.798 a 222.242.
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py ... curriculo=30 sens-etapa0 desde el commit de esta sesión)</summary>
+
+| Semilla | Sin la llave, `corrida_*.csv` | Sin la llave, `agentes_*.csv` |
+|---|---|---|
+| 1 | `c3e4e8112192e47e6a0c39e4960f0d4737aac061f2440846654fe1f542ddd134` | `7be8cf6dcdcd3b88c3c32af77e06219e42333b750c4126865fea86de2f6d6ed5` |
+| 2 | `09239ab7a2e5c5364366bf08a672294f45a8bf6dab67dc54f8379d53ae19a8fc` | `220af56763c035b8282c8673fd564c10493f1c5c8493513be5f775097b530010` |
+| 3 | `34f9dff5b97689411cf1e0b1b92b9797cfbbac92788f5b790cb42171531d09e2` | `461ab7927aaef128a75db9f8ae977f96156878f89bd448173f7021752f3a80f7` |
+| 4 | `367db4808c04afe382809444bd880857439301d71d12a3c3c4b8fc83a18cbf91` | `03993c6ca2392f26a0d5b0e616e25d56b37092af9b8355fba13b235bc64221b9` |
+| 5 | `d24812bab5f43fb8a40ff8a1ce7e46ed362efd362dce7fba2b80a4b4b8587eb1` | `f05f7861175052e41fc4bbca5b558500712f9b4bd475a8f937057a77c251d0a7` |
+
+| Semilla | Línea base sin la llave, `corrida_*.csv` | Línea base sin la llave, `agentes_*.csv` |
+|---|---|---|
+| 1 | `405989b5e0c752cec11dec1ce2ab445896f1516f63a445a8fd9a819b18a449e3` | `81db83593d989e8e11e3493e4a8c1fd111e4dac884b563d1066996076126016e` |
+| 2 | `a14bd0ec3838cc2fb25e4383be63f53bae79cfcbe60cd490c118502db2ff041a` | `adbb9538c24897480f6b8d879d76b82c2f72dfd6f7aa3db6178326735fcc869f` |
+| 3 | `30d6596638def9e1d2f4bf030762f914b33e57dfaae3322b6a30ff77e8d0ce47` | `4d66ae19a2b28265fc9f7c1b26f30c127bb78fcdaa47a8c8d28e44730ca6692b` |
+| 4 | `15dda42ce09b5f6fd2ce6f000648ce0ca410797ba3bd0599de8a741c13f55c2c` | `6bd939380a941faf0a7c34b7ef47f8ebe2ecdb5bdf33e87a97fd842c8df72add` |
+| 5 | `394c34ab70814931064668dca87179fb8dd9cdfc0f6dd76c22ba5c5458d5993f` | `9e0840e60ac10d9d1f71038efdf8e347849fa596c427eb61bd0407a7a111af39` |
+
+</details>
+
+**El criterio** (gens 146-150; sensibilidad antes de abrir la puerta en rad/tick · manzanas por agente · puerta de madera
+por generación · llave roja por generación, y entre paréntesis por 1.000 px):
+
+| Semilla | Sin la llave | Línea base sin la llave | Larga (la llave, dada) |
+|---|---|---|---|
+| 1 | **+0,1254** · 0,857 · 0 · 46,6 (43,5) | −0,0016 · 0,383 · 0 · 0,8 (2,4) | +0,0830 · 1,213 · 12,0 |
+| 2 | **+0,1183** · 0,967 · 0,4 · 43,8 (35,5) | +0,0003 · 0,467 · 0 · 1,0 (3,1) | +0,0980 · 1,073 · 8,0 |
+| 3 | **+0,0909** · 1,000 · 0,4 · 38,4 (29,0) | −0,0013 · 0,313 · 0 · 1,0 (3,3) | +0,1116 · 0,987 · 13,4 |
+| 4 | **+0,1059** · 1,123 · 1,8 · 50,6 (29,2) | +0,0001 · 0,373 · 0 · 1,4 (4,4) | +0,0902 · 1,063 · 15,0 |
+| 5 | **+0,1122** · 0,987 · 9,8 · 43,0 (37,3) | −0,0005 · 0,373 · 0 · 1,6 (4,7) | +0,0510 · 1,160 · 3,0 |
+| **Promedio** | **+0,1105 · 0,987 · 2,5 · 44,5 (34,9)** | −0,0006 · 0,382 · 0 · 1,16 (3,6) | +0,0868 · 1,099 · 10,3 |
+
+1. **Encuentran la llave roja: 5 de 5** (más que la línea base; pide 4). Promedio 44,5 por generación, 38 veces el de la
+   línea base (1,16; pide el doble). Por 1.000 px, 9,8 veces (34,9 contra 3,6): no es caminar más. **Cumple.**
+2. **Pasan la puerta: 2 de 5** (al menos 1 por generación y más que la línea base; pide 4): la semilla 5 con 9,8 y la 4
+   con 1,8; la 2 y la 3, 0,4; la 1, 0. **No cumple.**
+3. **Sin dejar de comer:** 0,9867 manzanas, el 89,8% de la larga (pide el 90%: 0,9894). **No cumple, por 0,003.**
+4. **Siguen la brújula: 5 de 5** (≥ 0,02 y mayor que la línea base; pide 4). Promedio +0,1105 (pide +0,040), más que la
+   larga (+0,0868). **Cumple.**
+
+**No pasa sin la llave dada: cumple el 1 y el 4, no el 2 ni el 3.** El ítem 5 sin la llave dada (el 2), tampoco. El 3
+queda 2 décimas de punto debajo del criterio fijado antes: no cumple, aunque la diferencia con la larga es chica (0,99
+contra 1,10; arriba en 2 semillas y abajo en 3).
+
+**Contra la larga, sin criterio** (gens 146-150; q = sin la llave / larga):
+
+| | Sin la llave | Larga | q | Sin la llave, arriba / abajo |
+|---|---|---|---|---|
+| Sensibilidad | +0,1105 | +0,0868 | 1,27 | 4 / 1 |
+| Manzanas | 0,987 | 1,099 | 0,90 | 2 / 3 |
+| Puerta por generación | 2,5 | 10,3 | 0,24 | 1 / 4 |
+
+**La brújula, por etapa** (gens 146-150; filas de agentes con ticks en cada etapa; la de la etapa 1 mide solo a los que
+tienen la llave):
+
+| | Hacia la llave (etapa 0) | Hacia la puerta (etapa 1) |
+|---|---|---|
+| Sin la llave | +0,110 (1.500 filas) | +0,120 (1.112 filas) |
+| Línea base sin la llave | −0,001 (1.500) | +0,018 (29) |
+| Larga | — | +0,087 (1.500) |
+
+- **Siguen la brújula hacia los dos objetivos casi lo mismo,** en las 5 semillas (de +0,090 a +0,128 hacia la llave, de
+  +0,111 a +0,129 hacia la puerta).
+- **Lo aprendido hacia la puerta sirvió hacia la llave desde el corte:** en las gens 31-35, la primera ventana sin la
+  llave, la sensibilidad hacia la llave es +0,033, la que tenían hacia la puerta en las 26-30 (+0,027), y encuentran la
+  llave 10,8 por generación, 9 veces la línea base (1,2). El sensor 8 en otro valor no la rompió.
+- **La de la etapa 1 sola tiene el sesgo que la medida del criterio evita:** en la línea base, los 29 que encontraron la
+  llave dan +0,018, elegidos por haber llegado.
+
+**Lo que ve la selección** (Spearman entre la sensibilidad y el fitness dentro de cada generación; mediana del tramo):
+
+| Gens | 1-30 | 16-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|---|
+| Sin la llave | +0,112 | +0,132 | **+0,337** | +0,311 | +0,299 | +0,233 |
+| Larga | +0,112 | +0,132 | +0,214 | +0,295 | +0,307 | +0,358 |
+| Línea base sin la llave | −0,022 | −0,017 | −0,010 | +0,025 | −0,004 | −0,012 |
+
+En las 1-30 da lo de la larga: son las mismas generaciones. Apenas se corta el currículo, la selección ve la brújula más
+que en la larga (+0,337 contra +0,214 en las 31-60, en 4 de 5 semillas): encontrar la llave paga y la brújula lleva a
+ella. Al final la ve menos (+0,233 contra +0,358), cuando 44 de 60 ya la encuentran. La línea base, en cero.
+
+**La trayectoria** (cuándo pasa 0,02 para quedarse):
+
+| Semilla | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Sin la llave | 34 | 18 | 24 | 45 | 19 |
+| Larga | 48 | 18 | 24 | 37 | 19 |
+| Línea base sin la llave | nunca | nunca | nunca | nunca | nunca |
+
+Desde la 31 (la primera n posible es la 35): sin la llave, 35, 35, 35, 45 y 35; la larga, 48, 35, 35, 37 y 35. Las
+semillas 2, 3 y 5 ya habían pasado antes del corte y siguen arriba sin la llave; la 1 se queda antes que en la larga y
+la 4, después.
+
+Por ventana (promedio de las 5 semillas: sensibilidad antes de abrir la puerta · manzanas · llave roja por generación ·
+puerta por generación; "dada", los 60 nacen con la llave):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Sin la llave | +0,027 · 1,09 · dada · 1,2 | +0,032 · 1,10 · 10,8 · 0,2 | +0,066 · 1,08 · 20,3 · 0,6 | +0,085 · 1,03 · 33,4 · 0,9 | +0,108 · 0,99 · 41,7 · 1,9 | +0,111 · 0,99 · 44,5 · 2,5 |
+| Larga | +0,027 · 1,09 · dada · 1,2 | +0,034 · 1,08 · dada · 2,3 | +0,062 · 1,14 · dada · 4,6 | +0,081 · 1,06 · dada · 6,6 | +0,089 · 1,06 · dada · 12,2 | +0,087 · 1,10 · dada · 10,3 |
+| Línea base sin la llave | +0,001 · 0,31 · dada · 0,3 | +0,001 · 0,37 · 1,2 · 0 | 0,000 · 0,33 · 0,6 · 0 | −0,001 · 0,33 · 0,8 · 0 | 0,000 · 0,32 · 1,0 · 0 | −0,001 · 0,38 · 1,2 · 0 |
+
+- **La llave sube de a poco:** 10,8 por generación en la primera ventana, 44,5 en la última (el 74% de los agentes).
+- **La sensibilidad no se aplana en la 90 como en la larga** (~+0,09): sigue hasta +0,108 y +0,111.
+- **La comida baja a medida que aprenden la llave:** 1,10 en las 31-35, 0,99 desde la 116.
+- **La puerta sube,** de 0,2 a 2,5 por generación, muy debajo de la larga.
+
+**En la puerta** (sin criterio; gens 146-150, todas las semillas; los que tienen la llave):
+
+| | Con la llave, por generación | Ticks en la etapa 1, de los de su generación | Llegan a 25 px de la puerta | De los que llegan: ticks de la generación después de llegar | A 25 px | Golpean ahí (ticks golpeando) | La abren |
+|---|---|---|---|---|---|---|---|
+| Sin la llave | 44,5 | 634 de 1.351 (47%) | 41% | 814 | 338 | 23% (3,4%) | 13% |
+| Larga | 60 | 839 de 1.240 (68%) | 35% | 846 | 127 | 82% (37,5%) | 49% |
+
+Por ventana, de los que llegan, la parte que golpea ahí (entre paréntesis, cuántos llegan por generación):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Sin la llave | 41% (4,3) | 30% (1,1) | 30% (4,0) | 18% (8,1) | 20% (16,6) | 23% (18,4) |
+| Larga | 41% (4,3) | 47% (7,9) | 59% (12,7) | 51% (20,7) | 73% (25,6) | 82% (20,8) |
+
+En las 146-150, por semilla, golpean: sin la llave, 1%, 15%, 9%, 35% y 64%; la larga, 88%, 80%, 68%, 96% y 67%.
+- **No les falta llegar ni tiempo:** los que tienen la llave llegan a la puerta más que en la larga (41% contra 35%),
+  con casi el mismo tiempo por delante (814 ticks contra 846), y se quedan más al lado (338 ticks contra 127). **Lo que
+  no hacen es golpear:** 23% contra 82%.
+- **En la larga, golpear se aprende con la puerta:** de los que llegan, golpea el 41% en las 26-30 y el 82% en las
+  146-150, con 8 a 26 que llegan por generación. Sin la llave, durante 60 generaciones llegan de 1 a 8, y la parte que
+  golpea baja al 18-23%; en las 146-150 llegan casi tantos como en la larga (18,4 contra 20,8), y golpear no se recuperó.
+  La semilla 5 es la excepción: golpea el 64% y abre 9,8 por generación, como el promedio de la larga (10,3).
+- **Por qué baja, no se midió.** Una posibilidad, sin medir: golpear cuesta energía en todo el recorrido y paga solo al
+  lado de la puerta (lo visto en el [laboratorio con menos cruce](#laboratorio-menos-cruce)), y sin la llave dada pasan
+  más de la mitad de la vida en la etapa 0, donde no hay puerta que golpear (los que agarran la llave, el 53% de sus
+  ticks; los otros, todos).
+
+**El puzzle** (gens 31-150, sin criterio; agentes que llegan a cada paso, sumados; semillas 1 a 5):
+
+| | Agarran la llave roja | Abren la puerta de madera | Desde la 90, generaciones con alguien que la abre | Agarran la llave dorada | Abren la puerta de hierro | Abren el cofre |
+|---|---|---|---|---|---|---|
+| Sin la llave | 3.808 · 3.291 · 3.340 · 3.807 · 4.143 | 69 · 169 · 57 · 12 · 429 | 14 · 23 · 8 · 3 · 53 de 61 | 23 · 84 · 39 · 4 · 201 | 0 | 0 |
+| Larga | dada | 302 · 1.255 · 600 · 1.474 · 284 | 44 · 59 · 57 · 61 · 42 de 61 | 135 · 642 · 229 · 855 · 151 | 0 · 0 · 0 · 8 · 0 | 0 · 0 · 0 · 6 · 0 |
+| Línea base sin la llave | 105 · 114 · 136 · 127 · 133 | 0 · 1 · 1 · 1 · 1 | 0 · 0 · 1 · 0 · 1 de 61 | 0 · 0 · 0 · 1 · 0 | 0 | 0 |
+
+Sin la llave dada, las 5 semillas llegan a la llave dorada (351 agentes, contra 2.012 en la larga en las mismas
+generaciones); nadie, a la puerta de hierro.
+
+**Términos del fitness** (gens 146-150, promedio de las filas de agentes y de las semillas):
+
+| | Comida | Acercarse | Supervivencia | Puzzle | Fitness | Edad (ticks) |
+|---|---|---|---|---|---|---|
+| Sin la llave | 7,06 | 48,09 | 9,72 | 8,30 | 67,32 | 1.008 |
+| Larga | 7,59 | 23,21 | 8,91 | 4,52 | 37,11 | 907 |
+| Línea base sin la llave | 2,30 | 0,97 | 8,88 | 0,19 | 20,87 | 905 |
+
+Sin la llave dada, agarrar la llave es un paso dado: cuenta en la recompensa por acercarse y en el puzzle, y acercarse
+pesa el doble que en la larga; la comida, un poco menos (7,06 contra 7,59).
+
+**Lectura.**
+1. **Sin la llave dada, encuentran la llave roja solos:** 44,5 de 60 por generación al final (el 74%), 38 veces la línea
+   base y 9,8 veces por 1.000 px caminados. La brújula los lleva: la siguen hacia la llave (+0,110) casi tanto como
+   hacia la puerta (+0,120), más que en la larga (+0,087), y lo aprendido hacia la puerta sirvió hacia la llave desde la
+   primera ventana después del corte.
+2. **No pasan la puerta: 2 de 5** (2,5 por generación, un cuarto de la larga). No es el camino ni el tiempo: los que
+   tienen la llave llegan a la puerta más que en la larga, con el mismo tiempo por delante. **Es golpear:** de los que
+   llegan golpea el 23%, contra el 82% de la larga. En la larga, golpear se aprendió en 120 generaciones con muchos
+   llegando a la puerta; sin la llave llegaron pocos durante 60 generaciones y golpear bajó. La semilla 5, que golpea,
+   abre como el promedio de la larga.
+3. **La comida queda en el 89,8% de la larga,** 2 décimas debajo del criterio: no cumple. Baja a medida que aprenden la
+   llave (1,10 en las 31-35, 0,99 desde la 116), con la recompensa por acercarse pesando el doble.
+4. **La sensibilidad no se aplana en ~+0,09:** sin la llave dada sigue hasta +0,11. El techo de la larga no es del
+   aprendiz.
+5. **La selección ve la brújula más apenas se corta el currículo** (+0,337 contra +0,214 en las 31-60), y menos al
+   final, cuando casi todos ya encuentran la llave.
+
+**Qué sugiere** (lo decide Fer):
+- **El cuello del autónomo sin ayuda es golpear en la puerta,** no la llave ni la brújula. Va a su ítem de
+  [mejoras futuras](../product/mejoras_futuras.md) ("Golpear en la puerta, el cuello nuevo"), con este contraste: las
+  mismas 30 primeras generaciones, y desde ahí la larga aprende a golpear (82%) y la corrida sin la llave no (23%). Medir
+  si la red condiciona el golpe a la distancia al paso (sensor 11), en las dos, diría si es eso, antes de cambiar
+  golpear.
+- **Más generaciones sin la llave dada:** al final llegan a la puerta casi tantos como en la larga (18,4 contra 20,8 por
+  generación) y la puerta sube (0,9, 1,9 y 2,5 por generación en las últimas tres ventanas). Si golpear sigue a la
+  llegada como en la larga, con 300 generaciones podría pasar; si no, golpear quedó trabado. Unas 3 h las 10 corridas,
+  sin código.
+- **La comida:** sin la llave dada, acercarse pesa el doble y la comida baja. Si importa, es de los pesos
+  (`FITNESS_ACERCARSE` = 40, fijado con la llave dada).

@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -34,6 +34,9 @@ acercarse y el puzzle, y sube CURRICULO_HASTA_GENERACION a 30. curriculo30 sube 
 el fitness de siempre (el control del laboratorio). curriculo=N fija CURRICULO_HASTA_GENERACION en N (va
 sin curriculo30; con laboratorio, pisa el 30): con N = 30 es curriculo30, y una corrida larga con N igual
 a sus generaciones nace con la llave hasta el final (docs/qa/AnalisisQA.md#corridas-largas).
+sens-etapa0 mide la sensibilidad también en la etapa 0, cuando la brújula apunta a la llave roja (sin la llave
+dada, docs/qa/AnalisisQA.md#sin-la-llave-dada), en tres columnas más: sens_ticks0, sens_brujula0 y
+sens_comida0; las de la etapa 1 no cambian, y sin el argumento agentes_*.csv es el de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -79,6 +82,7 @@ acercarse = "acercarse" in sys.argv[6:]
 deslizar = "deslizar" in sys.argv[6:]
 moviles = "fortalezas-moviles" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
+sens_etapa0 = "sens-etapa0" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -148,10 +152,13 @@ SIN_PAGA = ("f_supervivencia", "f_comida", "f_exploracion", "f_anticirculo", "f_
 
 
 def nueva():
-    return dict(d0_llave=None, dmin_llave=math.inf, d0=None, dmin=math.inf, ticks_etapa1=0, ticks_25=0, ticks_golpe=0, ticks_golpe_25=0,
-                bloq_agente_inicio=0, bloq_agente_corte=0, bloq_puerta=0, golpes=0,
-                t_llega25=None, t_golpe1=None, t_golpe2=None, ticks_25_post90=0, golpe_25_post90=0,
-                sens_ticks=0, sens_brujula=0.0, sens_comida=0.0, ticks_avanza=0, ticks_gira=0, giro_abs=0.0)
+    m = dict(d0_llave=None, dmin_llave=math.inf, d0=None, dmin=math.inf, ticks_etapa1=0, ticks_25=0, ticks_golpe=0, ticks_golpe_25=0,
+             bloq_agente_inicio=0, bloq_agente_corte=0, bloq_puerta=0, golpes=0,
+             t_llega25=None, t_golpe1=None, t_golpe2=None, ticks_25_post90=0, golpe_25_post90=0,
+             sens_ticks=0, sens_brujula=0.0, sens_comida=0.0, ticks_avanza=0, ticks_gira=0, giro_abs=0.0)
+    if sens_etapa0:  # sin el argumento, las columnas de antes
+        m.update(sens_ticks0=0, sens_brujula0=0.0, sens_comida0=0.0)
+    return m
 
 
 def terminos_fitness(a):
@@ -220,19 +227,22 @@ _act = AdvancedAgent.act
 def act(self, decisions, world, other_agents, tick):
     vivo = self.alive
     angulo, predicho = self.angle, None
-    if vivo and self.etapa == 1 and world.door and getattr(self, "_med_percepcion", None) is not None:
+    if vivo and getattr(self, "_med_percepcion", None) is not None and (
+            (self.etapa == 1 and world.door) or (sens_etapa0 and self.etapa == 0 and world.red_key)):
         m = MED.setdefault(self, nueva())
         sb, sc, salida = sensibilidad(self.brain, self._med_percepcion)
-        m['sens_ticks'] += 1
-        m['sens_brujula'] += float(sb)
-        m['sens_comida'] += float(sc)
+        suf = '' if self.etapa == 1 else '0'  # con sens-etapa0, la etapa 0 va a sus propias columnas
+        m['sens_ticks' + suf] += 1
+        m['sens_brujula' + suf] += float(sb)
+        m['sens_comida' + suf] += float(sc)
         tomadas = np.array([decisions[k] for k in ORDEN_SALIDAS])
         if np.abs(np.clip(salida, 0, 1) - tomadas).max() > 1e-6:
             INCONS[0] += 1  # el forward en lote no es el de la red
         predicho = float(giro(tomadas[None, :])[0])
-        m['ticks_avanza'] += int(decisions['move_forward'] > 0.5)
-        m['ticks_gira'] += int(predicho != 0.0)
-        m['giro_abs'] += abs(predicho)
+        if self.etapa == 1:
+            m['ticks_avanza'] += int(decisions['move_forward'] > 0.5)
+            m['ticks_gira'] += int(predicho != 0.0)
+            m['giro_abs'] += abs(predicho)
     self._med_percepcion = None
     _act(self, decisions, world, other_agents, tick)
     if predicho is not None and abs((self.angle - angulo) - predicho) > 1e-9:
