@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -37,6 +37,11 @@ a sus generaciones nace con la llave hasta el final (docs/qa/AnalisisQA.md#corri
 sens-etapa0 mide la sensibilidad también en la etapa 0, cuando la brújula apunta a la llave roja (sin la llave
 dada, docs/qa/AnalisisQA.md#sin-la-llave-dada), en tres columnas más: sens_ticks0, sens_brujula0 y
 sens_comida0; las de la etapa 1 no cambian, y sin el argumento agentes_*.csv es el de antes.
+sens-golpe mide, en los mismos ticks, la salida 'hit' de la red antes del tanh (z; golpea si tanh(z) > 0,5, o sea z >
+atanh(0,5)) con el sensor 11, la distancia al próximo paso, en "pegado" (RADIO_GOLPE / visión) y en "lejos" (1,0), con el
+resto de la percepción como la vio el agente (docs/qa/AnalisisQA.md#sens-golpe), en cuatro columnas más: zgolpe_pegado y
+zgolpe_lejos (la suma de z) y golpea_pegado y golpea_lejos (los ticks en que golpearía); con sens-etapa0, también en la
+etapa 0, con un 0 al final. Se divide por sens_ticks (o sens_ticks0). Un forward aparte: las demás columnas no cambian.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -83,6 +88,7 @@ deslizar = "deslizar" in sys.argv[6:]
 moviles = "fortalezas-moviles" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 sens_etapa0 = "sens-etapa0" in sys.argv[6:]
+sens_golpe = "sens-golpe" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -158,6 +164,9 @@ def nueva():
              sens_ticks=0, sens_brujula=0.0, sens_comida=0.0, ticks_avanza=0, ticks_gira=0, giro_abs=0.0)
     if sens_etapa0:  # sin el argumento, las columnas de antes
         m.update(sens_ticks0=0, sens_brujula0=0.0, sens_comida0=0.0)
+    for suf in ('', '0') if sens_golpe else ():  # sin el argumento, tampoco estas
+        if suf == '' or sens_etapa0:
+            m.update({'zgolpe_pegado' + suf: 0.0, 'zgolpe_lejos' + suf: 0.0, 'golpea_pegado' + suf: 0, 'golpea_lejos' + suf: 0})
     return m
 
 
@@ -221,6 +230,21 @@ def sensibilidad(cerebro, p):
 
 
 ORDEN_SALIDAS = ('move_forward', 'turn_left', 'turn_right', 'eat', 'hit')
+
+
+def golpe(cerebro, p, pegado):
+    """Con la percepción p que vio el agente, la salida 'hit' de su red antes del tanh (z) con el sensor 11 en pegado
+    y en 1,0 (lejos). En z, un corrimiento parejo del golpe mueve las dos igual y no cambia su diferencia; con el tanh o
+    con la decisión, achicaría también la diferencia. Forward aparte del de sensibilidad(). Solo numpy, sin azar."""
+    x = np.repeat(p[None, :], 2, axis=0)
+    x[0, 10], x[1, 10] = pegado, 1.0
+    a = x
+    for i in range(len(cerebro.weights) - 1):
+        a = np.tanh(np.dot(a, cerebro.weights[i]) + cerebro.biases[i])
+    z = np.dot(a, cerebro.weights[-1]) + cerebro.biases[-1]
+    return z[:, ORDEN_SALIDAS.index('hit')]
+
+
 _act = AdvancedAgent.act
 
 
@@ -238,6 +262,18 @@ def act(self, decisions, world, other_agents, tick):
         tomadas = np.array([decisions[k] for k in ORDEN_SALIDAS])
         if np.abs(np.clip(salida, 0, 1) - tomadas).max() > 1e-6:
             INCONS[0] += 1  # el forward en lote no es el de la red
+        if sens_golpe:
+            p = self._med_percepcion
+            zp, zl = golpe(self.brain, p, RADIO_GOLPE / self.vision_range)
+            m['zgolpe_pegado' + suf] += float(zp)
+            m['zgolpe_lejos' + suf] += float(zl)
+            m['golpea_pegado' + suf] += int(np.tanh(zp) > 0.5)
+            m['golpea_lejos' + suf] += int(np.tanh(zl) > 0.5)
+            paso = self._proximo_paso(world)
+            if abs(p[10] - min(math.hypot(paso[0] - float(self.x), paso[1] - float(self.y)) / self.vision_range, 1.0)) > 1e-5:
+                INCONS[0] += 1  # el sensor 11 no es la distancia al próximo paso
+            if p[10] == 1.0 and (np.tanh(zl) > 0.5) != (decisions['hit'] > 0.5):
+                INCONS[0] += 1  # lejos de verdad, la decisión no es la que tomó: no es la salida 'hit'
         predicho = float(giro(tomadas[None, :])[0])
         if self.etapa == 1:
             m['ticks_avanza'] += int(decisions['move_forward'] > 0.5)

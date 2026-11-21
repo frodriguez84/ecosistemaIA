@@ -3672,3 +3672,236 @@ pesa el doble que en la larga; la comida, un poco menos (7,06 contra 7,59).
   sin código.
 - **La comida:** sin la llave dada, acercarse pesa el doble y la comida baja. Si importa, es de los pesos
   (`FITNESS_ACERCARSE` = 40, fijado con la llave dada).
+
+---
+
+<a id="sens-golpe"></a>
+## Golpear en la puerta: ¿la red condiciona el golpe a la distancia al paso? (2026-11-21)
+
+**La pregunta** (sugerida por [sin la llave dada](#sin-la-llave-dada), "Qué sugiere"; el ítem "Golpear en la puerta, el
+cuello nuevo" de [mejoras futuras](../product/mejoras_futuras.md)): sin la llave dada, de los que tienen la llave llega a
+la puerta el 41% (35% en la larga), con el mismo tiempo por delante, pero golpea ahí el 23% de los que llegan, contra el
+82% de la larga. Las 30 primeras generaciones son las mismas en las dos corridas; desde ahí la larga aprende a golpear
+(del 41% al 82%) y la corrida sin la llave baja (18-23%). Dos explicaciones:
+- **(a) el golpe condicionado:** la red de la larga aprende "golpear cuando estoy cerca del paso" (el sensor 11) y la de
+  sin la llave no: a la selección no le llega la señal.
+- **(b) el golpe en general:** las dos condicionan el golpe a la distancia igual, y la de sin la llave golpea menos en
+  todos lados: golpear cuesta energía siempre (`HIT_ENERGY_COST`), y sin la llave pasan más de la mitad de la vida en la
+  etapa 0, donde no hay puerta.
+
+Medición de una sesión; el único código, un argumento de `medir_puerta.py`.
+
+**Diseño.** Las dos corridas publicadas, otra vez, con el argumento nuevo. La medición no consume azar: son las mismas
+corridas, byte a byte (el control). No cambia nada contra ellas; lo que se agrega es qué hace la red con el sensor 11.
+
+**Cómo se mide: `sens-golpe`.** En los mismos ticks que la sensibilidad a la brújula (la etapa 1, con la puerta en el
+mapa; con `sens-etapa0`, también la etapa 0) y con la percepción que vio el agente, la salida `hit` de la red con el
+sensor 11 (la distancia al próximo paso, mín(distancia / 150, 1), según `perceive()`) en **pegado** (25 px, el
+`RADIO_GOLPE` del golpe: 0,167) y en **lejos** (1,0: a la visión o más). Cuatro columnas aparte en `agentes_*.csv`
+(`zgolpe_pegado`, `zgolpe_lejos`, `golpea_pegado`, `golpea_lejos`; con `sens-etapa0`, cuatro más con un 0 al final).
+- **En z, la salida antes del tanh,** no en la salida ni en la decisión. Golpea si tanh(z) > 0,5, o sea si z > atanh(0,5)
+  = 0,549: z es la distancia al umbral. Si la de sin la llave golpeara menos en general (z más bajo parejo), en z pegado y
+  lejos bajan igual y su diferencia queda. Con el tanh, que se aplana abajo, o con la decisión, que lejos del umbral queda
+  en 0, la diferencia se achicaría también, y la explicación (b) se leería como (a). En z se separan: **z pegado = la
+  sensibilidad + z lejos**, por fila y en el promedio.
+- **La decisión, también** (`golpea_*`, los ticks en que golpearía): es lo que hace el agente, y es la premisa (abajo).
+- **También en la etapa 0,** en la corrida sin la llave: dice si la red golpea distinto hacia la llave (el sensor 8 en 0)
+  que hacia la puerta (en 0,2). Si golpea igual de poco en las dos, lo que la selección baja en la etapa 0, donde golpear
+  no paga, baja también en la etapa 1: el mecanismo de (b). Ahí el sensor 11 es la distancia a la llave. Sin criterio.
+- **Un forward aparte** del de la brújula: las demás columnas no cambian.
+
+**Las medidas** (por fila de agente con ticks en la etapa 1, divididas por `sens_ticks`; promedio de las filas de la
+ventana, la cuenta de la sensibilidad a la brújula):
+- **S, el golpe condicionado:** (`zgolpe_pegado` − `zgolpe_lejos`) / `sens_ticks`. Positivo: cerca del paso, más ganas
+  de golpear.
+- **G, el golpe en general:** `zgolpe_lejos` / `sens_ticks`, el z lejos del paso.
+- **Z pegado = S + G:** las ganas de golpear pegado a la puerta.
+- **P pegado y P lejos:** `golpea_pegado` / `sens_ticks` y `golpea_lejos` / `sens_ticks`, la parte de los ticks en que
+  golpearía.
+
+**Las corridas** (semillas 1 a 5, las 10 a la vez):
+- **La larga:** `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=150 sens-golpe
+  cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`.
+- **Sin la llave:** la misma con `curriculo=30 sens-etapa0 sens-golpe`.
+- **Sin línea base nueva.** La pregunta es el contraste entre las dos corridas con evolución, no contra el azar, y su
+  control está adentro: en las gens 1-30 son las mismas redes con las mismas percepciones, así que en las 26-30 las dos
+  dan lo mismo (la diferencia, 0). Las redes al azar salen de la gen 1 de cada corrida, que es la población inicial (la
+  misma de su línea base: la evolución actúa desde la 2): S y G de referencia sin otra tanda. Con pesos al azar
+  simétricos, S esperado es 0.
+
+**Criterio, fijado antes de correr** (ventana: gens 146-150; L, la larga, y N, sin la llave; por semilla, ΔS = S_L − S_N,
+ΔG = G_L − G_N y ΔZ = ΔS + ΔG; LEC-018):
+
+0. **La premisa, que la red reproduzca la diferencia en la puerta:** P pegado de la larga mayor que el de sin la llave
+   en 4 de 5 semillas, y el promedio de las 5, al menos el doble. Si no se cumple, la diferencia en la puerta no está en
+   cómo responde la red al sensor 11 con lo que ve: ninguna de las dos explicaciones, y se lee con "En la puerta".
+1. **El golpe condicionado pesa:** ΔS > 0 en 4 de 5 semillas, y el promedio de ΔS es al menos un tercio del de ΔZ.
+2. **El golpe en general pesa:** ΔG > 0 en 4 de 5 semillas, y el promedio de ΔG es al menos un tercio del de ΔZ.
+
+- **El veredicto,** con la premisa y el promedio de ΔZ > 0: solo el 1, **es el golpe condicionado** (a); solo el 2,
+  **es el golpe en general** (b); los dos, **son las dos**; ninguno, **sin decidir**. Como ΔS + ΔG = ΔZ, al menos uno
+  lleva la mitad: el tercio es el tamaño mínimo, y el 4 de 5, la consistencia entre semillas.
+- **Lo esperado,** sin decidir: en el [laboratorio con menos cruce](#laboratorio-menos-cruce), la evolución bajó el golpe
+  en todo el recorrido (15% de los ticks, contra 35% sin evolución), y eso es (b); (a) es "a la selección no le llega la
+  señal".
+- **Se lee con:**
+  - **las ventanas:** S, G, P pegado y P lejos en las gens 26-30, 31-35, 56-60, 86-90, 116-120 y 146-150, en las dos:
+    si la larga aprende a condicionar (S sube desde las 26-30) o la de sin la llave lo pierde, y si G baja en una y no en
+    la otra;
+  - **"En la puerta"** de [sin la llave dada](#sin-la-llave-dada), la medida independiente: lo que hacen los que llegan,
+    en los ticks a menos de 25 px, sin contrafáctico;
+  - **la gen 1,** redes al azar: S y G de referencia;
+  - **por semilla,** con la semilla 5 sin la llave, que golpea (el 64% de los que llegan) y abre como la larga.
+- **Se informan, sin criterio:** la etapa 0 de la corrida sin la llave (S, G y P lejos hacia la llave) contra su etapa
+  1, y P pegado − P lejos (el golpe condicionado en decisiones).
+- **Un sesgo conocido:** sin la llave, la etapa 1 la tienen solo los que encontraron la llave (1.112 de las 1.500 filas en
+  las gens 146-150); en la larga, los 60. En las 26-30, los 60 en las dos.
+
+**Controles.**
+- **Sin el argumento, `medir_puerta.py` da lo mismo que antes. Hecho:** tres corridas cortas (semilla 1 con la condición
+  de la larga, 3 generaciones; semilla 2 sin evolución con `acercarse deslizar fortalezas-moviles curriculo=1`, 3; semilla
+  3 con la condición, `curriculo=2 sens-etapa0`, 4): los 9 CSV con el mismo SHA-256 desde 3306553 y con el código nuevo.
+  Con `sens-golpe`, las tres dan los mismos `corrida_*.csv` y `geometria_*.csv`, y `agentes_*.csv` sin las columnas
+  nuevas es el de sin el argumento, byte a byte. Las de la etapa 0 están solo con `sens-etapa0`, y dan 0 mientras nacen
+  con la llave.
+- **Dos controles nuevos adentro de la medición,** que suman en `MEDICION inconsistencias`: en cada tick medido, el sensor
+  11 es la distancia al próximo paso calculada aparte (/ 150, con tope 1); y lejos de verdad (el sensor 11 en 1,0), la
+  fila "lejos" es la percepción sin tocar, así que su decisión tiene que ser el golpe que tomó el agente. Probados con el
+  código roto a propósito: con la salida `eat` en lugar de `hit`, 24.630 inconsistencias en una generación; con el sensor
+  10 en lugar del 11, 50.719. Con el código bien, 0 en las 6 corridas cortas.
+- **En la tanda:**
+  - cada `corrida_*.csv` da el SHA-256 publicado (la larga, en [corridas largas](#corridas-largas); sin la llave, en
+    [sin la llave dada](#sin-la-llave-dada)), y `agentes_*.csv` sin las columnas nuevas, también (10 de 10);
+  - en las gens 1-30, las columnas nuevas de la etapa 1 son iguales en las dos corridas de cada semilla, y las de la
+    etapa 0, 0;
+  - las 10 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017).
+- **El script de análisis** (`mediciones/analizar_golpe.py`), probado antes de leer nada nuevo: con las carpetas
+  publicadas tiene que dar "En la puerta" (llegan el 41% y el 35%; golpean el 23% y el 82%; la tabla por ventana).
+
+**Tiempo:** las 10 corridas a la vez, con `python -u`; ~1 h 30 min (un forward más por tick medido).
+
+**Cómo se corrió.** Las 10 corridas en una tanda, en 1 h 43 min (de 17:11 a 18:54). La salida, en
+`results/medicion_golpe_20261121/` (fuera del repo). Las tablas, con `mediciones/analizar_golpe.py` (`python
+mediciones/analizar_golpe.py NUEVA NUEVA LARGA SIN_LLAVE`: las dos corridas, en la carpeta nueva, y las dos publicadas,
+para los controles), probado antes de leer nada nuevo: con las carpetas publicadas da "En la puerta" igual (llegan el 41%
+y el 35%; golpean el 23% y el 82%; las tablas por ventana y por semilla) y 0 errores en los controles. La parte del golpe,
+probada con las corridas cortas: da lo calculado a mano desde las columnas.
+
+**Controles, hechos.**
+- **Las 10 corridas terminaron con `MEDICION inconsistencias=0`** (las 10 líneas contadas), con 9.000 filas de agentes
+  cada una; ahí suman los dos controles nuevos (el sensor 11 y la decisión lejos), en cada tick medido. Los logs dicen
+  `CURRICULO_HASTA_GENERACION=150` (5) y `=30` (5), y los pesos y `CROSSOVER_RATE=0.2` (10 de 10).
+- **Son las corridas publicadas:** cada `corrida_*.csv` da el SHA-256 publicado, y `agentes_*.csv` sin las columnas
+  nuevas, también (10 de 10).
+- **En las gens 1-30,** las columnas nuevas de la etapa 1 son iguales en las dos corridas de cada semilla (5 de 5), las de
+  la etapa 0 dan 0, y ninguna fila sin ticks medidos tiene valor.
+
+<details><summary>SHA-256 de los agentes_*.csv con las columnas nuevas (los corrida_*.csv son los publicados; se regeneran con medir_puerta.py ... sens-golpe desde el commit de esta sesión)</summary>
+
+| Semilla | La larga (`curriculo=150 sens-golpe`) | Sin la llave (`curriculo=30 sens-etapa0 sens-golpe`) |
+|---|---|---|
+| 1 | `9e68f458dd335d46a98887c809a572035db7b9058b33aec12d17a61a36b1c53a` | `dbd97117383c3c9824aabd9ea2e87def6ae10a1b16f1fe63f85e1f48715ee36d` |
+| 2 | `826403925db3370a0bdd6f93f580632a0a8aa4659779bd9c569b22cdd76b3c7a` | `6c02842686ae5bd307713e6dfd53be7584c2c0128429b5cb104883ca18664211` |
+| 3 | `95252db2358cbb002364fbf1bc0b8e59625f71b4d2cb58f4b00df09a517ed95e` | `283161530bb29ebf8d53bcc4e33dbb7b36d18eba81b227511548ed5f20f464e3` |
+| 4 | `153efd9d35d03fa769d8d383b0c42b53cb092856e9970e01bd4ab1de9621afb6` | `2229083c6b0a8f93e4cf0956a10d075224682f94ed767d90e201afffb656f6ad` |
+| 5 | `d2f91c1480c6aec31f53f4420b0afcfeaa6f3d9003e42fcc8b23be148a030f59` | `e606b46352e9ddc842b15d7db6cde66f6d086be0464e6ec56aab5278d84d0219` |
+
+</details>
+
+**El criterio** (gens 146-150, etapa 1; S y G en z, donde el umbral es 0,549; P pegado y P lejos, la parte de los ticks;
+filas medidas: 300 por semilla en la larga, 1.112 en total sin la llave):
+
+| Semilla | Larga: S · G · P pegado · P lejos | Sin la llave: S · G · P pegado · P lejos | ΔS · ΔG · ΔZ |
+|---|---|---|---|
+| 1 | +0,473 · +0,088 · 0,517 · 0,299 | −0,365 · −0,914 · 0,006 · 0,050 | +0,838 · +1,002 · +1,840 |
+| 2 | +0,615 · +0,327 · 0,599 · 0,413 | +0,526 · −1,455 · 0,072 · 0,011 | +0,090 · +1,782 · +1,872 |
+| 3 | −0,322 · +0,722 · 0,435 · 0,576 | −0,426 · −0,568 · 0,031 · 0,036 | +0,104 · +1,290 · +1,393 |
+| 4 | +2,306 · −0,416 · 0,828 · 0,208 | +0,259 · −2,943 · 0,028 · 0,001 | +2,046 · +2,528 · +4,574 |
+| 5 | +1,652 · −1,111 · 0,496 · 0,059 | +0,452 · −0,224 · 0,450 · 0,176 | +1,200 · −0,887 · +0,312 |
+| **Promedio** | **+0,945 · −0,078 · 0,575 · 0,311** | **+0,089 · −1,221 · 0,117 · 0,055** | **+0,855 · +1,143 · +1,998** |
+
+0. **La premisa: 5 de 5** (P pegado de la larga mayor que el de sin la llave; pide 4), 4,9 veces (0,575 contra 0,117;
+   pide el doble). **Cumple:** con el sensor 11 en pegado, la red reproduce la diferencia en la puerta.
+1. **El golpe condicionado pesa: ΔS > 0 en 5 de 5** (pide 4), y lleva el 43% de ΔZ (pide un tercio). **Cumple.**
+2. **El golpe en general pesa: ΔG > 0 en 4 de 5** (pide 4; la semilla 5, al revés), y lleva el 57%. **Cumple.**
+
+**Veredicto: son las dos.** Pegada a la puerta, la red de la larga está 2,0 más arriba en z que la de sin la llave
+(+0,867 contra −1,132): 0,86 porque condiciona más el golpe a la distancia al paso, y 1,14 porque golpea más en general.
+
+**Por semilla no es parejo.** En la 2 y la 3 es casi todo el golpe en general: ΔS es 0,09 y 0,10, porque las dos
+corridas condicionan lo mismo (la 2, con S ~+0,5 desde antes del corte; la 3, al revés, con S negativo en las dos). En la
+1 y la 4 son las dos cosas. En la 5 es el condicionado: sin la llave, la semilla 5 golpea más en general que su larga.
+ΔS es positivo en las 5, pero chico en dos; ΔG, donde está, es grande (de +1,0 a +2,5).
+
+**Por ventana** (promedio de las 5 semillas: S · G · P pegado · P lejos; y, de "En la puerta", de los que llegan, la parte
+que golpea ahí):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Larga | −0,045 · −0,075 · 0,301 · 0,305 | +0,093 · −0,096 · 0,346 · 0,310 | +0,202 · −0,118 · 0,347 · 0,227 | +0,168 · −0,464 · 0,269 · 0,183 | +0,352 · −0,294 · 0,337 · 0,251 | +0,945 · −0,078 · 0,575 · 0,311 |
+| Sin la llave | −0,045 · −0,075 · 0,301 · 0,305 | +0,073 · −0,183 · 0,351 · 0,323 | +0,123 · −0,690 · 0,281 · 0,223 | +0,082 · −0,894 · 0,159 · 0,141 | +0,224 · −1,285 · 0,131 · 0,063 | +0,089 · −1,221 · 0,117 · 0,055 |
+| Golpean, larga | 41% | 47% | 59% | 51% | 73% | 82% |
+| Golpean, sin la llave | 41% | 30% | 30% | 18% | 20% | 23% |
+
+- **El control:** en las 26-30, las dos dan lo mismo (las mismas redes con las mismas percepciones).
+- **La larga aprende a condicionar el golpe, y tarde:** S sube de −0,05 a +0,95, casi todo en la última ventana (+0,35 en
+  las 116-120), con las semillas 4, 5 y 1. G queda donde estaba (−0,08 al principio y al final; baja hasta −0,46 en las
+  86-90 y vuelve).
+- **Sin la llave, el golpe en general cae desde el corte:** G pasa de −0,08 a −0,69 en las 56-60, mientras llegaban a la
+  puerta de 1 a 4 por generación, y a −1,22 al final; P lejos, del 31% al 6%. S apenas sube (+0,09).
+- **La gen 1, redes al azar** (la población inicial, la misma en las dos): S +0,058 · G −0,031 · P pegado 0,370 · P lejos
+  0,366; S, de −0,12 a +0,13 por semilla. Sin la llave, S al final es del tamaño del azar; en la larga, muy por encima.
+
+**La etapa 0, sin la llave** (sin criterio; S · G · P pegado · P lejos; hacia la llave, los 60 de cada generación; hacia
+la puerta, los que tienen la llave):
+
+| Gens | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|
+| Etapa 0, hacia la llave | +0,059 · −0,114 · 0,322 · 0,278 | +0,119 · −0,385 · 0,328 · 0,289 | +0,129 · −0,522 · 0,265 · 0,228 | +0,284 · −0,977 · 0,225 · 0,121 | +0,188 · −0,864 · 0,159 · 0,088 |
+| Etapa 1, hacia la puerta | +0,073 · −0,183 · 0,351 · 0,323 | +0,123 · −0,690 · 0,281 · 0,223 | +0,082 · −0,894 · 0,159 · 0,141 | +0,224 · −1,285 · 0,131 · 0,063 | +0,089 · −1,221 · 0,117 · 0,055 |
+
+- **La red no golpea más hacia la puerta que hacia la llave:** el golpe en general baja en las dos etapas a la vez, y en
+  la etapa 1, más. Por semilla, en las 146-150, G es casi el mismo en las dos etapas en la 2, la 3 y la 5 (−1,39 y −1,46;
+  −0,56 y −0,57; −0,19 y −0,22) y más bajo en la etapa 1 en la 1 y la 4 (−0,53 y −0,91; −1,65 y −2,94).
+- Eso es lo que pide el mecanismo de (b): lo que se baja donde golpear no paga (la etapa 0) baja también donde paga.
+  Que la causa sea el costo en la etapa 0 no está medido (habría que cambiar el costo), y que la etapa 1 quede más abajo
+  que la 0, el mecanismo solo no lo explica (además, la etapa 1 es la de los que encontraron la llave).
+- **S hacia la llave es chico (+0,19), como hacia la puerta:** tampoco ahí el golpe depende mucho de la distancia.
+
+**El golpe condicionado en decisiones** (P pegado − P lejos, gens 146-150): la larga, +0,264 (de −0,141 a +0,619 por
+semilla; la 3, al revés); sin la llave, +0,063 (de −0,044 a +0,274; la 5, la más alta). La larga golpearía en el 58% de
+los ticks si estuviera pegada a la puerta, y en el 31% lejos: condiciona, pero golpea mucho también lejos.
+
+**Con "En la puerta"** (la medida independiente, ya publicada): P pegado ordena las semillas parecido a lo que hacen los
+que llegan (Spearman 0,8 en la larga, 0,7 sin la llave). En la larga, la 4 tiene el P pegado más alto (0,83) y es la que
+más golpea (96%); la 3 y la 5, los más bajos (0,44 y 0,50) y las que menos (68% y 67%). Sin la llave, la 5 es la única
+con P pegado alto (0,45, como la larga), la que golpea (64%) y la que abre (9,8 por generación); también es la de golpe
+en general más alto (G −0,22). La 4 golpea el 35% con P pegado 0,03: ahí no coincide.
+
+**Lectura.**
+1. **Son las dos explicaciones, y la del golpe en general pesa algo más.** Pegada a la puerta, la red de la larga está
+   2,0 más arriba en z que la de sin la llave, en las 5 semillas (y golpearía en 4,9 veces más ticks): 1,14 (el 57%)
+   porque golpea más en todos lados y 0,86 (el 43%) porque condiciona el golpe a la distancia al paso. Por semilla, la 2
+   y la 3 son casi todo golpe en general; la 1 y la 4, las dos cosas; la 5, el condicionado.
+2. **Sin la llave, el golpe en general cae desde el corte** (G de −0,08 a −1,22; golpearía lejos en el 6% de los ticks,
+   contra el 31% de la larga), en las generaciones en que pocos llegaban a la puerta. En la larga no cae. Es lo que se
+   esperaba del costo: golpear cuesta siempre y paga solo en la puerta, y sin la llave la puerta llega tarde y a pocos.
+3. **La larga aprende a golpear cerca del paso, y tarde:** S sube de −0,05 a +0,95, sobre todo en las últimas 30
+   generaciones, cuando llegan de 20 a 26 por generación. Sin la llave no lo aprende (+0,09, del tamaño del azar). La
+   señal aparece donde muchos llegan a la puerta; la selección del golpe no se midió.
+4. **La red no separa las etapas para golpear:** sin la llave, el golpe en general baja junto en la etapa 0 y en la 1 (en
+   la 1, más). Lo que se baja donde golpear no paga, baja también donde paga.
+5. **La semilla 5 sin la llave lo muestra al revés:** es la única que conservó el golpe en general (G −0,22, más arriba
+   que su larga), y la única que golpea en la puerta y la abre como la larga.
+
+**Qué sugiere** (lo decide Fer):
+- **El costo de golpear, con una sola cosa cambiada** (LEC-019): sin la llave con `HIT_ENERGY_COST` en 0
+  (`pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, el argumento que ya existe:
+  sin código), contra sin la llave, que ya está corrida. Si el golpe en general no cae y la puerta sube, la parte (b) es
+  el costo. Es un diagnóstico, no un arreglo: sin costo, golpear en todos lados es gratis. 5 corridas, ~1 h 30 min. Va a
+  [mejoras futuras](../product/mejoras_futuras.md#aparecido-al-medir-el-golpe--2026-11-21): cambiar golpear quedó fuera
+  de esta medición.
+- **La parte (a):** la larga aprende a condicionar el golpe en ~120 generaciones, con muchos llegando a la puerta. Sin la
+  llave, al final llegan casi tantos (18,4 contra 20,8 por generación) y G dejó de caer (−1,29 y −1,22 en las dos últimas
+  ventanas): las 300 generaciones (su ítem ya está) dirían si S sube como en la larga. Con `sens-golpe`, se leen S y G por
+  ventana.
