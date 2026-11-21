@@ -16,7 +16,7 @@ correr: había que llenar las filas con una evaluación y con cinco con la misma
 episodio la proyección daba +0,14. Medido: +0,145.
 
 **Regla.** Una proyección de lo que hace un cambio cambia solo lo que el cambio toca; la variable con que se lo mide
-queda con la misma cuenta que en la comparación. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código,
+queda con la misma cuenta que en la comparación. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir,
 junto a la de LEC-016.
 
 ## LEC-020 — 2026-11-16 — Un test de una propiedad del mundo puede pasar de suerte
@@ -31,8 +31,8 @@ al switch.
 
 **Regla.** Un test de una propiedad del mundo (que algo se alcanza, que nada se pisa) se corre también
 contra el código de antes del cambio. Lo que falla allá es de antes: se registra como bug y el test lo deja
-afuera con su ID, así prueba solo lo que depende del cambio. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) §
-Convenciones de código.
+afuera con su ID, así prueba solo lo que depende del cambio. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) §
+Medir.
 
 ## LEC-019 — 2026-11-16 — Un experimento que cambia dos cosas contra su comparación no dice cuál pesó
 
@@ -47,7 +47,7 @@ el fitness.
 
 **Regla.** Un experimento que cambia más de una cosa respecto de la corrida con que se compara lleva,
 desde el diseño, el control que cambia una sola. Si el efecto aparece solo donde difieren las dos, sin
-ese control no se atribuye. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código.
+ese control no se atribuye. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
 
 ## LEC-018 — 2026-11-16 — Un criterio "más que la línea base en K de N" pasa con márgenes de ruido
 
@@ -62,7 +62,7 @@ una medida independiente y un control antes de leer el resultado.
 **Regla.** Un criterio fijado antes de medir lleva, además del K de N, un tamaño mínimo del efecto, y
 se lee junto con una condición de control o una medida independiente. Si pasa en el mínimo y lo demás no
 lo acompaña, se informa que pasó y por qué no se lee como aprendizaje. Aplicada en
-[`CLAUDE.md`](../../CLAUDE.md) § Convenciones de código.
+[`OPERACIONES.md`](OPERACIONES.md) § Medir.
 
 ## LEC-017 — 2026-11-16 — Una tanda en segundo plano termina con 0 aunque se caiga una corrida
 
@@ -75,7 +75,7 @@ byte a byte de esa corrida no encontró su CSV. Corrida sola, salió bien. Con 1
 
 **Regla.** De una tanda en paralelo se cuentan las salidas (una línea final por corrida, un CSV por
 corrida), no el código de salida de la tanda. En esta máquina, no más de 10 corridas a la vez. Aplicada
-en [`CLAUDE.md`](../../CLAUDE.md) § Notas, junto al tiempo de una corrida sin ventana, y en el ítem de
+en [`OPERACIONES.md`](OPERACIONES.md) § Correr, junto al tiempo de una corrida sin ventana, y en el ítem de
 [mejoras futuras](../product/mejoras_futuras.md) sobre las corridas del humo que se caen.
 
 ## LEC-016 — 2026-11-15 — Una celda que obviamente vale 0 se cuenta igual
@@ -89,8 +89,8 @@ ella, y el texto del experimento A, en el mismo archivo, ya lo contaba. Lo encon
 independiente del QA de cierre, que recalculó cada celda desde los CSV.
 
 **Regla.** En una tabla que compara experimentos, cada celda de una columna sale de la misma cuenta
-sobre los datos, también las filas donde el razonamiento dice que da 0. Aplicada en `CLAUDE.md`
-(§ Convenciones de código) y en la tabla corregida (PUZZLE-QA-16).
+sobre los datos, también las filas donde el razonamiento dice que da 0. Aplicada en `OPERACIONES.md`
+(§ Medir) y en la tabla corregida (PUZZLE-QA-16).
 
 ## LEC-015 — 2026-11-15 — Separar dos cosas que eran una deja textos que todavía las juntan
 
@@ -163,7 +163,7 @@ fallara.
 **Regla.** Lo que una sesión deja para que otra lo compare (CSV de control, salidas esperadas) no
 queda solo en el scratchpad: su SHA-256 va a la bitácora del spec, con el commit desde el que se
 regenera. La sesión siguiente corre lo mismo y compara hashes, sin depender del archivo. Aplicada en
-[`CLAUDE.md`](../../CLAUDE.md) § Notas.
+[`OPERACIONES.md`](OPERACIONES.md) § Medir.
 
 ## LEC-010 — 2026-11-15 — Un número de los docs que coincide con `config.py` no está verificado si nadie lee ese parámetro
 
@@ -180,8 +180,8 @@ dos errores los encontraron checkers nuevos.
 **Regla.** Un número de la documentación se compara con lo que usa el programa. Si sale de
 `config.py`, primero se confirma que el código lee ese parámetro: el nombre en `main.py`, `src/` y en
 los métodos de `config.py`, siguiendo quién llama a esos métodos. Un valor de `config.py` que nadie
-lee no verifica nada. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas, que además lista los
-parámetros que no mandan.
+lee no verifica nada. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas; los parámetros que
+no mandan, en [mejoras futuras](../product/mejoras_futuras.md).
 
 ## LEC-009 — 2026-11-15 — `git show HEAD:archivo` da el archivo en LF aunque en disco sea CRLF
 
@@ -195,7 +195,7 @@ puro, igual que antes de editarlo.
 
 **Regla.** Para comparar un archivo en disco con su versión de HEAD, se sacan los CR de los dos
 lados antes de comparar líneas; el final de línea esperado se toma de la lista de archivos CRLF del
-spec o de `CLAUDE.md`, no del blob de Git. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas,
+spec o de `CLAUDE.md`, no del blob de Git. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Editar archivos,
 junto a la de LEC-003.
 
 ## LEC-008 — 2026-11-15 — Lo que se agarra por contacto no puede estar donde arranca un agente
@@ -227,7 +227,7 @@ a quitar. Pasa lo mismo con una línea de código que termina en espacios.
 devuelve la línea original en todo lo que no cambió (con `difflib.SequenceMatcher` entre las líneas
 recortadas y las nuevas); una línea en blanco nueva toma la sangría de la que le sigue. Así el diff
 muestra solo lo que se quiso cambiar y no toca los blancos (LEC-002). Aplicada en
-[`CLAUDE.md`](../../CLAUDE.md) § Notas.
+[`OPERACIONES.md`](OPERACIONES.md) § Editar archivos.
 
 ## LEC-006 — 2026-11-14 — Lo que cita un checker de QA se verifica antes de copiarlo
 
@@ -276,8 +276,8 @@ sorteos que usaban el alto agrandado, que era lo que el control quería saber: 0
 **Regla.** Un control que depende de una acción manual verifica en el log que la acción pasó (cada
 tecla de `main.py` deja su `print`) antes de leer el resultado. Si no pasó, o si se quiere
 repetible, el evento se inyecta envolviendo `pygame.event.get`. Y cuando un resultado igual puede
-deberse a que el código no corrió, se mide si corrió. Aplicada en [`CLAUDE.md`](../../CLAUDE.md)
-§ Notas.
+deberse a que el código no corrió, se mide si corrió. Aplicada en [`OPERACIONES.md`](OPERACIONES.md)
+§ Correr.
 
 ## LEC-003 — 2026-11-14 — En Git Bash, `grep` no ve los CR de un archivo CRLF
 
@@ -289,7 +289,8 @@ decía CRLF. El `grep` de Git Bash quita el CR del final de cada línea antes de
 
 **Regla.** Para controlar finales de línea, contar bytes (en Python,
 `open(ruta, "rb").read().count(b"\r\n")`) o usar `grep -U`. Un 0 de `grep` sin `-U` no quiere decir
-que el archivo sea LF. Aplicada en [`CLAUDE.md`](../../CLAUDE.md) § Notas, junto a la de LEC-002.
+que el archivo sea LF. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Editar archivos, junto a la
+de LEC-002.
 
 ## LEC-002 — 2026-11-14 — El Edit vacía las líneas en blanco que tienen espacios
 

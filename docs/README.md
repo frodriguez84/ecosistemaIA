@@ -31,7 +31,7 @@ docs/
 │   └── done/
 ├── archive/                  ← [se crea al cerrar el 1er spec] SPECS_ARCHIVO.md (resumen)
 ├── qa/                       ← AnalisisQA.md (empieza con el diagnóstico inicial)
-├── operations/               ← LECCIONES_APRENDIDAS.md · [OPERACIONES.md se crea cuando haga falta]
+├── operations/               ← OPERACIONES.md (correr, medir, editar archivos) · LECCIONES_APRENDIDAS.md
 ├── reference/                ← [se crea cuando haga falta] cómo funciona el producto (estable)
 └── security/                 ← [se crea cuando haga falta] auditorías, hardening
 ```

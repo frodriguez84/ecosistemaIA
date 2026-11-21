@@ -1,11 +1,11 @@
 ---
 name: close-spec
-description: Orquesta el checklist de cierre de spec de CLAUDE.md (gate+QA vía /qa-spec → SPECS_ARCHIVO → Estado → git mv → README → BACKLOG → stub → lecciones). Pre-flight idempotente; HALT si QA no está APROBADO. Invocar como /close-spec docs/specs/active/FOO.md.
+description: Orquesta el checklist de cierre de spec de docs/specs/README.md (gate+QA vía /qa-spec → SPECS_ARCHIVO → Estado → git mv → README → BACKLOG → stub → lecciones). Pre-flight idempotente; HALT si QA no está APROBADO. Invocar como /close-spec docs/specs/active/FOO.md.
 ---
 
-# /close-spec — cierre de un spec (checklist de CLAUDE.md)
+# /close-spec — cierre de un spec (checklist de docs/specs/README.md)
 
-Ejecutás el checklist obligatorio de `CLAUDE.md` § "Ciclo de vida de specs" para un spec
+Ejecutás el checklist obligatorio de `docs/specs/README.md` § "Ciclo de vida de specs" para un spec
 implementado. Sos el orquestador: hacés lo mecánico, redactás borradores para lo de
 contenido, y **frenás** si el QA no aprueba.
 
@@ -36,11 +36,11 @@ ofrecé completar solo los pasos faltantes (no rehagas los ya hechos).
 Decidí total vs parcial (fases) leyendo el spec. Mostrá el plan (qué pasos vas a tocar)
 antes de modificar archivos.
 
-## Pasos (mapea al checklist de CLAUDE.md)
+## Pasos (mapea al checklist de docs/specs/README.md)
 
 ### 1+2. QA + gate técnico — UNA sola corrida de /qa-spec
 Corré `/qa-spec <ruta spec>` (`.claude/skills/qa-spec/SKILL.md`) **una vez**. Eso cubre el
-gate técnico (typecheck + tests + build) **y** la QA con IDs — pasos 1 y 2 de CLAUDE.md
+gate técnico (typecheck + tests + build) **y** la QA con IDs — pasos 1 y 2 de docs/specs/README.md
 juntos. **No corras el gate por separado acá** (evita el doble build, que es lento).
 - **HALT** según veredicto:
   - **BLOQUEADO** (gate rojo o FAIL normativo) → no se cierra (SDD: QA bloqueado = no PR).

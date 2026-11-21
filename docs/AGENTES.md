@@ -2,7 +2,7 @@
 
 **Fuente de verdad del formato de spec y de las convenciones de autoría.** El `CLAUDE.md`
 global (genérico a todos los proyectos) referencia este archivo. El *ciclo de vida* (cómo se
-**cierra** un spec) vive en [`../CLAUDE.md`](../CLAUDE.md) § "Ciclo de vida de specs"; acá va
+**cierra** un spec) vive en [`specs/README.md`](specs/README.md) § "Ciclo de vida de specs"; acá va
 el **formato** y la autoría. El scaffold lo automatiza [`/new-spec`](../.claude/skills/new-spec/SKILL.md).
 
 ## Dónde vive un spec
@@ -76,6 +76,8 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
 - Las sesiones de un mismo spec van **en secuencia**, nunca en paralelo.
 - Una memoria de proyecto apunta al spec en ejecución; se borra al cerrarlo.
 - Un trabajo de una sola sesión no lleva bitácora.
+- **No hay producción.** En la bitácora de un spec, "Para verificar en producción" es N/A: lo que
+  se verifica es una corrida.
 
 ## Plantilla mínima (la usa `/new-spec`)
 ```
@@ -119,5 +121,5 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
   reiniciar numeración existente.
 
 ## Cierre
-Checklist de cierre (9 pasos) en [`../CLAUDE.md`](../CLAUDE.md) § "Ciclo de vida de specs".
+Checklist de cierre (9 pasos) en [`specs/README.md`](specs/README.md) § "Ciclo de vida de specs".
 Lo orquesta [`/close-spec`](../.claude/skills/close-spec/SKILL.md).

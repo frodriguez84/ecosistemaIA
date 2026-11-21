@@ -3,8 +3,8 @@
 Contratos de implementación. **No mezclar** con referencia (`../reference/`), ops
 (`../operations/`) ni backlog (`../product/BACKLOG.md`).
 
-**Regla de trabajo al implementar o cerrar un spec:** checklist en [`CLAUDE.md`](../../CLAUDE.md)
-§ *Ciclo de vida de specs*. Formato del spec: [`../AGENTES.md`](../AGENTES.md).
+**Regla de trabajo al implementar o cerrar un spec:** abajo, § *Ciclo de vida de specs*. Formato del
+spec: [`../AGENTES.md`](../AGENTES.md).
 
 | Estado | Significado |
 |--------|-------------|
@@ -14,6 +14,53 @@ Contratos de implementación. **No mezclar** con referencia (`../reference/`), o
 
 Un spec nuevo nace en `planned/` (usar [`/new-spec`](../../.claude/skills/new-spec/SKILL.md)).
 Paths viejos tras un `git mv` llevan un stub con redirect.
+
+---
+
+## Ciclo de vida de specs (regla de trabajo)
+
+### Al empezar a implementar
+1. Leer el spec. Si está en `planned/` y el trabajo toma más de una sesión, **moverlo a
+   `active/`** (`git mv`) y actualizar `docs/specs/README.md`.
+   - **Si toma más de una sesión, lleva `## Bitácora de ejecución`**: cada sesión arranca leyendo
+     la última entrada y cierra escribiendo la suya, con el prompt de la siguiente. Formato y
+     protocolo: `docs/AGENTES.md` § "Specs de varias sesiones".
+2. Implementar contra el DoD — no improvisar fuera de scope sin anotar en `BACKLOG.md`.
+3. Si el spec tiene fases, cerrar **fase por fase**; no mover a `done/` hasta que esté completo.
+
+### Al cerrar (checklist obligatorio — lo orquesta `/close-spec`)
+
+| # | Qué | Dónde |
+|---|-----|-------|
+| 1 | Código + verificación técnica | typecheck · tests · build |
+| 2 | QA con IDs trazables | `docs/qa/AnalisisQA.md` — sección nueva, IDs `FEATURE-NN`, ✅/❌. No condensar histórico |
+| 3 | Resumen condensado | `docs/archive/SPECS_ARCHIVO.md` — anchor `{#slug}`, rutas, archivos clave, link al spec y al QA |
+| 4 | Estado en el spec | Primera línea: `**Estado:** ✅ Implementado (YYYY-MM-DD)` o `Parcial — §X ✅; §Y pendiente` |
+| 5 | Mover el spec | 100% cerrado → `git mv active/FOO.md done/`. Parcial → queda en `active/` |
+| 6 | Manifiesto | `docs/specs/README.md` — mover fila a la tabla correcta |
+| 7 | Cola de trabajo | `docs/product/BACKLOG.md` — ítem ✅ con fecha |
+| 8 | Stub de redirect | Si moviste el archivo: stub de 5 líneas en la ruta vieja |
+| 9 | Lecciones (si aplica) | `docs/operations/LECCIONES_APRENDIDAS.md` |
+
+**El spec es el árbitro. QA bloqueado = no PR.**
+
+---
+
+## Loops con corte verificable (stop-conditions)
+
+Solo automatizar (`/loop`) loops cuyo criterio de "listo" sea **objetivo**. Lo subjetivo
+(autoría de spec, decisiones de producto/pricing) queda **manual**.
+
+| Loop | Corte verificable |
+|------|-------------------|
+| **Fix → re-verify** (tras gaps de QA) | typecheck + tests verdes **y** `/qa-spec` = APROBADO (PARCIAL en vivo NO cierra) |
+| **Coherencia memoria/docs** | `/consistency-check` = cero hallazgos ALTO |
+
+**NO automatizar:** autoría/diseño de specs; decisiones de producto; cualquier loop sin
+criterio objetivo.
+
+Skills que dan el criterio: `/qa-spec`, `/close-spec`, `/consistency-check`, `/check` y el
+hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 
 ---
 

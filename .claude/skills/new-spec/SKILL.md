@@ -6,7 +6,7 @@ description: Scaffold de un spec nuevo en docs/specs/planned/ usando la plantill
 # /new-spec — scaffold de spec nuevo
 
 Creás el ESQUELETO de un spec en `docs/specs/planned/`. NO diseñás el contenido — la
-autoría/criterio es manual (ver `CLAUDE.md` § "Loops con corte verificable": autoría de spec
+autoría/criterio es manual (ver `docs/specs/README.md` § "Loops con corte verificable": autoría de spec
 no se automatiza).
 
 ## Input
