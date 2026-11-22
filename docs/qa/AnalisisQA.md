@@ -4152,3 +4152,204 @@ cofre en 2 (la 1 y la 4): es la primera vez que alguien abre el cofre sin nada d
   Lo decide Fer.
 - **La larga con costo 0** diría si el costo frena también con la llave dada (el corte lo sugiere, en 3 de 5). Para el
   spec no hace falta: su referencia es sin la llave.
+
+---
+
+<a id="comer"></a>
+## Comer, en la referencia: ¿giran hacia la comida o comen porque caminan? (2026-11-22)
+
+**La pregunta** (el paso 1 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), SOLOS-01, con su
+decisión 6): en la referencia, ¿comer está aprendido? El 16/11, en otra condición (30 generaciones, con la llave dada),
+comían más porque caminaban más, y la red no giraba hacia la comida (+0,003 rad/tick;
+[brújula, deslizando](#brujula-c-deslizando)). La decisión 6 pide dos cosas: más manzanas por 1.000 px caminados que la
+línea base, y la sensibilidad de la red a la comida por arriba de la de la línea base. Sin corridas: sobre los CSV
+publicados de la referencia.
+
+**Los datos.** La referencia de la decisión 3 y su línea base, en `results/medicion_sin_llave_20261120/` (las corridas de
+[sin la llave dada](#sin-la-llave-dada), con sus comandos). Antes de usarlos, los 20 `corrida_*.csv` y `agentes_*.csv`
+dan el SHA-256 publicado (20 de 20) y los 10 logs terminan con `MEDICION inconsistencias=0`. La larga
+(`results/medicion_corridas_largas_20261120/`), sin criterio y con la misma cuenta, después de controlar su SHA-256
+publicado en [corridas largas](#corridas-largas).
+
+**Las medidas** (las dos de la decisión 6, con la cuenta de la llave y la de la brújula; LEC-016):
+- **Manzanas por 1.000 px:** por semilla, el promedio de `manzanas_prom` en la ventana dividido por el de
+  `distancia_prom`, × 1.000 (la cuenta de la llave por 1.000 px, la de `experimento.py`). Separa comer de caminar.
+- **La sensibilidad a la comida antes de abrir la puerta:** por fila de agente, (`sens_comida` + `sens_comida0`) /
+  (`sens_ticks` + `sens_ticks0`), promedio de las filas de la ventana. Es la cuenta de la brújula con el sensor 3 (la
+  dirección a la manzana más cercana) en lugar del 9: cuánto cambia el giro si marca la manzana a +90° contra −90°, con el
+  resto de la percepción como la vio el agente. Un seguidor perfecto da +0,143. Se mide solo en las etapas 0 y 1: desde la
+  31, los 60 desde que nacen hasta que abren la puerta (en las 146-150 la abre el 4%); después, no.
+
+**Criterio, fijado antes de calcular** (ventana: gens 146-150; por semilla, contra la línea base de la misma semilla;
+decisiones 5 y 6):
+1. **Más manzanas por 1.000 px:** en 4 de 5 semillas, más que la línea base. **Tamaño mínimo:** el promedio de las 5, al
+   menos el doble que el de la línea base (el de la llave roja en la misma referencia).
+2. **Giran hacia la comida:** en 4 de 5 semillas, la sensibilidad a la comida es ≥ 0,02 rad/tick y mayor que la de la
+   línea base. **Tamaño mínimo:** el 0,02 por semilla, el umbral de la brújula (el 14% de un seguidor perfecto).
+- **Comer está aprendido si cumple los dos** (decisión 6).
+
+**Lo que ya se sabe antes de calcular, y por qué la 1 puede no medir lo que busca.** Hay 70 manzanas por generación y no
+se reponen: solo un árbol cortado suma 20 y una casita 30, y los dos piden el hacha. De lo publicado: con evolución comen
+0,987 por agente, 59 de las 70 (84%); la línea base, 0,382, 23 (33%). Y de la llave por 1.000 px se deduce la distancia:
+~1.275 px por agente contra ~322 en la línea base, 4 veces, cuando las manzanas son 2,6 veces. **La 1 probablemente no
+cumpla, y si no cumple no distingue "no giran hacia la comida" de "no queda comida":** la manzana que come uno no está
+para el que pasa después, y el que camina más pasa por donde ya comieron. En esta condición, la 1 está sesgada en contra
+de la evolución. Lo que no depende de cuánta comida queda es la 2 (una cuenta sobre la red, con la percepción de cada
+tick) y lo que pasa dentro de cada generación (los 60 en el mismo mapa). El criterio queda como lo pide la decisión 6; si
+la 1 no cumple por esto, cambiar la medida lo decide Fer.
+
+**La salida de comer.** Comer pide además la salida `eat` > 0,5 a menos de 20 px de la manzana: una red al azar que no la
+prende no come aunque pase encima. Las manzanas por 1.000 px pueden subir solo por prenderla, sin girar; por eso la
+decisión 6 pide también la 2. `eat` no está en los CSV.
+
+**Se lee con:**
+- **el control positivo de la 2:** la sensibilidad a la brújula en las mismas filas (+0,1105; la línea base, −0,0006): la
+  misma cuenta ve un giro aprendido en estos datos;
+- **la comida que queda:** las manzanas comidas de las disponibles, por generación: `manzanas_prom` × 60 / (70 + 20 ×
+  `arboles_cortados`) (las casitas no están en el CSV);
+- **dentro de cada generación,** con el mismo mapa y la misma comida para los 60: el Spearman entre la sensibilidad a la
+  comida y las manzanas de cada agente (de `f_comida` = 10 × √manzanas), y entre la sensibilidad y el fitness (lo que ve
+  la selección); mediana por tramo (1-30, 31-60, 61-90, 91-120, 121-150), con evolución y en la línea base;
+- **las ventanas** 26-30, 31-35, 56-60, 86-90, 116-120 y 146-150: las dos medidas y la comida que queda;
+- **la larga**, sin criterio: las dos medidas y la comida que queda (con la llave dada no hay etapa 0, y la sensibilidad
+  es la de la etapa 1: la misma cuenta).
+- **Se informan, sin criterio:** las manzanas por agente, la distancia, la edad y el término de la comida.
+
+**El script** (`mediciones/analizar_comida.py`, con las funciones de `analizar_largas.py` y `analizar_sin_llave.py`),
+probado contra números publicados antes de leer nada nuevo: las manzanas, 0,987 y 0,382; la brújula, +0,1105 y −0,0006;
+la llave por 1.000 px, 34,9 y 3,6; y la larga, 1,099 manzanas y +0,0868 de brújula. Control: las manzanas de cada agente
+(de `f_comida`) suman `manzanas_prom` × 60 en cada generación.
+
+**Cómo se calculó.** `python mediciones/analizar_comida.py results/medicion_sin_llave_20261120
+results/medicion_corridas_largas_20261120 results/medicion_costo_golpe_20261121`, sin corridas. Probado antes de leer nada
+nuevo, con `prueba` al final (imprime solo lo publicado y los controles): da las manzanas, 0,987 y 0,382; la brújula,
++0,1105 y −0,0006; la llave por 1.000 px, 34,9 y 3,6; y la larga, 1,099 y +0,0868, también por semilla. **Después de leer
+el criterio** se sumaron, sin criterio, dos condiciones: la línea base larga, para leer la larga contra la suya, y la
+referencia sin costo de golpear (la candidata a referencia nueva, [el costo](#costo-golpe)). Con ellas, la prueba da
+también lo publicado (0,379 y +0,0003; 0,993 y +0,108), y sus CSV, el SHA-256 publicado (los 20 de la larga y su línea
+base, y los 10 de sin costo).
+
+**Controles, hechos** (0 errores): los 20 CSV de la referencia y los 10 de sin costo, con su SHA-256 publicado, archivo
+por archivo; 60 filas de agentes en cada una de las 150 generaciones, en las cinco condiciones; las manzanas de cada
+agente, de `f_comida`, son enteras y suman `manzanas_prom` × 60 en cada generación; `etapa_inicial` es 1 en las gens 1-30
+y 0 en las 31-150 (en la larga y su línea base, 1 en todas); desde la 31, todas las filas tienen ticks en la etapa 0; y
+ninguna fila de la ventana queda sin medir.
+
+**El criterio** (gens 146-150; manzanas por 1.000 px, con las manzanas por agente / la distancia en px · sensibilidad a la
+comida en rad/tick; en negrita, donde cumple):
+
+| Semilla | Referencia | Línea base |
+|---|---|---|
+| 1 | 0,800 (0,857 / 1.071) · **+0,0215** | 1,150 (0,383 / 333) · +0,0020 |
+| 2 | 0,785 (0,967 / 1.232) · **+0,0281** | 1,430 (0,467 / 326) · +0,0005 |
+| 3 | 0,754 (1,000 / 1.326) · +0,0182 | 1,026 (0,313 / 305) · +0,0008 |
+| 4 | 0,649 (1,123 / 1.731) · **+0,0313** | 1,169 (0,373 / 319) · +0,0006 |
+| 5 | 0,855 (0,987 / 1.154) · −0,0299 | 1,097 (0,373 / 340) · −0,0024 |
+| **Promedio** | **0,768 (0,987 / 1.303) · +0,0138** | 1,175 (0,382 / 325) · +0,0003 |
+
+1. **Más manzanas por 1.000 px: 0 de 5** (pide 4), 0,65 veces la línea base (pide el doble). **No cumple.**
+2. **Giran hacia la comida: 3 de 5** (≥ 0,02 y mayor que la línea base; pide 4): la 3 queda en +0,018 y la 5 gira al
+   revés (−0,030). Promedio +0,0138. **No cumple.**
+
+**Comer no está aprendido en la referencia: no cumple ninguna de las dos.**
+
+**La 1 no ve el giro hacia la comida con la comida que queda** (la larga contra su línea base, sin criterio y con la
+misma cuenta; manzanas por 1.000 px · sensibilidad a la comida):
+
+| Semilla | Larga (la llave, dada) | Línea base larga |
+|---|---|---|
+| 1 | 0,799 · +0,0604 | 1,125 · +0,0037 |
+| 2 | 1,169 · +0,0610 | 1,169 · +0,0013 |
+| 3 | 1,186 · +0,0306 | 1,195 · −0,0002 |
+| 4 | 0,880 · +0,0264 | 1,112 · +0,0008 |
+| 5 | 0,771 · +0,0519 | 1,074 · −0,0010 |
+| **Promedio** | **0,961 · +0,0461** | 1,135 · +0,0009 |
+
+La larga gira hacia la comida en las 5 semillas (por la medida 2, cumpliría contra su línea base: 5 de 5), un tercio de lo
+que gira un seguidor perfecto, y aun así come menos por 1.000 px que su línea base en las 5 (la 2, 1,1686 contra 1,1691). Con
+evolución se comen casi todas las manzanas de la generación (abajo): caminar más es pasar por donde ya no queda nada. Es
+lo anticipado antes de calcular: en este mundo, la 1 no separa "no giran" de "no queda comida".
+
+**La comida que queda** (gens 146-150; manzanas comidas de las disponibles, por generación): la referencia, el 84% (del
+73% al 96% por semilla); su línea base, el 33%; la larga, el 90%; su línea base, el 32%; sin costo, el 80%. Con evolución
+se cortaron de 0 a 3 árboles por semilla en la ventana; sin evolución, ninguno.
+
+**Dentro de cada generación** (el mismo mapa y la misma comida para los 60; Spearman con la sensibilidad a la comida,
+mediana de las generaciones del tramo de las 5 semillas y, entre paréntesis, la parte con r > 0):
+
+| Gens | 1-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|
+| Referencia, con las manzanas | +0,117 (78%) | +0,127 (79%) | +0,074 (74%) | +0,109 (73%) | +0,102 (71%) |
+| Referencia, con el fitness | +0,141 (80%) | **+0,180** (78%) | +0,024 (56%) | +0,047 (57%) | +0,040 (60%) |
+| Larga, con las manzanas | +0,117 (78%) | +0,056 (64%) | +0,115 (83%) | +0,134 (81%) | +0,087 (71%) |
+| Larga, con el fitness | +0,141 (80%) | +0,102 (71%) | +0,131 (74%) | +0,066 (67%) | +0,104 (65%) |
+| Línea base, con las manzanas | +0,037 (65%) | +0,029 (55%) | +0,008 (51%) | +0,042 (63%) | +0,041 (68%) |
+| Línea base, con el fitness | +0,014 (53%) | +0,010 (53%) | −0,014 (47%) | +0,002 (51%) | +0,012 (53%) |
+
+En las 1-30, la referencia y la larga dan lo mismo: son las mismas generaciones.
+- **Girar hacia la comida hace comer más, sin el agotamiento en el medio:** en la referencia, los que giran más hacia la
+  comida comen más que los de su generación en todos los tramos (+0,07 a +0,13; la línea base, +0,01 a +0,04).
+- **Pero desde la 60 la selección casi no lo ve:** con el fitness, +0,18 en las 31-60 y de +0,02 a +0,05 después. En la
+  larga lo sigue viendo (+0,07 a +0,13).
+
+**Por ventana** (promedio de las 5 semillas: sensibilidad a la comida · manzanas por 1.000 px · comida comida de la
+disponible):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Referencia | +0,026 · 0,86 · 91% | +0,030 · 0,85 · 95% | **+0,047** · 0,80 · 91% | +0,038 · 0,70 · 88% | +0,022 · 0,75 · 84% | +0,014 · 0,77 · 84% |
+| Larga | +0,026 · 0,86 · 91% | +0,026 · 0,83 · 92% | +0,037 · 0,84 · 93% | +0,036 · 0,86 · 91% | +0,032 · 0,91 · 88% | +0,046 · 0,96 · 90% |
+| Línea base | +0,001 · 0,96 · 27% | +0,001 · 1,09 · 31% | +0,002 · 1,08 · 29% | −0,001 · 1,01 · 29% | +0,001 · 1,04 · 27% | 0,000 · 1,18 · 33% |
+
+- **En la referencia, el giro hacia la comida sube hasta la 60 y después se pierde:** de +0,047 en las 56-60 a +0,014 en
+  las 146-150, mientras la llave roja sube de 20,3 a 44,5 por generación ([sin la llave dada](#sin-la-llave-dada)). La
+  larga, en las mismas generaciones, sube hasta +0,046.
+- **Por semilla:** en las 56-60 pasan 0,02 cuatro (todas menos la 2); la 4 llega a +0,110 en las 86-90 y termina en
+  +0,031; la 5 va de +0,050 a −0,030, y la 3, de +0,051 a +0,018.
+- **Por etapa** (gens 146-150): +0,016 hacia la llave (etapa 0) y +0,012 con la llave (etapa 1), casi lo mismo.
+
+**Sin costo de golpear** (la candidata a referencia nueva, sin criterio, contra la línea base de la referencia, que es con
+costo): la sensibilidad a la comida da +0,035, con 3 de 5 semillas ≥ 0,02 y por arriba de la línea base (la 3, la 4 y la
+5; la 1 y la 2, +0,002 y +0,003); 0,72 manzanas por 1.000 px (0 de 5); se come el 80% de la comida. Con esa referencia,
+comer tampoco pasaría.
+
+**Se informan, sin criterio** (gens 146-150): el término de la comida, 7,06 (la línea base 2,30; la larga 7,59); la
+edad, 1.008 ticks (905; la larga 907).
+
+**Lectura.**
+1. **Comer no está aprendido en la referencia:** no cumple la 1 (0 de 5) ni la 2 (3 de 5).
+2. **La 1, las manzanas por 1.000 px, no sirve en este mundo:** hay 70 manzanas por generación, sin reponer, y con
+   evolución se come del 80% al 90%. La larga, que gira hacia la comida en las 5 semillas (+0,046), come menos por 1.000
+   px que su línea base en las 5. Lo anticipado antes de calcular.
+3. **La referencia aprendió a girar hacia la comida y lo está perdiendo:** +0,047 en las 56-60 (4 semillas arriba de
+   0,02), +0,014 al final (3). La larga, en cambio, sigue subiendo (+0,046, 5 de 5 contra su línea base). Lo del 16/11
+   ("no giran hacia la comida") era de 15 generaciones: en 150 y con la llave dada, giran.
+4. **Girar hacia la comida sigue pagando en manzanas, pero no en el fitness:** dentro de cada generación, los que giran
+   más comen más (+0,10 en las 121-150, como antes de la 60), pero desde la 60 la selección casi no lo ve (+0,02 a +0,05,
+   contra +0,18 en las 31-60; la larga, +0,07 a +0,13). Una explicación posible, sin medir: sin la llave dada, acercarse
+   pesa el doble en el fitness (48 de 67, contra 23 de 37 en la larga; [sin la llave dada](#sin-la-llave-dada)) y la
+   comida queda chica al lado: encontrar la llave paga más que comer.
+5. **Sin costo de golpear, lo mismo:** +0,035, 3 de 5.
+
+**Qué sugiere** (lo decide Fer):
+- **Cambiar la medida 1 de la decisión 6.** Las manzanas por 1.000 px no ven el giro con la comida agotada. Lo que no
+  depende de cuánta queda: la 2 (la sensibilidad a la comida) como criterio, y como medida independiente (LEC-018) lo de
+  adentro de cada generación, que los que giran más hacia la comida coman más que los de su generación (el Spearman con
+  las manzanas, por arriba del de la línea base). Las manzanas por 1.000 px quedarían informadas, sin criterio. Es un
+  cambio al spec.
+- **Para que comer se aprenda, la comida en el fitness.** Sin la llave dada, desde la 60 la selección deja de ver el giro
+  hacia la comida. Dos cambios sin código, de a uno y contra la referencia (la línea base es la misma: sin evolución, los
+  pesos del fitness no cambian lo que hacen): `FITNESS_FOOD` en 20 (el doble) o `FITNESS_ACERCARSE` en 20 (lo que pesa
+  en la larga), con `pesos=`. Recomiendo el primero: deja igual lo que paga la llave, que ya está aprendida (bajar
+  acercarse le saca la mitad). Los dos pueden costar la llave y la puerta, y se miden con las dos. ~1 h 30 min las 5
+  corridas.
+- **El orden con el paso 3:** la referencia está por cambiar (el costo de golpear, pendiente de Fer), y sin costo comer
+  tampoco pasa. Si Fer decide el costo primero, el cambio para comer se mide contra la referencia nueva.
+- **La comida que no se repone** ya está en el ítem 7 del [BACKLOG](../product/BACKLOG.md) ("Mapa más natural": manzanas
+  que vuelven a crecer). Con comida que rebrota, las manzanas por 1.000 px volverían a medir algo.
+
+**Decidido por Fer (2026-11-22):** la decisión 6 cambia como se sugiere (la sensibilidad a la comida y la medida de
+adentro de cada generación; las manzanas por 1.000 px, sin criterio; LEC-022). Con la decisión nueva, la referencia
+tampoco pasa: la sensibilidad, 3 de 5; el Spearman con las manzanas en las 121-150, +0,102 contra +0,041 de la línea
+base, sí. Lo que se prueba para comer es `FITNESS_FOOD` en 20, en la misma tanda que el costo de golpear en 0,01, cada uno
+contra la referencia ([el spec](../specs/active/PUZZLE_SOLOS.md)).

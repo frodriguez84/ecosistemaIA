@@ -41,6 +41,9 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018).
 - **Un experimento que cambia más de una cosa contra su comparación lleva el control que cambia una
   sola:** si el efecto aparece donde difieren las dos, sin ese control no se atribuye (LEC-019).
+- **Una medida "por px" o "por tick" de un recurso compartido y finito se sesga en contra de la
+  población que más lo consume:** con evolución se comen casi todas las manzanas. Se mide con algo que
+  no dependa de cuánto queda: la red, o dentro de la misma generación (LEC-022).
 - **El scratchpad es de una sola sesión.** Un CSV de referencia que otra sesión tiene que comparar
   deja su SHA-256 en la bitácora, con el commit desde el que se regenera (LEC-011).
 

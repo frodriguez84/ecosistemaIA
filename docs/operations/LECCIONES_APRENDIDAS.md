@@ -5,6 +5,20 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-022 — 2026-11-22 — Una medida "por px" de un recurso que se agota no compara poblaciones
+
+**Qué pasó.** La decisión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md) pedía, para comer,
+más manzanas por 1.000 px caminados que la línea base, para separar comer de caminar. Al fijar el criterio de
+[comer](../qa/AnalisisQA.md#comer), antes de calcular, se vio en lo publicado que hay 70 manzanas por generación, sin
+reponer, y que con evolución se comen el 84%: el que camina más pasa por donde ya comieron. Calculado: la larga, que gira
+hacia la comida en las 5 semillas (+0,046), come menos por 1.000 px que su línea base en las 5. La medida no podía pasar
+aunque aprendieran.
+
+**Regla.** Antes de fijar una medida normalizada (por px, por tick), mirar si lo que cuenta es un recurso compartido y
+finito: si una condición lo consume mucho más que la otra, la medida se sesga en contra de la que más consume. Se mide
+con algo que no dependa de cuánto queda: una cuenta sobre la red, o una comparación dentro de la misma generación (el
+mismo mapa). Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir y en la decisión 6 del spec.
+
 ## LEC-021 — 2026-11-16 — Una proyección que promedia más de lo que toca el cambio lo sobreestima
 
 **Qué pasó.** En el [ruido del fitness](../qa/AnalisisQA.md#ruido-fitness), la selección veía la brújula +0,15 con un
