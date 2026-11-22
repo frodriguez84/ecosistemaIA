@@ -1,6 +1,6 @@
 # Spec: Que aprendan el puzzle solos
 
-**Estado:** Parcial — pasos 2 a 4 (llave roja, puerta de madera, llave dorada) ✅ con la referencia sin costo de golpear y su línea base; paso 5 (puerta de hierro) no pasa: la cadena se corta ahí, y falta medir dónde se traba; paso 6 (cofre), detrás; paso 1 (comer), para después de la cadena. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22)
+**Estado:** Parcial — pasos 2 a 4 (llave roja, puerta de madera, llave dorada) ✅ con la referencia sin costo de golpear y su línea base; paso 5 (puerta de hierro) no pasa: la cadena se corta ahí, y se traba en llegar, porque la brújula apunta en línea recta a través de las paredes de la fortaleza chica; lo que sigue, decidido por Fer, es una brújula que siga el camino libre; paso 6 (cofre), detrás; paso 1 (comer), para después de la cadena. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22)
 **Prioridad:** Alta — es el rumbo del modo autónomo, pedido por Fer el 2026-11-21
 **Gate:** Ninguno
 **Bloquea:** el ítem 6 del [BACKLOG](../../product/BACKLOG.md) (mecánicas nuevas) y el hacha y los árboles: entran cuando el puzzle esté aprendido
@@ -54,8 +54,8 @@ Después de este spec (no en él): el hacha y los árboles, y las mecánicas nue
 | 2 | Llave roja | ✅ En la referencia (2026-11-20): 44,5 de 60 por generación, 5 de 5 semillas, 38 veces la línea base y 9,8 veces por 1.000 px. Con la referencia sin costo sigue pasando (2026-11-22, sin criterio): 42,5 contra 1,24 de su línea base, 5 de 5 | [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo) |
 | 3 | Puerta de madera | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 7,6 por generación contra 0,04, 5 de 5. **Lo aprendido es llegar con la llave y golpear siempre, no golpear en la puerta:** de los que tienen la llave llega el 29% (al azar, el 3%), y la red golpea casi el doble que al azar, pegada y lejos por igual (P lejos 0,61). Con ninguno de los costos medidos (0,05, 0,01 y 0) se condiciona el golpe. La medida independiente fijada no acompañó por un solo agente de la línea base (LEC-024): ✅ decidido por Fer | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [golpear en la puerta](../../qa/AnalisisQA.md#sens-golpe), [el costo](../../qa/AnalisisQA.md#costo-golpe), [el costo en 0,01](../../qa/AnalisisQA.md#costo-chico-comida20) |
 | 4 | Llave dorada | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 4,0 por generación contra 0, 5 de 5. Viene con la puerta: la agarra el 53% de los que la abren, en toda la corrida | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo) |
-| 5 | Puerta de hierro | 🔄 No pasa (2026-11-22): ninguna semilla llega a 1 por generación (0,16 en promedio; la línea base, 0). **La cadena se corta acá:** la abre el 1% de los que tienen la llave dorada (21 de 2.056 en las 31-150). Pide 3 golpes con 90 ticks entre golpe y golpe (la de madera, 2). Falta medir dónde se traba (decisión 7) | ídem |
-| 6 | Cofre | ⏳ No pasa (2026-11-22): 0,08 por generación, detrás de la puerta de hierro (7 agentes en las 31-150, en las semillas 1 y 4). Se vuelve a medir cuando pase el paso 5 | ídem |
+| 5 | Puerta de hierro | 🔄 No pasa (2026-11-22): ninguna semilla llega a 1 por generación (0,16 en promedio; la línea base, 0). **La cadena se corta acá:** la abre el 1% de los que tienen la llave dorada (21 de 2.056 en las 31-150). Pide 3 golpes con 90 ticks entre golpe y golpe (la de madera, 2). **Se traba en llegar** (2026-11-22): el 99% de los que tienen la llave dorada nunca está a 25 px, y los que llegan la abren (21 de 29). La brújula y la recompensa por acercarse apuntan en línea recta, y desde la llave dorada, adentro de la fortaleza chica, esa recta cruza paredes en los 600 mapas: el seguidor perfecto no llega en 588, y los agentes quedan donde queda él. Fer decidió probar una brújula que siga el camino libre, con un switch | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [dónde se traba](../../qa/AnalisisQA.md#medicion-puerta-hierro) |
+| 6 | Cofre | ⏳ No pasa (2026-11-22): 0,08 por generación, detrás de la puerta de hierro (7 agentes en las 31-150, en las semillas 1 y 4). Se vuelve a medir cuando pase el paso 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo) |
 | 7 | Todo junto | ⏳ Una corrida final con los 6 pasos | — |
 
 Un paso ✅ se vuelve a mirar en la corrida final: un cambio para un paso posterior puede romper uno anterior.
@@ -273,3 +273,96 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
     - en la ventana 146-150 hay ~100 agentes con la llave dorada; leer también las 31-150 (2.056);
     - un golpe frenado por el cooldown no es un golpe perdido: con 3 golpes, se cuentan los ticks entre golpes;
     - la puerta de hierro cambia de lugar con las fortalezas móviles: el centro se lee de `world.door_iron` en cada tick.
+
+### Sesión 5 — 2026-11-22 — Paso 5: dónde se traba la puerta de hierro
+- **Hecho:**
+  - el argumento `hierro` de `medir_puerta.py`. Mide en la etapa 3 lo que se mide en la 1, en 17 columnas `h_` de
+    `agentes_*.csv`, y suma a `geometria_*.csv` la puerta de hierro, con un seguidor de brújula perfecto desde la llave
+    dorada (8 columnas);
+  - lo probé antes de lanzar. Sin el argumento, los 12 CSV de las corridas cortas dan los SHA-256 de ca43455. Con él,
+    dan lo mismo sin las columnas nuevas, y la semilla 5 da el prefijo de N0;
+  - el criterio, escrito en AnalisisQA antes de lanzar
+    ([dónde se traba la puerta de hierro](../../qa/AnalisisQA.md#medicion-puerta-hierro));
+  - la tanda: la referencia otra vez con el argumento, 5 a la vez (1 h 22 min), en `results/medicion_hierro_20261122/`.
+    Medir no cambió la corrida (los `corrida_*.csv` dan el SHA-256 de N0), con 0 inconsistencias;
+  - un script nuevo, `mediciones/analizar_hierro.py`, probado con N0 antes de leer la tanda (0 errores);
+  - la lección LEC-025, con su regla en OPERACIONES.
+
+  Commit: el de esta sesión, confirmado por Fer.
+- **Estados:**
+  - **El paso 5 sigue 🔄, con el diagnóstico: se traba en llegar.** El 99% de los que tienen la llave dorada nunca está
+    a 25 px, en las 5 semillas y en la ventana. Los que llegan la abren (21 de 29).
+  - **La causa:** la brújula y la recompensa por acercarse apuntan en línea recta. Desde la llave dorada, adentro de la
+    fortaleza chica, esa recta cruza las paredes en los 600 mapas. El seguidor perfecto no llega en 588, y los agentes
+    quedan donde queda él (el 75%, a menos de 10 px).
+  - **Afuera de la chica tampoco alcanza:** en 326 de 600 mapas, la fortaleza grande queda en el medio.
+  - El paso 6 sigue ⏳.
+- **Decidido por Fer:** probar una brújula que siga el camino libre, con un switch apagado por defecto (decisión 9). La
+  recompensa por acercarse no cambia (decisión 4).
+- **Desvíos del spec:**
+  - la geometría de la puerta de hierro y el seguidor no estaban en la lista de la Sesión 4. Los sumé al diseño antes de
+    lanzar, porque "no llegan" se lee con ellos;
+  - la prueba corta mostró, antes de escribir el criterio, que el seguidor no llegaba en sus 6 mapas. Quedó anotado en
+    AnalisisQA, y el criterio no depende de eso;
+  - después de leer la tanda le sumé a `analizar_hierro.py` dos cuentas sin criterio: el avance de los que no llegan y la
+    recta a la puerta, contra las paredes de las fortalezas.
+- **A medias o bloqueado:** nada.
+- **Para verificar en producción:** N/A.
+- **Próxima sesión:** el paso 5, con la brújula que sigue el camino libre. Es un cambio en la simulación: va con un switch
+  apagado por defecto y sus tests (decisión 7). Puede llevar dos sesiones: esta implementa y controla, y la tanda va en la
+  siguiente si no entra.
+  - **Primer paso, antes de tocar el código: las 4 corridas cortas con el código del commit de esta sesión.** Sus CSV, al
+    scratchpad, para el control de "apagado no cambia nada". Con `P=pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`,
+    las 4 a la vez:
+    - `medir_puerta.py . SALIDA/c1 1 evolucion 3 acercarse deslizar fortalezas-moviles curriculo=150 cruce=0.2 $P`;
+    - `medir_puerta.py . SALIDA/c2 2 sin_evolucion 3 acercarse deslizar fortalezas-moviles curriculo=1`;
+    - `medir_puerta.py . SALIDA/c3 3 evolucion 4 acercarse deslizar fortalezas-moviles curriculo=2 sens-etapa0 sens-golpe cruce=0.2 $P`;
+    - `medir_puerta.py . SALIDA/c5 5 evolucion 6 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2 $P,HIT_ENERGY_COST:0 hierro`.
+
+    Control: las 4 líneas `MEDICION inconsistencias=0`.
+  - **Después, el diseño en este spec, antes del código** (una sección "La brújula por el camino", debajo de las
+    decisiones). Lo que tiene que fijar:
+    - **qué cambia:** solo los sensores 9 y 11. `_proximo_paso` también lo usan la recompensa (`_medir_acercamiento`) y la
+      guía del modo guiado, y esas no cambian. El 9 apunta por el camino más corto al objetivo de `_proximo_paso`, y el 11
+      es la distancia por ese camino, normalizada como hoy. Sin camino, la recta de hoy;
+    - **la grilla:** qué es pared tiene que ser lo de `_choca` para un agente de esa etapa. Son las paredes, los árboles y
+      las casitas, las puertas que no abrió, el perímetro y el estanque (con su caja corrida, DIAG-30); el agua no choca;
+    - **el tamaño de celda: 5 px.** Tiene que ser de 7 o menos: con el radio de 6, el hueco de una puerta de 20 px deja
+      libres 8 px de centros, y una celda más grande puede no tener centro adentro;
+    - **el objetivo de cada etapa:** en una puerta (etapas 1 y 3), las celdas libres a menos de 25 px de su centro, desde
+      donde cuenta el golpe; el centro es pared. En una llave o el cofre, su celda;
+    - **cuándo se arma:** al empezar cada generación, una vez por etapa (0 a 4), porque ahí se regeneran las
+      fortalezas, el estanque y los obstáculos. Los árboles talados durante la generación no se actualizan, y eso se
+      anota;
+    - **sin azar:** armar la grilla y leerla no consume `random` ni `np.random`;
+    - **los nombres:** el switch en `config.py` (`BRUJULA_CAMINO = False`), el flag de `main.py` (`--brujula-camino`) y el
+      argumento de `medir_puerta.py` (`brujula-camino`). Como `DESLIZAR`, va en el nombre del archivo, el panel, el
+      boletín y el resumen del experimento, no en una columna del CSV. La lista de dónde tocar: los 9 archivos que
+      nombran `DESLIZAR`.
+  - **Los tests,** en `tests/`, como `test_deslizar.py`:
+    - con el switch apagado, las 4 corridas cortas dan los mismos SHA-256 que en el primer paso, y
+      `python -m pytest -q` pasa;
+    - prendido, un agente en la etapa 3 adentro de la fortaleza chica tiene la brújula hacia la puerta de madera, no
+      contra la pared;
+    - la grilla coincide con `_choca` en una muestra de puntos.
+  - **El control de LEC-025:** con `hierro brujula-camino`, el seguidor de `medir_puerta.py` sigue la brújula nueva (la
+    misma función que el sensor 9, no una copia). En la corrida corta de la semilla 5 (la c5 de arriba, con
+    `brujula-camino`) tiene que llegar a la puerta de hierro desde la llave dorada en los 6 mapas; hoy no llega en
+    ninguno. Sin `brujula-camino`, el seguidor es el de hoy.
+  - **El criterio en AnalisisQA, antes de lanzar.** Los pasos 2 a 6 con la brújula nueva van contra su propia línea base
+    sin evolución, también con la brújula nueva: si la línea base mejora igual, no es aprendizaje (LEC-001). Se usa el
+    criterio de la decisión 5, y se compara con N0: los pasos 2 a 4, que pasan, no tienen que perder.
+  - **La tanda: 10 a la vez,** con evolución y `sin_evolucion`, semillas 1 a 5 (en la Sesión 3, 10 a la vez tardaron 1 h
+    48 min). El comando: `medir_puerta.py . results/medicion_brujula_camino_AAAAMMDD S evolucion 150 acercarse deslizar
+    fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+    pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino`, con
+    la fecha de la sesión. Contar las 10 líneas `MEDICION` (LEC-017).
+  - **Trampas:**
+    - la grilla con `_choca` celda por celda puede ser lenta: con celdas de 5 px son 38.400 celdas por etapa, 5 etapas
+      por generación, y cada `_choca` recorre los obstáculos. Medir el tiempo en la corrida corta. Si pesa, rasterizar
+      los rectángulos con numpy, con las mismas reglas, y el test que la compara con `_choca`;
+    - el centro del agente puede caer en una celda marcada como pared, aunque el agente no choque: usar la celda libre
+      más cercana;
+    - la brújula nueva cambia el sensor en todos los pasos, también en la llave roja y la puerta de madera;
+    - un camino que rodea es más largo: ya hoy, al 19% no le alcanza el tiempo desde la llave dorada;
+    - el cofre todavía no se probó con su seguidor (LEC-025).

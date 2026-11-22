@@ -5,6 +5,22 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-025 — 2026-11-22 — Un sensor que guía se prueba con su seguidor perfecto en cada paso que guía
+
+**Qué pasó.** La brújula (sensores 9 y 11) apunta en línea recta al próximo paso del puzzle, en todos los pasos. Su
+seguidor perfecto se midió para la puerta de madera ([la medición de la puerta](../qa/AnalisisQA.md#medicion-puerta-madera)),
+y de ahí salieron deslizar y las fortalezas móviles. Los pasos de después se midieron con la misma brújula sin repetir esa
+prueba. En [dónde se traba la puerta de hierro](../qa/AnalisisQA.md#medicion-puerta-hierro), el seguidor perfecto desde la
+llave dorada no llegó en 588 de 600 mapas. La llave está adentro de la fortaleza chica, y la recta a la puerta de hierro
+cruza sus paredes en los 600: los agentes quedaban donde quedaba el seguidor. Con esa brújula, el paso 5 no se podía
+aprender siguiéndola, y estaba en la geometría desde el principio. Se vio en la prueba corta de la sesión (6 mapas), antes
+de la tanda.
+
+**Regla.** Antes de medir si un paso se aprende con un sensor que guía, correr su seguidor perfecto en ese paso, desde
+donde arranca el paso (no desde el nacimiento). Si el seguidor no llega, la falla no es de la red: con ese sensor, el paso
+no se puede aprender siguiéndolo. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir. El cofre (de la puerta de
+hierro al centro de la fortaleza grande) todavía no se probó.
+
 ## LEC-024 — 2026-11-22 — Una medida independiente que es una proporción necesita casos en la línea base
 
 **Qué pasó.** En [los pasos 3 a 6 sin costo](../qa/AnalisisQA.md#cadena-sin-costo), la medida independiente de la puerta

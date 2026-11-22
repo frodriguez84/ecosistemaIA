@@ -4919,3 +4919,215 @@ madera, 2). Por semilla, en las 31-150, la abren 4 · 0 · 1 · 6 · 10 agentes,
 **Decidido por Fer (2026-11-22):** el paso 3 queda ✅, con lo aprendido escrito como es: llegar con la llave y golpear
 siempre, no golpear en la puerta. La medida independiente fijada queda anotada como no acompaña, por un solo agente de la
 línea base.
+
+<a id="medicion-puerta-hierro"></a>
+## Dónde se traba la puerta de hierro, en la referencia sin costo (2026-11-22)
+
+**La pregunta** (sesión 5 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), decisión 7): la
+cadena se corta en la puerta de hierro. De los que tienen la llave dorada, la abre el 1% (21 de 2.056 en las 31-150,
+[la cadena sin costo](#cadena-sin-costo)). ¿Dónde se traba? Hay cuatro respuestas posibles: no llegan, llegan sin
+tiempo, llegan y no golpean, o golpean y no completan los 3 golpes. **Es un diagnóstico dentro de N0, sin contraste con
+la línea base:** la línea base sin costo tiene 3 llaves doradas en las 31-150 (LEC-024). Medición de una sesión, sin
+cambios en la simulación.
+
+**Diseño.** Se corre la referencia (N0) otra vez, con un argumento nuevo de `medir_puerta.py`, `hierro`. Mide en la
+etapa 3 lo que hoy se mide en la 1 para la puerta de madera, en columnas propias de `agentes_*.csv` que empiezan con
+`h_` (el detalle, en el docstring):
+- el tick del primer act con la llave dorada;
+- la distancia al centro de la puerta de hierro ahí y la mínima;
+- los ticks en la etapa 3, a menos de 25 px y golpeando (en todos lados y ahí);
+- cada golpe a menos de 25 px: si contó, con su tick, o qué lo frenó (el cooldown del agente o los 90 ticks de la
+  puerta);
+- entre golpe y golpe: los ticks a menos de 25 px con el cooldown cumplido (y de esos, golpeando) y los ticks a 25 px o
+  más.
+
+`geometria_*.csv` suma la puerta de hierro:
+- lo libre a menos de 25 px, con la cuenta de la de madera;
+- un **seguidor de brújula perfecto** que arranca en la llave dorada, con la puerta de madera abierta y la de hierro
+  cerrada. Avanza 1.000 pasos de 3 px derecho al centro de la puerta, como hoy y deslizando, y da la distancia mínima y
+  el primer paso a menos de 25 px.
+
+Medir no cambia la corrida: cada predicción de un golpe va contra `MEDICION inconsistencias`, y también los golpes
+contados contra los del agente.
+
+**Probado antes de lanzar,** con las cuatro corridas cortas: las tres de siempre (semilla 1 con la condición de la larga,
+3 generaciones; semilla 2 sin evolución con `acercarse deslizar fortalezas-moviles curriculo=1`, 3; semilla 3 con la
+condición, `curriculo=2 sens-etapa0 sens-golpe`, 4) y la semilla 5 con el comando de la referencia, 6 generaciones.
+- **Sin el argumento,** los 12 CSV dan el mismo SHA-256 que con el `medir_puerta.py` de ca43455.
+- **Con el argumento,** los `corrida_*.csv` son los mismos, y los `agentes_*.csv` y `geometria_*.csv` sin las columnas
+  nuevas (17 y 8), también.
+- El `corrida_*.csv` de la semilla 5 da el prefijo publicado de N0 (6 filas).
+- Las 8 corridas terminan con 0 inconsistencias.
+- En la semilla 5, el agente de la gen 5 con la llave dorada la agarra en el tick 959. Le quedan 180 ticks, golpea en
+  los 180 y queda a 276 px de la puerta (empezó a 293).
+
+**Visto en la prueba, antes de escribir el criterio:** en los 6 mapas de la semilla 5, el seguidor no llega a la puerta
+de hierro, ni como hoy ni deslizando: queda a 268-784 px. La llave dorada está adentro de la fortaleza chica, y su única
+salida es la puerta de madera, en la pared sur. Lo libre a menos de 25 px de la puerta de hierro es igual que en la de
+madera (16,25 px y 235 px², en los 6). El criterio de abajo no depende de esto. Lo que agrega el seguidor se lee
+después, como lectura de "no llegan".
+
+**La corrida** (semillas 1 a 5, las 5 a la vez, con `python -u`): `medir_puerta.py . results/medicion_hierro_20261122 S
+evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro`.
+
+**Qué se mira, fijado antes de lanzar** (gens 31-150, las 5 semillas juntas; en las 146-150, ~100 agentes con la llave
+dorada, se informa). Cada agente × generación con la llave dorada y ticks en la etapa 3 va a un solo grupo, en este
+orden:
+1. **la abren** (etapa ≥ 4);
+2. **no llegan:** nunca a menos de 25 px del centro;
+3. **llegan sin tiempo:** al llegar les quedan (edad − tick de llegada) menos de los 181 ticks que piden 3 golpes con
+   90 entre golpe y golpe;
+4. **llegan y no golpean ahí;**
+5. **golpean ahí y no cuenta ninguno** (los frena un cooldown);
+6. **no completan:** cuentan 1 o 2 golpes.
+
+**Dónde se traba** es el grupo con más agentes de los que no la abren; si otro tiene al menos la mitad que ese, se traba
+en los dos. Si en las 146-150 da otro, se anota. La puerta de madera va con la misma cuenta en la misma corrida (los que
+tienen la llave roja; 2 golpes, 91 ticks), para comparar.
+
+**Qué diría cada resultado** (lo que se sugiere después lo decide Fer):
+- **No llegan:** se lee con la distancia mínima, con el camino hecho y con el seguidor. Si el seguidor tampoco llega y
+  los agentes quedan donde queda él, siguen la brújula y la fortaleza chica los frena: la brújula apunta a través de la
+  pared. Si el seguidor llega y ellos no, no siguen la brújula en la etapa 3.
+- **Sin tiempo:** agarran la llave dorada tarde. Se lee con lo que les queda al agarrarla, contra lo que tarda el
+  seguidor más 181.
+- **No golpean ahí:** se lee con la parte de los ticks en que golpean, en la etapa 3 contra la 1.
+- **No cuenta ninguno:** se lee con qué los frena (el cooldown del agente o el de la puerta).
+- **No completan:** se lee con lo que pasa entre golpe y golpe: se les acabó el tiempo (el cooldown del último golpe
+  pasa después de su último tick), se fueron (con otra oportunidad, nunca estuvieron a 25 px con el cooldown cumplido) o
+  estuvieron listos y no golpearon. Con 3 golpes hay dos esperas de 90 ticks; con la de madera, una.
+
+**Controles en la tanda:**
+- las 5 líneas `MEDICION inconsistencias=0 filas=9000`, contadas (LEC-017);
+- los `corrida_*.csv` dan el SHA-256 publicado de N0, y los `agentes_*.csv` sin las columnas `h_`, el suyo;
+- los `geometria_*.csv` sin las columnas `h_` dan los de N0, que no estaban publicados y van en la tabla de abajo;
+- los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`, y `ENERGIA_GOLPE` da 0;
+- por agente: con ticks en la etapa 3, etapa ≥ 3 y tick de la llave; etapa ≥ 4 si y solo si 3 golpes; sin ticks, nada
+  medido. Los que agarran la llave en el último tick no tienen ticks en la etapa 3, y se cuentan;
+- en cada generación, `agentes_puerta_hierro` es la cantidad con etapa ≥ 4.
+
+<details><summary>SHA-256 de los geometria_*.csv de N0 (results/medicion_costo_golpe_20261121), para el control</summary>
+
+| Semilla | `geometria_*.csv` |
+|---|---|
+| 1 | `5d72c5c2c65f830a1dc4ed99fed537d82c70d6d9d4c9896f205bbb8d10227d00` |
+| 2 | `8aa0200da076fd9982e1e9c6a9dc8beb2067e1a5138d24b9b4b094fba5a0b4d6` |
+| 3 | `8fa615c87ec5a51e62a543b8f5afc0a21b7881ce90b8948308c8903329f8dcab` |
+| 4 | `ca45eab59ab9cd47882d71cfc17a8c96e15c25c23a1c6756a181b02a72afd933` |
+| 5 | `e7a1fd772fe48efdd910e466515a2a71322739211e2a5ee84d367efa63182170` |
+
+</details>
+
+**El script.** Uno nuevo, `mediciones/analizar_hierro.py`. Se prueba antes de leer la tanda, con la carpeta de N0 en
+su lugar (sin las columnas `h_`): tiene que dar lo publicado (en las 146-150, "En la puerta" de N0, 29% · 83% · 61%; en
+las 31-150, la llave dorada 575 · 317 · 11 · 290 · 863, la puerta de hierro 4 · 0 · 1 · 6 · 10 y el cofre 3 · 0 · 0 ·
+4 · 0) con 0 errores.
+
+**Tiempo:** las 5 a la vez, ~1 h 30 min.
+
+**Cómo se corrió.** Las 5 a la vez con `python -u`, el 2026-11-22 de 17:29 a 18:51 (1 h 22 min). La salida, en
+`results/medicion_hierro_20261122/` (fuera del repo). Las tablas, con `python mediciones/analizar_hierro.py
+results/medicion_hierro_20261122 results/medicion_costo_golpe_20261121`. Antes de leer la tanda, el script se probó con N0
+en los dos lugares: dio lo publicado, que controla solo, y 0 errores. Después de leerla se le sumaron dos cuentas sin
+criterio, el avance de los que no llegan y la recta a la puerta (abajo); la prueba con N0 sigue dando 0 errores.
+
+**Controles, hechos** (0 errores en el script):
+- **Las 5 líneas `MEDICION inconsistencias=0 filas=9000`,** contadas.
+- **Medir no cambió la corrida:** los 5 `corrida_*.csv` dan el SHA-256 publicado de N0; los `agentes_*.csv` sin las 17
+  columnas `h_`, el suyo; y los `geometria_*.csv` sin las 8, los de la tabla de arriba.
+- Los logs dicen el currículo y los pesos, y `ENERGIA_GOLPE` da 0,000000 por tick golpeando y sin golpear (de 2,1 a 7,9
+  millones de ticks golpeando por corrida).
+- **Por agente, 0 diferencias:** con ticks en la etapa 3, etapa ≥ 3 y tick de la llave; etapa ≥ 4 si y solo si 3 golpes;
+  sin ticks, nada medido. 3 agentes agarran la llave dorada en el último tick y no tienen ticks en la etapa 3: por eso son
+  2.053 y no los 2.056 publicados.
+- En cada generación, `agentes_puerta_hierro` es la cantidad con etapa ≥ 4.
+- Lo publicado de N0 sale igual: "En la puerta" (29% · 83% · 61%) y la cadena de las 31-150.
+
+<details><summary>SHA-256 de la tanda (se regenera con medir_puerta.py ... HIT_ENERGY_COST:0 hierro desde el commit de esta sesión; los corrida_*.csv son los de N0)</summary>
+
+| Semilla | `agentes_*.csv` | `geometria_*.csv` |
+|---|---|---|
+| 1 | `6be85ffc6fecb3d6ec10d86c388794016daed4030a9d102335572373bdb2d656` | `36a5acd133bf4f9d70532865fec1d1706cfc8eb74b36bdcea2b6389dd36ac540` |
+| 2 | `4006a4a4d195be597f191561c017ac66a5849ae7e62a0a47be717e55d426e07b` | `87e5a2da42ebf01435ac5f8d5b2938494792f611b6b36d797ba81340d9c38497` |
+| 3 | `0b3c822201a17f093a1b468c5e2e83cad6d51601317db030938b73ef0f408709` | `a8948e4d2673bf753db7f4096d7856a2a1c6004a0aaccaff1cace9f9d1fa1cd6` |
+| 4 | `58f22783bfb7c5028b193ff0794800c48dd4493e04ca2e3f72891687bddabe29` | `f6d65e06176ae88292b4b7d61b3990054477510e4ed53b46cdaf14da4b633f83` |
+| 5 | `2f1b74c7683814c1006cef2f04005e5f089219dca867a1dd0bb6bba29bc44c4e` | `e95fe67702e205b0b4224f3fef73e716721fb46dc11c4d35bd11a5fde17ff1ea` |
+
+</details>
+
+**Dónde se traba** (gens 31-150, las 5 semillas juntas; cada agente × generación con la llave y ticks en la etapa, en un
+solo grupo; entre paréntesis, la parte de los que tienen la llave):
+
+| | Puerta de madera (2 golpes, 91 ticks) | Puerta de hierro (3 golpes, 181 ticks) |
+|---|---|---|
+| Con la llave | 17.913 | 2.053 |
+| La abren | 3.881 (22%) | 21 (1%) |
+| **No llegan a 25 px** | **11.736 (66%)** | **2.024 (99%)** |
+| Llegan sin tiempo | 404 (2%) | 7 (0,3%) |
+| Llegan y no golpean ahí | 753 (4%) | 0 |
+| Golpean ahí y no cuenta ninguno | 6 (0%) | 0 |
+| No completan | 1.133 (6%) | 1 (0%) |
+| **Se traba en** | no llegan: el 84% de los que no la abren | no llegan: el 99,6% de los que no la abren |
+
+- **En la de hierro, las 5 semillas se traban en lo mismo:** no llegan 568 · 317 · 10 · 284 · 845, y la abren 4 · 0 · 1 ·
+  6 · 10. Ningún otro grupo llega a la mitad.
+- **En las 146-150 da lo mismo:** de 100 con la llave dorada, la abren 4 y no llegan 96. En la de madera, de 1.063, la
+  abren 190 (18%) y no llegan 750 (71%; el 86% de los que no la abren).
+
+**Los que llegan a la puerta de hierro, la abren** (gens 31-150): llegan 29 y la abren 21. De los otros 8, 7 llegan sin
+tiempo y 1 se va después del primer golpe (613 ticks lejos). Ahí golpean en el 98% de los ticks (en la de madera, el 55%).
+Los 73 golpes que contaron esperaron 4.068 ticks al cooldown de la puerta, que es la espera entre golpe y golpe y no son
+golpes perdidos; el cooldown del agente no frenó ninguno. Tardan 230 ticks desde la llave (mediana) y les quedan 381.
+
+**Por qué no llegan** (gens 31-150; la lectura de "no llegan" fijada antes):
+- **Casi no se mueven hacia la puerta:** empiezan a 419 px (mediana) y quedan a 392 como mínimo. Avanzan 24 px (camino
+  0,05); el 95%, menos de 50 px. Adentro de la fortaleza chica no se puede avanzar más de ~50 px hacia ningún lado, así que
+  es compatible con no salir de ella. En la de madera, los que no llegan quedan a 98 px (camino 0,67): van, y no llegan.
+- **El seguidor de brújula perfecto tampoco llega:** desde la llave dorada, en 1 de 600 mapas como hoy y en 12 deslizando.
+  Donde no llega, queda a 367 px (mediana). En los 588 mapas donde no llega deslizando, no llega el 99% de los agentes
+  (1.993 de 2.021), y el 75% queda a menos de 10 px de donde queda el seguidor.
+- **La recta a la puerta cruza paredes** (solo las de las fortalezas, infladas por el radio del agente; sin árboles, rocas
+  ni agua): desde la llave dorada, en los 600 mapas. La llave está adentro de la fortaleza chica, y su salida es la puerta
+  de madera, en la pared sur. Desde afuera de esa puerta, la recta queda libre en 103 de 600. Esa salida queda al norte de
+  la pared norte de la fortaleza grande, donde está la puerta de hierro, en 274; en los otros 326 hay que rodear la grande.
+- En los 12 mapas donde el seguidor deslizando llega hay 32 agentes con la llave, y llega 1: son pocos para decir si ahí
+  siguen la brújula.
+- Lo libre a menos de 25 px de la puerta de hierro es lo mismo que en la de madera (16,2 px y 235 px², mediana; 0 mapas
+  sin lugar).
+
+**El tiempo** (gens 31-150): al agarrar la llave dorada les quedan 421 ticks (mediana); al 19%, menos de los 181 que piden
+3 golpes. En los mapas donde el seguidor deslizando llega, siguiéndolo le alcanzaría al 59% de 32.
+
+**La red golpea** en el 78% de los ticks con la llave dorada, en todos lados (con la roja, el 70%).
+
+**Lectura.**
+1. **La puerta de hierro se traba en "no llegan":** el 99% de los que tienen la llave dorada nunca está a menos de 25 px,
+   en las 5 semillas y en la ventana. Lo que pasa en la puerta no es el cuello: de 29 que llegan, 21 la abren.
+2. **Siguen la brújula, y la brújula los lleva contra la pared de la fortaleza chica.** Es la lectura fijada: el seguidor
+   tampoco llega, y ellos quedan donde queda él. La brújula apunta en línea recta al centro de la puerta, y la recompensa
+   por acercarse mide la distancia en línea recta (`_medir_acercamiento` de `advanced_agent.py`). Desde la llave dorada esa
+   recta cruza las paredes en los 600 mapas: ninguna de las dos marca la salida.
+3. **Salir no alcanza:** afuera de la fortaleza chica, en más de la mitad de los mapas (326 de 600) la fortaleza grande
+   queda entre la salida y su puerta.
+4. **No es golpear ni los 3 golpes:** los que llegan golpean y la abren. El tiempo, hoy, tampoco es el cuello (al 19% no
+   le alcanzaría), pero un camino que rodea es más largo.
+5. **Es un diagnóstico dentro de N0, sin línea base** (LEC-024): dice dónde se traba, no qué aprendieron. La regla que deja
+   va a LEC-025.
+
+**Qué sugiere** (lo decide Fer, decisión 9):
+- **Una brújula que siga el camino libre** (la que sugiero). Los sensores 9 y 11 apuntarían a la próxima celda del camino
+  más corto al objetivo, no al objetivo en línea recta. El camino sale de un mapa de distancias: un BFS en una grilla con
+  las paredes y los obstáculos al empezar la generación, y las puertas de cada etapa (en la 3, la de madera abierta). Va uno
+  por objetivo y por generación, porque las fortalezas se mueven entre generaciones. Resuelve los dos obstáculos, salir de
+  la chica y rodear la grande. Va con un switch apagado por defecto y sus tests (decisión 7). Cambia el sensor en todos los
+  pasos, así que se mide contra la referencia en los pasos 2 a 5: los que pasan no tienen que perder. Para ser el control,
+  el seguidor de `medir_puerta.py` tiene que seguir la misma brújula.
+- **La recompensa por acercarse con la misma distancia:** hoy mide la recta, y salir por la puerta de madera no suma nada
+  hasta que el agente vuelve a quedar más cerca que antes. Es un segundo cambio: por la decisión 4 va después, con su
+  control, si la brújula sola no alcanza.
+- **Más barata y parcial: en la etapa 3, la brújula a la puerta de madera hasta salir de la chica.** Resuelve el primer
+  obstáculo; en 326 de 600 mapas queda el segundo. No la sugiero.
+
+**Decidido por Fer (2026-11-22):** se prueba la brújula que sigue el camino libre, con un switch apagado por defecto. La
+recompensa por acercarse no cambia.

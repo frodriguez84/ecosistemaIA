@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -42,6 +42,20 @@ atanh(0,5)) con el sensor 11, la distancia al próximo paso, en "pegado" (RADIO_
 resto de la percepción como la vio el agente (docs/qa/AnalisisQA.md#sens-golpe), en cuatro columnas más: zgolpe_pegado y
 zgolpe_lejos (la suma de z) y golpea_pegado y golpea_lejos (los ticks en que golpearía); con sens-etapa0, también en la
 etapa 0, con un 0 al final. Se divide por sens_ticks (o sens_ticks0). Un forward aparte: las demás columnas no cambian.
+hierro mide en la etapa 3 (con la llave dorada, hacia la puerta de hierro) lo que se mide en la 1 para la de madera
+(docs/qa/AnalisisQA.md#medicion-puerta-hierro), en columnas propias de agentes_*.csv que empiezan con h_: h_t_dorada (el
+tick del primer act con la llave dorada; la agarró en el anterior), h_d0 (la distancia al centro de la puerta de hierro
+después de ese act) y h_dmin (la mínima), h_ticks (los ticks en la etapa 3), h_ticks_25, h_t_llega25, h_ticks_golpe y
+h_ticks_golpe_25 (como los de la etapa 1), cada golpe a menos de 25 px, si contó (h_golpes, con el tick de cada uno en
+h_t_golpe1 a h_t_golpe3) o qué lo frenó (h_bloq_agente, el cooldown del agente, que ponen abrir la puerta de madera y
+cortar; h_bloq_puerta, los DOOR_HIT_COOLDOWN ticks entre golpes a la misma puerta), y entre golpe y golpe:
+h_ticks_25_listo (a menos de 25 px, con un golpe ya dado y el cooldown de la puerta cumplido), h_golpe_25_listo (de
+esos, golpeando) y h_ticks_fuera_entre (a 25 px o más, con un golpe ya dado). La predicción de cada golpe va contra
+MEDICION inconsistencias, como en la etapa 1, y h_golpes contra los golpes del agente. geometria_*.csv suma la puerta de
+hierro: h_puerta_x y h_puerta_y, h_dmin_libre y h_area_libre_25 (la cuenta de la de madera) y un seguidor de brújula
+perfecto que arranca en la llave dorada, con la puerta de madera abierta y la de hierro cerrada, H_PASOS pasos, como hoy y
+deslizando (h_seguidor_dmin y h_seguidor_t25, h_desliza_dmin y h_desliza_t25: la distancia mínima y el primer paso a menos
+de 25 px; vacío si no llega). Sin el argumento, los tres CSV son los de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -91,6 +105,7 @@ moviles = "fortalezas-moviles" in sys.argv[6:]
 laboratorio = "laboratorio" in sys.argv[6:]
 sens_etapa0 = "sens-etapa0" in sys.argv[6:]
 sens_golpe = "sens-golpe" in sys.argv[6:]
+hierro = "hierro" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -120,10 +135,11 @@ from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork  # noqa
 from src.evolution.genetic_algorithm import GeneticAlgorithm  # noqa: E402
 
 RADIO_GOLPE = 25  # el de world.process_door_hit
+H_PASOS = 1000    # con hierro: los pasos del seguidor desde la llave dorada (3 px por paso; el mapa es de 1200 px)
 
 
-def centro_puerta(world):
-    d = world.door
+def centro_puerta(world, puerta=None):
+    d = world.door if puerta is None else puerta
     return d.x + d.width // 2, d.y + d.height // 2
 
 
@@ -169,6 +185,10 @@ def nueva():
     for suf in ('', '0') if sens_golpe else ():  # sin el argumento, tampoco estas
         if suf == '' or sens_etapa0:
             m.update({'zgolpe_pegado' + suf: 0.0, 'zgolpe_lejos' + suf: 0.0, 'golpea_pegado' + suf: 0, 'golpea_lejos' + suf: 0})
+    if hierro:  # sin el argumento, tampoco estas
+        m.update(h_t_dorada=None, h_d0=None, h_dmin=math.inf, h_ticks=0, h_ticks_25=0, h_t_llega25=None, h_ticks_golpe=0,
+                 h_ticks_golpe_25=0, h_bloq_agente=0, h_bloq_puerta=0, h_golpes=0, h_t_golpe1=None, h_t_golpe2=None,
+                 h_t_golpe3=None, h_ticks_25_listo=0, h_golpe_25_listo=0, h_ticks_fuera_entre=0)
     return m
 
 
@@ -306,6 +326,8 @@ def act(self, decisions, world, other_agents, tick):
         energia_de_golpear(self, world, energia)
     if predicho is not None and abs((self.angle - angulo) - predicho) > 1e-9:
         INCONS[0] += 1  # giro() no es el de act()
+    if hierro and vivo and self.etapa == 3 and world.door_iron:
+        medir_hierro(self, world, tick)
     if not vivo or self.etapa != 1 or not world.door:
         return
     m = MED.setdefault(self, nueva())
@@ -336,12 +358,62 @@ def act(self, decisions, world, other_agents, tick):
                 m['golpe_25_post90'] += 1
 
 
+def medir_hierro(agente, world, tick):
+    """Con hierro, después de moverse y con la llave dorada (etapa 3): lo que act() mide en la etapa 1 para la puerta de
+    madera, con la puerta de hierro, y entre golpe y golpe. Los golpes del agente son los de hasta el tick anterior: el de
+    este tick lo prueba _try_hit_door después. Solo lee el estado, sin azar."""
+    m = MED.setdefault(agente, nueva())
+    cx, cy = centro_puerta(world, world.door_iron)
+    d = math.hypot(agente.x - cx, agente.y - cy)
+    m['h_ticks'] += 1
+    if m['h_t_dorada'] is None:
+        m['h_t_dorada'], m['h_d0'] = tick, d  # el primer act con la llave dorada: casi donde la agarró
+    if d < m['h_dmin']:
+        m['h_dmin'] = d
+    if agente.golpeando:
+        m['h_ticks_golpe'] += 1
+    golpes, ultimo = agente.golpes_puerta.get('door_iron', (0, 0))
+    if d < RADIO_GOLPE:
+        m['h_ticks_25'] += 1
+        if m['h_t_llega25'] is None:
+            m['h_t_llega25'] = tick
+        if agente.golpeando:
+            m['h_ticks_golpe_25'] += 1
+        if golpes >= 1 and tick - ultimo >= SimulationConfig.DOOR_HIT_COOLDOWN:
+            m['h_ticks_25_listo'] += 1
+            if agente.golpeando:
+                m['h_golpe_25_listo'] += 1
+    elif golpes >= 1:
+        m['h_ticks_fuera_entre'] += 1
+
+
+def prediccion_hierro(agente, world, current_tick, m):
+    """Con hierro y la llave dorada: si el golpe de este tick a la puerta de hierro va a contar y, si no, qué lo frena.
+    None si no corresponde predecir (sin el argumento o en otra etapa)."""
+    if not (hierro and agente.etapa == 3 and world.door_iron):
+        return None
+    if not agente.golpeando:
+        return False
+    cx, cy = centro_puerta(world, world.door_iron)
+    if math.hypot(agente.x - cx, agente.y - cy) >= RADIO_GOLPE:
+        return False
+    if current_tick - agente.last_tree_hit_tick < agente.tree_hit_cooldown:
+        m['h_bloq_agente'] += 1  # el cooldown del agente: lo ponen abrir la puerta de madera y cortar
+        return False
+    if current_tick - agente.golpes_puerta.get('door_iron', (0, 0))[1] < SimulationConfig.DOOR_HIT_COOLDOWN:
+        m['h_bloq_puerta'] += 1
+        return False
+    return True
+
+
 _hit = AdvancedAgent._try_hit_door
 
 
 def try_hit_door(self, world, current_tick):
     prediccion = None
     m = MED.setdefault(self, nueva())
+    prediccion_h = prediccion_hierro(self, world, current_tick, m)
+    antes_h = self.golpes_puerta.get('door_iron', (0, 0))[0]
     if self.golpeando and self.etapa == 1 and world.door:
         cx, cy = centro_puerta(world)
         if math.hypot(self.x - cx, self.y - cy) < RADIO_GOLPE:
@@ -373,13 +445,22 @@ def try_hit_door(self, world, current_tick):
             m['t_golpe2'] = current_tick
     if prediccion is not None and prediccion != (despues > antes):
         INCONS[0] += 1
+    despues_h = self.golpes_puerta.get('door_iron', (0, 0))[0]
+    if prediccion_h is not None:
+        if despues_h > antes_h:
+            m['h_golpes'] += despues_h - antes_h
+            m['h_t_golpe' + str(min(despues_h, 3))] = current_tick
+        if prediccion_h != (despues_h > antes_h):
+            INCONS[0] += 1  # el golpe a la puerta de hierro no fue el que se predijo
     return resultado
 
 
-def geometria(world):
+def geometria(world, puerta=None):
     """La distancia más corta al centro de la puerta a la que puede estar el centro de un agente con
-    etapa 1, y el área libre a menos de 25 px, con las mismas colisiones que act()."""
-    cx, cy = centro_puerta(world)
+    etapa 1, y el área libre a menos de 25 px, con las mismas colisiones que act(). Con puerta, la de
+    hierro (etapa 3), con la misma cuenta."""
+    puerta = world.door if puerta is None else puerta
+    cx, cy = centro_puerta(world, puerta)
     r = SimulationConfig.AGENT_RADIUS
     cerca = [o for o in world.obstacles if o.type in ("wall", "tree", "hut")
              and abs(o.x + o.width / 2 - cx) < 80 and abs(o.y + o.height / 2 - cy) < 80]
@@ -398,7 +479,7 @@ def geometria(world):
                 continue
             if any(o.collides_with(x, y, r) for o in cerca):
                 continue
-            if world.door.collides_with(x, y, r):
+            if puerta.collides_with(x, y, r):
                 continue
             if any(o.collides_with(x, y, r, r) for o in perim):
                 continue
@@ -407,17 +488,13 @@ def geometria(world):
     return dmin, libres * paso * paso
 
 
-def seguidor(world):
-    """Un seguidor de brújula perfecto, sobre el mapa de la generación: desde una grilla de puntos de
-    arranque (cada 25 px en la zona donde nacen los agentes, los que act() deja ocupar), avanza 3 px
-    por tick derecho al centro de la puerta, con las colisiones de act(); si el paso choca, queda
-    trabado (no hay deslizamiento). Devuelve la distancia final de cada arranque. Solo numpy, sin azar."""
-    cx, cy = centro_puerta(world)
+def colisiones(world, puerta):
+    """Las colisiones de act() para el seguidor, con una sola puerta cerrada: la que busca."""
     r = SimulationConfig.AGENT_RADIUS
     cajas = [(o.x + o.width // 2, o.y + o.height // 2, o.width // 2 + r, o.height // 2 + r)
              for o in world.obstacles if o.type in ("wall", "tree", "hut")
              and not (o.type in ("tree", "hut") and o.is_cut)]
-    d = world.door
+    d = puerta
     cajas.append((d.x + d.width // 2, d.y + d.height // 2, d.width // 2 + r, d.height // 2 + r))
     ox, oy, hx, hy = (np.array(c, dtype=float) for c in zip(*cajas))
     aabb = world.perimeter_obstacles + world.pond_obstacles
@@ -434,16 +511,21 @@ def seguidor(world):
             return c1 | c2
         return c1
 
-    gx, gy = np.meshgrid(np.arange(50, 901, 25, dtype=float), np.arange(50, 751, 25, dtype=float))
-    x0, y0 = gx.ravel(), gy.ravel()
-    adentro = np.array([world._is_inside_fortress(a, b) for a, b in zip(x0, y0)])
-    ok = ~adentro & ~choca(x0, y0)
-    x0, y0 = x0[ok], y0[ok]
-    finales = []
+    return choca
+
+
+def seguir(world, puerta, choca, x0, y0, pasos):
+    """Desde cada arranque, avanza 3 px por tick derecho al centro de la puerta, con las colisiones de act(), como hoy (si
+    el paso choca, queda trabado) y deslizando. Devuelve, en los dos, la distancia mínima de cada arranque y el primer paso
+    a menos de 25 px (−1 si no llega). Solo numpy, sin azar."""
+    cx, cy = centro_puerta(world, puerta)
+    r = SimulationConfig.AGENT_RADIUS
+    resultados = []
     for desliza in (False, True):
         x, y = x0.copy(), y0.copy()
         dmin = np.hypot(x - cx, y - cy)
-        for _ in range(450):
+        t25 = np.where(dmin < RADIO_GOLPE, 0, -1)
+        for paso in range(1, pasos + 1):
             ang = np.arctan2(cy - y, cx - x)
             nx = np.clip(x + np.cos(ang) * SimulationConfig.AGENT_SPEED, r, world.screen_width - r)
             ny = np.clip(y + np.sin(ang) * SimulationConfig.AGENT_SPEED, r, world.screen_height - r)
@@ -455,9 +537,35 @@ def seguidor(world):
                 solo_y = ~libre & ~solo_x & ~choca(x, ny)
                 py = np.where(solo_y, ny, py)
             x, y = px, py
-            dmin = np.minimum(dmin, np.hypot(x - cx, y - cy))
-        finales.append(dmin)
-    return finales
+            dist = np.hypot(x - cx, y - cy)
+            dmin = np.minimum(dmin, dist)
+            t25 = np.where((t25 < 0) & (dist < RADIO_GOLPE), paso, t25)
+        resultados.append((dmin, t25))
+    return resultados
+
+
+def seguidor(world):
+    """Un seguidor de brújula perfecto, sobre el mapa de la generación: desde una grilla de puntos de
+    arranque (cada 25 px en la zona donde nacen los agentes, los que act() deja ocupar), avanza 3 px
+    por tick derecho al centro de la puerta, con las colisiones de act(); si el paso choca, queda
+    trabado (no hay deslizamiento). Devuelve la distancia final de cada arranque. Solo numpy, sin azar."""
+    choca = colisiones(world, world.door)
+    gx, gy = np.meshgrid(np.arange(50, 901, 25, dtype=float), np.arange(50, 751, 25, dtype=float))
+    x0, y0 = gx.ravel(), gy.ravel()
+    adentro = np.array([world._is_inside_fortress(a, b) for a, b in zip(x0, y0)])
+    ok = ~adentro & ~choca(x0, y0)
+    x0, y0 = x0[ok], y0[ok]
+    return [dmin for dmin, _ in seguir(world, world.door, choca, x0, y0, 450)]
+
+
+def seguidor_hierro(world):
+    """Con hierro: el seguidor de brújula perfecto desde la llave dorada, donde empieza la etapa 3, hacia la puerta de
+    hierro, con la de madera abierta (el agente ya la abrió) y la de hierro cerrada, H_PASOS pasos. Devuelve, como hoy y
+    deslizando, la distancia mínima y el primer paso a menos de 25 px (−1 si no llega)."""
+    x0 = np.array([float(world.gold_key.x)])
+    y0 = np.array([float(world.gold_key.y)])
+    return [(float(dmin[0]), int(t25[0])) for dmin, t25 in
+            seguir(world, world.door_iron, colisiones(world, world.door_iron), x0, y0, H_PASOS)]
 
 
 _fila = main._fila_csv
@@ -485,6 +593,8 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
         f['origen'], f['padre1'], f['padre2'] = ORIGEN.get(a, ('', '', ''))
         f.update({k2: round(v, 4) for k2, v in terminos_fitness(a).items()})
         f.update({k2: ('' if v is None else (round(v, 3) if isinstance(v, float) else v)) for k2, v in m.items()})
+        if hierro and m['h_golpes'] != a.golpes_puerta.get('door_iron', (0, 0))[0]:
+            INCONS[0] += 1  # los golpes contados no son los que el agente le dio a la puerta de hierro
         if congelar is not None:
             f['pesos_hash'], f['orden'], f['cerebro'] = hash_pesos(a.brain), posicion[a], ''
             if generacion == congelar:
@@ -532,6 +642,13 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
                      desliza_25=int((fin_desliza < 25).sum()), desliza_50=int((fin_desliza < 50).sum()),
                      desliza_100=int((fin_desliza < 100).sum()),
                      desliza_mediana=round(float(np.median(fin_desliza)), 1)))
+    if hierro:
+        hd, harea = geometria(world, world.door_iron)
+        (sd, st), (dd, dt) = seguidor_hierro(world)
+        hx, hy = centro_puerta(world, world.door_iron)
+        GEOM[-1].update(h_puerta_x=hx, h_puerta_y=hy, h_dmin_libre=round(hd, 3), h_area_libre_25=round(harea, 1),
+                        h_seguidor_dmin=round(sd, 1), h_seguidor_t25='' if st < 0 else st,
+                        h_desliza_dmin=round(dd, 1), h_desliza_t25='' if dt < 0 else dt)
     MED.clear()
     return fila
 

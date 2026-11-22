@@ -41,6 +41,8 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018). Si la
   medida independiente es una proporción o un cociente contra la línea base, antes de fijarla se cuentan
   sus casos en la línea base publicada más parecida: con 0 o casi, no dice nada (LEC-024).
+- **Antes de medir si un paso se aprende con un sensor que guía (la brújula), se corre su seguidor
+  perfecto desde donde arranca ese paso:** si el seguidor no llega, la falla no es de la red (LEC-025).
 - **Un experimento que cambia más de una cosa contra su comparación lleva el control que cambia una
   sola:** si el efecto aparece donde difieren las dos, sin ese control no se atribuye (LEC-019).
 - **Una medida "por px" o "por tick" de un recurso compartido y finito se sesga en contra de la
