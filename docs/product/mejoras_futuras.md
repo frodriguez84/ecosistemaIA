@@ -122,5 +122,35 @@ Con la [medición](../qa/AnalisisQA.md#sin-la-llave-dada): la larga con el curr�
 
 Con la [medición](../qa/AnalisisQA.md#sens-golpe): sin la llave dada, los que llegan a la puerta casi no golpean por las dos cosas, el golpe en general (cae desde el corte, en las dos etapas) y el golpe condicionado a la distancia (la larga lo aprende tarde; sin la llave, no).
 
-- [ ] **El costo de golpear, sin la llave dada:** la corrida sin la llave con `HIT_ENERGY_COST` en 0 (`pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, sin código), contra sin la llave, que ya está corrida (cambia una sola cosa, LEC-019). Si el golpe en general no cae y la puerta sube, esa parte es el costo: golpear cuesta siempre y paga solo en la puerta. Es un diagnóstico, no un arreglo (sin costo, golpear en todos lados es gratis); un cambio de golpear (el costo, que cueste solo si golpea algo, los cooldowns) se mediría después contra este. 5 corridas, ~1 h 30 min.
+- [x] 2026-11-21 — medido ([AnalisisQA](../qa/AnalisisQA.md#costo-golpe)): **el costo frena la puerta, por el golpe en general.** Sin costo, el golpe en general no cae desde el corte (4 de 5), la puerta pasa de 2,5 a 7,6 por generación (4 de 5) y la cadena llega al cofre en 2 semillas, pero golpean en todos lados (61% de los ticks lejos de la puerta) y el golpe condicionado sube en 3 de 5, no en 4. Lo que sigue, abajo, en "Aparecido al medir el costo de golpear". **El costo de golpear, sin la llave dada:** la corrida sin la llave con `HIT_ENERGY_COST` en 0 (`pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, sin código), contra sin la llave, que ya está corrida (cambia una sola cosa, LEC-019). Si el golpe en general no cae y la puerta sube, esa parte es el costo: golpear cuesta siempre y paga solo en la puerta. Es un diagnóstico, no un arreglo (sin costo, golpear en todos lados es gratis); un cambio de golpear (el costo, que cueste solo si golpea algo, los cooldowns) se mediría después contra este. 5 corridas, ~1 h 30 min.
 - [ ] **La comida sin la llave dada:** baja del 1,10 al 0,99 a medida que aprenden la llave (el 89,8% de la larga), con la recompensa por acercarse pesando el doble (la llave es un paso dado más). Si importa, es de los pesos (`FITNESS_ACERCARSE` = 40, fijado con la llave dada); lo decide Fer.
+
+## Aparecido al medir el costo de golpear — 2026-11-21
+
+Con la [medición](../qa/AnalisisQA.md#costo-golpe): sin `HIT_ENERGY_COST`, la puerta sin la llave se triplica, pero
+golpean en todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), la referencia (con
+costo o sin él) la decide Fer ([BACKLOG](BACKLOG.md), "Decisiones pendientes de Fer").
+
+- [ ] **Un costo de golpear más chico:** la referencia con `HIT_ENERGY_COST` en 0,01 (`pesos=`, sin código), contra la
+  corrida sin costo y contra la referencia. Si hay un costo que no hunde el golpe en general y con el que golpear en la
+  puerta, y no en todos lados, paga (el golpe condicionado, S, sube en 4 de 5). 5 corridas, ~1 h 30 min.
+- [ ] **La larga con costo 0:** sin costo, el golpe en general ya está más arriba en el corte, con la llave dada, en 3 de 5
+  semillas. La larga con `HIT_ENERGY_COST:0` diría si el costo frena también con la llave dada. No hace falta para el spec
+  (su referencia es sin la llave).
+- [ ] **La puerta sin costo no es estable al final:** 13,5 y 7,6 por generación en las dos últimas ventanas (la semilla 1,
+  de 27,8 a 9,8; la 5, de 22,0 a 8,8). Si la referencia pasa a ser sin costo, mirarlo con más generaciones.
+
+## El hacha y los árboles, después del cofre — 2026-11-21
+
+Decidido con Fer al armar el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): talar va después del
+cofre, como primer paso después de la cadena del puzzle. Lo que dice el código hoy, para la sesión que lo tome:
+
+- [ ] **Talar, con lo que hay:** cortar pide golpear y el hacha propia (se agarra por contacto, a 30 px, y queda en el
+  mapa), y se puede solo cuando quedan 30 manzanas o menos sin comer (`TREE_CUTTING_THRESHOLD`). Son 3 golpes (fijo en
+  `world.py:35`: `TREE_HITS_TO_CUT` no lo lee nadie), con 120 ticks entre golpes al mismo árbol y 30 entre cortes para
+  todo el mundo (un corte frena a todos). Cortar suelta 20 manzanas (`TREE_CUT_FOOD_REWARD`) en lugares al azar del
+  mapa, que son para todos: al que corta, la selección le paga solo los 15 de `TREE_CUT_REWARD`. Cortar también le pone
+  al agente 120 ticks sin poder golpear la puerta. **La red no ve el hacha ni los árboles:** la brújula apunta a los pasos
+  del puzzle, y el sensor 4 es la distancia al obstáculo más cercano, sin dirección. Aprender a talar probablemente pida
+  un sensor nuevo, que cambia la red (11 entradas). En la referencia del spec (sin la llave dada) se cortaron 39, 4, 9, 1
+  y 6 árboles en las 150 generaciones de cada semilla (`arboles_cortados`), y 0 en su línea base.

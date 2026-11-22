@@ -68,7 +68,7 @@ hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| _(vacío)_ | |
+| [Que aprendan el puzzle solos](active/PUZZLE_SOLOS.md) — en el autónomo y sin nada dado al nacer: comer, llave roja, puerta de madera, llave dorada, puerta de hierro y cofre, cada paso con el mismo criterio; varias sesiones, con bitácora | Al arrancar cada sesión del spec (la última entrada de su bitácora) y antes de medir o cambiar el aprendizaje del autónomo |
 
 ## 🔵 Planned (`planned/`)
 

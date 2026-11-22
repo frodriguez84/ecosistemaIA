@@ -3905,3 +3905,250 @@ en general más alto (G −0,22). La 4 golpea el 35% con P pegado 0,03: ahí no 
   llave, al final llegan casi tantos (18,4 contra 20,8 por generación) y G dejó de caer (−1,29 y −1,22 en las dos últimas
   ventanas): las 300 generaciones (su ítem ya está) dirían si S sube como en la larga. Con `sens-golpe`, se leen S y G por
   ventana.
+
+---
+
+<a id="costo-golpe"></a>
+## El costo de golpear, sin la llave dada: la corrida con `HIT_ENERGY_COST` en 0 (2026-11-21)
+
+**La pregunta** (sugerida por [golpear en la puerta](#sens-golpe), "Qué sugiere"; el ítem "El costo de golpear, sin la
+llave dada" de [mejoras futuras](../product/mejoras_futuras.md#aparecido-al-medir-el-golpe--2026-11-21)): sin la llave
+dada, el golpe en general (G, el z de la salida `hit` lejos del paso) cae desde el corte, de −0,08 en las gens 26-30 a
+−1,22 en las 146-150, y lleva el 57% de la diferencia con la larga pegada a la puerta; el 43% es el golpe condicionado a
+la distancia (S). ¿Esa caída es el costo? Golpear cuesta `HIT_ENERGY_COST` (0,05 de energía por tick, golpee algo o no)
+y paga solo donde hay algo que golpear (la puerta, el cofre y, con el hacha, los árboles); sin la llave pasan más de la
+mitad de la vida en la etapa 0, sin puerta. Si sin costo G no cae y la puerta sube, esa parte es el costo. **Es un
+diagnóstico, no un arreglo:** sin costo, golpear en todos lados es gratis. Medición de una sesión; sin cambios en la
+simulación.
+
+**Diseño.** Cambia una sola cosa contra sin la llave (LEC-019): `HIT_ENERGY_COST` en 0, con el argumento `pesos=` que ya
+existe.
+- **La corrida es otra desde la gen 1:** la energía es una entrada de la red (el sensor 1) y golpear la gastaba desde el
+  principio. A diferencia de [golpear en la puerta](#sens-golpe), las gens 1-30 no son las publicadas. Por eso G y S se
+  miden **desde el corte**: el cambio de la ventana 26-30 (la última con la llave dada) a la 146-150, en cada corrida
+  contra su propio corte.
+- **Sin la larga con costo 0, por tres razones.** (1) La pregunta es si la caída de G sin la llave, desde el corte, es el
+  costo: se responde contra sin la llave, cambiando una cosa. (2) Las gens 1-30 de la corrida nueva son las de una larga
+  con costo 0 (el currículo cortado actúa desde la 31; [sin la llave dada](#sin-la-llave-dada) lo controló byte a byte):
+  la ventana 26-30 dice qué hace el costo 0 con la llave dada, sin otra tanda. (3) La larga con costo 0 desde la 31
+  respondería otra pregunta, si el costo frena también a la larga (con costo, su G no cayó: −0,08 al principio y al
+  final), útil para diseñar un cambio de golpear, que queda fuera de esta medición. Que sin costo G suba solo, porque nada
+  lo empuja para abajo, tampoco la pide: que no caiga es lo que predice la explicación del costo, y por eso G no decide.
+- **Sin línea base nueva:** la pregunta no es aprendizaje contra azar, sino costo contra sin costo, entre dos corridas con
+  evolución.
+- **Sin la llave es la publicada,** en `results/medicion_golpe_20261121/` (con las columnas de `sens-golpe`), y no se corre
+  otra vez: antes de usarla, sus 10 CSV dan el SHA-256 publicado (los `corrida_*.csv`, los de
+  [sin la llave dada](#sin-la-llave-dada); los `agentes_*.csv`, los de [golpear en la puerta](#sens-golpe)).
+
+**La corrida** (semillas 1 a 5, las 5 a la vez, con `python -u`): `medir_puerta.py . SALIDA S evolucion 150 acercarse
+deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`. Es la de sin la llave con
+`HIT_ENERGY_COST:0` al final de los pesos.
+
+**Que el costo sea 0 de verdad** (LEC-010):
+- **El código lo lee:** `HIT_ENERGY_COST` se lee en un solo lugar (`advanced_agent.py:449`), en cada tick y desde la
+  clase; `main.py` no lo pisa, y `pesos=` lo fija antes de `main.main()`.
+- **El log** dice `PESOS {..., 'HIT_ENERGY_COST': 0.0}`.
+- **En la corrida, `ENERGIA_GOLPE`** (nuevo en `medir_puerta.py`; no cambia ningún CSV): en cada tick en que nada más
+  mueve la energía (no comió, no tomó una poción, no está en el agua), lo que el tick le restó al agente además del
+  consumo. Golpeando tiene que ser `HIT_ENERGY_COST` y sin golpear, 0; si no, suma en `MEDICION inconsistencias`. Mide lo
+  que se cobró, no lo que dice `config.py`. **Probado:** sin `HIT_ENERGY_COST:0`, las tres corridas cortas de siempre
+  (semilla 1 con la condición de la larga, 3 generaciones; semilla 2 sin evolución con `acercarse deslizar
+  fortalezas-moviles curriculo=1`, 3; semilla 3 con la condición, `curriculo=2 sens-etapa0 sens-golpe`, 4) dan los 9 CSV
+  con el mismo SHA-256 que con el `medir_puerta.py` de fe35f8e, y `ENERGIA_GOLPE` da 0,050000 por tick golpeando y 0 sin
+  golpear, con 0 inconsistencias. Con `HIT_ENERGY_COST:0` (la semilla 3), 0,000000 en 51.469 ticks golpeando y 0
+  inconsistencias. Con el código roto a propósito (cobra 0,05 diga lo que diga `config.py`), 33.376 inconsistencias: una
+  por tick golpeando.
+
+**Las medidas** (las de [golpear en la puerta](#sens-golpe), con la misma cuenta; N es sin la llave y N0, sin la llave sin
+costo):
+- **La puerta:** `agentes_puerta_madera` del CSV de `main.py`, promedio por generación (se cruza con `abrio`).
+- **G y S desde el corte:** por semilla, ΔG = G(146-150) − G(26-30) y ΔS = S(146-150) − S(26-30), en la etapa 1. En N, ΔG
+  es −1,146 en promedio (cae en 4 semillas; en la 5 sube) y ΔS, +0,134. En la larga, ΔG −0,003 y ΔS +0,990 (la larga y N
+  comparten la ventana 26-30).
+
+**Criterio, fijado antes de correr** (ventana: gens 146-150; por semilla, N0 contra N de la misma semilla; LEC-018):
+1. **La puerta sube (lo que decide):** en 4 de 5 semillas, N0 con al menos 1 agente por generación con la puerta de
+   madera abierta, en promedio (el umbral del ítem 5), y más que N (un empate no cuenta). **Tamaño mínimo:** el promedio
+   de las 5, al menos el doble que el de N (2,5: al menos 5,0).
+2. **El golpe en general no cae desde el corte:** en 4 de 5 semillas, ΔG de N0 mayor que el de N. **Tamaño mínimo:** el
+   promedio de ΔG de N0, a lo sumo un tercio de la caída de N (−1,146: al menos −0,382). Sin costo G puede subir solo:
+   que no caiga es necesario para que la caída sea el costo, pero no dice que el costo frene la puerta. Por eso no decide.
+3. **El golpe condicionado sube:** en 4 de 5 semillas, ΔS de N0 mayor que el de N. **Tamaño mínimo:** el promedio de ΔS
+   de N0, más arriba que el de N en al menos un tercio de la distancia a la larga (+0,134 + (0,990 − 0,134) / 3: al
+   menos +0,419).
+
+- **El veredicto:**
+  - el 1 y el 2: **el costo frena la puerta sin la llave, por el golpe en general.** Con el 3, además aprenden a
+    condicionar el golpe; sin el 3, golpean más en todos lados porque es gratis;
+  - el 2 sin el 1: **la caída del golpe en general es el costo, pero no es lo que frena la puerta;**
+  - el 1 sin el 2: **la puerta sube, pero no por el golpe en general** (se lee con el 3 y con "En la puerta");
+  - ni el 1 ni el 2: **la caída no es el costo.**
+- **Lo esperado,** sin decidir: el 2, probablemente (sin costo, nada empuja a G para abajo); el 3, probablemente no (si
+  golpear es gratis, condicionarlo no paga más); la puerta, sin decidir.
+- **Se lee con:**
+  - **"En la puerta"**, la medida independiente (lo que hacen los que tienen la llave, sin contrafáctico): de los que
+    llegan a 25 px, la parte que golpea ahí (N, 23%; la larga, 82%), y cuántos llegan (N, el 41%: 18,4 por generación).
+    Si la puerta sube porque golpean, sube la parte que golpea; si sube porque llegan más (sin costo viven un poco más),
+    es otra cosa;
+  - **el corte (26-30):** las dos nacen con la llave; G, S, la puerta y "En la puerta" ahí dicen qué hace el costo 0 con
+    la llave dada;
+  - **las ventanas** 26-30, 31-35, 56-60, 86-90, 116-120 y 146-150: si G cae después del corte en N0 como en N;
+  - **P pegado y P lejos** (la red, con el sensor 11 en pegado y en lejos);
+  - **por semilla,** con la semilla 5, que en N ya golpea en la puerta y la abre (9,8 por generación).
+- **Se informan, sin criterio:** contra la larga (la puerta con q = N0 / larga; G y S); la etapa 0 de N0 (G y S hacia la
+  llave); la llave roja, las manzanas, la sensibilidad a la brújula antes de abrir la puerta y la edad; el puzzle después
+  de la puerta; el costo en ticks.
+
+**Controles en la tanda.**
+- las 5 corridas terminan con `MEDICION inconsistencias=0` (contadas, LEC-017), con 9.000 filas de agentes cada una;
+- los logs dicen `CURRICULO_HASTA_GENERACION=30`, `CROSSOVER_RATE=0.2` y los pesos con `'HIT_ENERGY_COST': 0.0`, y
+  `ENERGIA_GOLPE`, 0 por tick golpeando y sin golpear, en los ticks contados;
+- la gen 1 del `corrida_*.csv` ya es distinta de la de N (el costo cambió la corrida desde el principio);
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150; en las gens 1-30 las columnas de la etapa 0 dan 0.
+
+**El script de análisis.** `mediciones/analizar_golpe.py` no sirve tal cual: busca la larga por `curriculo150` y sin la
+llave por `curriculo30`, y N0 y N son las dos `curriculo30`. Va uno nuevo, `mediciones/analizar_costo_golpe.py`, con las
+funciones de `analizar_golpe.py` (que no cambia), probado antes de leer nada nuevo: con N en el lugar de N0 tiene que dar
+los números de N (S +0,089 · G −1,221 · P pegado 0,117 · P lejos 0,055; la puerta 2,5; "En la puerta": llegan el 41% y
+golpean el 23%), las diferencias en 0 y los controles de N con 0 errores.
+
+**Tiempo:** las 5 corridas a la vez, ~1 h 30 min.
+
+**Cómo se corrió.** Las 5 corridas en una tanda, en 1 h 21 min (de 20:30 a 21:51). La salida, en
+`results/medicion_costo_golpe_20261121/` (fuera del repo). Las tablas, con `python mediciones/analizar_costo_golpe.py
+results/medicion_costo_golpe_20261121 results/medicion_golpe_20261121`, probado antes de leer nada nuevo: con N en el
+lugar de N0 dio los números de N (S +0,089 · G −1,221 · P pegado 0,117 · P lejos 0,055; la puerta 2,48; "En la puerta":
+llegan el 41% y golpean el 23%), las diferencias en 0 y 0 errores en los controles.
+
+**Controles, hechos.**
+- **Las 5 corridas terminaron con `MEDICION inconsistencias=0`** (las 5 líneas contadas), con 9.000 filas de agentes cada
+  una. Los logs dicen `CURRICULO_HASTA_GENERACION=30`, `CROSSOVER_RATE=0.2` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}` (5 de
+  5), y la columna `pesos` de `agentes_*.csv` termina en `HIT_ENERGY_COST:0` en todas las filas.
+- **El costo fue 0:** `ENERGIA_GOLPE` da 0,000000 por tick golpeando y sin golpear en las 5 corridas, con 0
+  inconsistencias, en 2,1 a 7,9 millones de ticks golpeando por corrida.
+- **La gen 1** del `corrida_*.csv` ya es distinta de la de N (5 de 5). `etapa_inicial` es 1 en las gens 1-30 y 0 en las
+  31-150, las columnas de la etapa 0 dan 0 en las 1-30, y ninguna fila sin ticks medidos tiene valor (0 diferencias).
+- **N es la publicada:** sus 10 CSV dan el SHA-256 publicado.
+
+<details><summary>SHA-256 de las 5 corridas (se regeneran con medir_puerta.py ... HIT_ENERGY_COST:0 desde el commit de esta sesión)</summary>
+
+| Semilla | Sin costo, `corrida_*.csv` | Sin costo, `agentes_*.csv` |
+|---|---|---|
+| 1 | `f53e597da821c3af1600861855a2585892e386d36e0408175c4f4f08c07330c3` | `8a14ad4938e69d24bef7afade89d6804b52f1f105e585c3f191cb695ece52ee6` |
+| 2 | `64e215c753c2481c43b9d8df01edccaa2be04d9498dd28b3781aec4f63b1ad37` | `d67387c606258de6ca866a7aebd26705df43bf7b9753ed010afa1ccf5dc14b25` |
+| 3 | `f7931fe924663170ec491cf5f2544bcad7d1459595625f76ea34e38abfe27857` | `f27ecf80b62ff74677ea286f02c2b56fe5724683639a58871aeb23e8958efd5a` |
+| 4 | `68bfb68148b1b7f3c1c4ceac9b21387a4332ec08d927d8f5b6cd44b6af4b763a` | `79ad70a1d798b56ab1a408eb9d35d6355c8837078160d4707fe852e3ae6269ce` |
+| 5 | `d29480e929ab1bd5cb8348674a866b02a2188a58bf0af4375bff04db973e4744` | `cf952d1aeb1cfbbe3259efba9a52bc0bcc43a26de75919d521bf0eb7fc46eccb` |
+
+</details>
+
+**El criterio** (gens 146-150; la puerta por generación · G en el corte → al final (ΔG) · S en el corte → al final
+(ΔS); en negrita, donde N0 cumple contra N):
+
+| Semilla | Sin costo (N0) | Sin la llave (N) |
+|---|---|---|
+| 1 | **9,8** · −0,03 → +1,72 (**+1,75**) · +0,37 → +1,12 (**+0,75**) | 0 · +0,26 → −0,91 (−1,18) · +0,17 → −0,37 (−0,54) |
+| 2 | **10,2** · −0,03 → +0,37 (**+0,39**) · −0,25 → +0,64 (**+0,89**) | 0,4 · +0,75 → −1,46 (−2,20) · +0,43 → +0,53 (+0,10) |
+| 3 | **3,2** · +0,57 → −0,07 (**−0,64**) · −0,62 → +0,58 (**+1,20**) | 0,4 · +0,36 → −0,57 (−0,93) · −0,64 → −0,43 (+0,22) |
+| 4 | **6,0** · +0,75 → +0,86 (**+0,11**) · −0,40 → −0,29 (+0,11) | 1,8 · −0,28 → −2,94 (−2,67) · −0,25 → +0,26 (+0,51) |
+| 5 | 8,8 · +1,89 → +2,50 (+0,61) · +0,29 → +0,57 (+0,28) | 9,8 · −1,47 → −0,22 (+1,25) · +0,07 → +0,45 (+0,39) |
+| **Promedio** | **7,60 · +0,630 → +1,075 (+0,445) · −0,122 → +0,522 (+0,644)** | 2,48 · −0,075 → −1,221 (−1,146) · −0,045 → +0,089 (+0,134) |
+
+1. **La puerta sube: 4 de 5** (al menos 1 por generación y más que N; pide 4; la semilla 5, 8,8 contra 9,8), 3,1 veces la
+   de N (7,60 contra 2,48; pide el doble). **Cumple.**
+2. **El golpe en general no cae desde el corte: 4 de 5** (ΔG mayor que el de N; pide 4; en la semilla 5, N ya subía), y
+   en promedio sube +0,445 (pide al menos −0,382). **Cumple.** La semilla 3 cae (−0,64), menos que en N (−0,93).
+3. **El golpe condicionado sube: 3 de 5** (pide 4; la 4 y la 5, no). El tamaño pasa (+0,644; pide +0,419). **No cumple.**
+
+**Veredicto: el costo frena la puerta sin la llave, por el golpe en general. Sin el 3: golpean más en todos lados,
+porque es gratis.**
+
+**El golpe en todos lados** (gens 146-150): sin costo, P lejos es 0,614 (sin la llave 0,055; la larga 0,311) y P pegado,
+0,693: golpearían en el 61% de los ticks lejos de la puerta y en el 69% pegados. P pegado − P lejos, el golpe condicionado
+en decisiones, es +0,079 (sin la llave +0,063; la larga +0,264). En toda la corrida, `ENERGIA_GOLPE` cuenta golpeando del
+22% (semilla 3) al 86% (semilla 5) de los ticks medidos.
+
+**Por ventana** (promedio de las 5 semillas: S · G · P lejos · la puerta por generación):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Sin costo | −0,12 · +0,63 · 0,50 · 3,6 | −0,22 · +0,72 · 0,50 · 2,8 | −0,11 · +0,88 · 0,54 · 2,6 | +0,03 · +1,19 · 0,70 · 8,6 | +0,16 · +1,34 · 0,68 · 13,5 | +0,52 · +1,08 · 0,61 · 7,6 |
+| Sin la llave | −0,05 · −0,08 · 0,31 · 1,2 | +0,07 · −0,18 · 0,32 · 0,2 | +0,12 · −0,69 · 0,22 · 0,6 | +0,08 · −0,89 · 0,14 · 0,9 | +0,22 · −1,29 · 0,06 · 1,9 | +0,09 · −1,22 · 0,06 · 2,5 |
+| Larga | −0,05 · −0,08 · 0,31 · 1,2 | +0,09 · −0,10 · 0,31 · 2,3 | +0,20 · −0,12 · 0,23 · 4,6 | +0,17 · −0,46 · 0,18 · 6,6 | +0,35 · −0,29 · 0,25 · 12,2 | +0,95 · −0,08 · 0,31 · 10,3 |
+
+- **Sin costo, G nunca cae como sin la llave:** sube desde el corte hasta las 116-120 (+1,34) y baja un poco al final.
+- **La puerta sube desde las 86-90, y no es estable:** 8,6, 13,5 y 7,6 por generación. De las 116-120 a las 146-150, la
+  semilla 1 baja de 27,8 a 9,8 y la 5, de 22,0 a 8,8.
+- **S sube tarde,** como en la larga: casi todo en la última ventana (de +0,16 a +0,52).
+- **El corte (26-30), con la llave dada:** sin costo, G ya está más arriba en promedio (+0,63 contra −0,08), pero no en
+  todas: en la 3, la 4 y la 5 sí (+0,57, +0,75 y +1,89 contra +0,36, −0,28 y −1,47), en la 1 y la 2 no. La puerta de las
+  26-30 (3,6 contra 1,2) es casi toda la semilla 5 (17,0 contra 0). Con la llave dada, el costo parece frenar también,
+  pero con 3 de 5 en 30 generaciones no alcanza para decirlo (lo diría la larga con costo 0, que no se corrió).
+
+**En la puerta** (sin criterio; gens 146-150, todas las semillas; los que tienen la llave):
+
+| | Con la llave, por generación | Llegan a 25 px | De los que llegan: ticks a 25 px | Golpean ahí (ticks golpeando) | La abren |
+|---|---|---|---|---|---|
+| Sin costo | 42,5 | 29% (12,5 por generación) | 97 | 83% (53,6%) | 61% |
+| Sin la llave | 44,5 | 41% (18,4) | 338 | 23% (3,4%) | 13% |
+| Larga | 60 | 35% (20,8) | 127 | 82% (37,5%) | 49% |
+
+- **La medida independiente acompaña:** sin costo, de los que llegan golpea el 83% (como la larga) y la abre el 61%. La
+  puerta sube porque golpean, no porque lleguen más: llegan menos (29% contra 41%) y pasan menos tiempo al lado (97
+  ticks contra 338), porque la abren.
+- Por ventana, de los que llegan golpea el 69%, 91%, 76%, 93%, 92% y 83% (sin la llave, del 41% al 23%). Por semilla, en
+  las 146-150: 100%, 77%, 73%, 71% y 100%.
+
+**La etapa 0** (sin criterio; hacia la llave, gens 146-150): sin costo, G es +1,06 (sin la llave, −0,86) y P lejos 0,61
+(0,09): golpean igual de mucho donde no hay puerta. S, +0,28 (+0,19).
+
+**El puzzle** (gens 31-150, sin criterio; agentes que llegan a cada paso, sumados; semillas 1 a 5):
+
+| | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|
+| Sin costo | 575 · 317 · 11 · 290 · 863 (2.056) | 4 · 0 · 1 · 6 · 10 (21) | 3 · 0 · 0 · 4 · 0 (7) |
+| Sin la llave | 23 · 84 · 39 · 4 · 201 (351) | 0 | 0 |
+| Larga (la llave, dada) | 135 · 642 · 229 · 855 · 151 (2.012) | 0 · 0 · 0 · 8 · 0 (8) | 0 · 0 · 0 · 6 · 0 (6) |
+
+Sin costo y sin la llave dada, llegan a la llave dorada tanto como la larga, a la puerta de hierro en 4 semillas y al
+cofre en 2 (la 1 y la 4): es la primera vez que alguien abre el cofre sin nada dado al nacer.
+
+**Se informan, sin criterio** (gens 146-150):
+- **El ítem 5:** la puerta, al menos 1 por generación y más que la línea base sin la llave, en 5 de 5 (9,8 · 10,2 · 3,2 ·
+  6,0 · 8,8 contra 0). La línea base es la publicada, con costo; sin costo no se corrió, pero no podría abrir más puertas
+  que agentes con la llave tiene (de 0,8 a 1,6 por generación), y N0 está arriba de eso en las 5.
+- **Contra la larga:** la puerta, 7,60 contra 10,28 (q 0,74; arriba en 2 de 5).
+- **Lo demás no cambia:** la llave roja, 42,5 por generación (sin la llave, 44,5); las manzanas, 0,993 (0,987); la
+  sensibilidad a la brújula, +0,108 (+0,111). Viven un poco más (1.046 ticks contra 1.008), y el costo en ticks va de
+  194.214 a 222.202 por semilla (sin la llave, de 185.704 a 206.994).
+- **La gen 1,** la misma población inicial: S +0,062 · G −0,005 · P pegado 0,382 · P lejos 0,384, contra +0,058 · −0,031 ·
+  0,370 · 0,366. Casi lo mismo (la energía, el sensor 1, ya cambia un poco lo que ven).
+
+**Lectura.**
+1. **La caída del golpe en general, sin la llave, es el costo, y frena la puerta.** Sin `HIT_ENERGY_COST`, G no cae desde
+   el corte (sube +0,45; con costo cae −1,15) y la puerta se triplica (7,6 contra 2,5 por generación, 4 de 5). La medida
+   independiente acompaña: de los que llegan golpea el 83%, como en la larga, y la abre el 61%.
+2. **No es un arreglo: golpean en todos lados, porque es gratis.** Golpearían en el 61% de los ticks lejos de la puerta
+   (la larga, 31%; sin la llave, 6%), también hacia la llave, y en decisiones casi no lo condicionan (+0,08; la larga,
+   +0,26). S sube en promedio, pero en 3 de 5 semillas: el golpe condicionado no es consistente.
+3. **Sin costo, la cadena avanza después de la puerta:** la llave dorada como en la larga, la puerta de hierro en 4
+   semillas y el cofre en 2, sin nada dado al nacer. Sin la llave, lo que trababa la cadena era golpear.
+4. **La puerta no es estable** en las últimas ventanas (13,5 y 7,6 por generación).
+5. **Con la llave dada, el costo parece frenar también** (G más arriba en el corte en 3 de 5), sin alcanzar para decirlo.
+6. **No cuesta comida ni brújula:** las manzanas, la llave roja y la sensibilidad, como con costo.
+
+**Qué sugiere** (lo decide Fer):
+- **El costo de golpear es lo que frena la puerta sin la llave.** Sacarlo destraba la puerta y la cadena, con golpe en
+  todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), dos caminos sin código, cada
+  uno medido contra esta corrida y contra sin la llave:
+  - **El costo en 0 como referencia nueva:** la puerta pasa el ítem 5 en 5 de 5 y la cadena llega al cofre. Lo aprendido
+    sería golpear siempre, no golpear en la puerta.
+  - **Un costo más chico** (por ejemplo 0,01, con `pesos=`): si hay un costo que no hunde el golpe en general y con el que
+    condicionarlo paga (S en 4 de 5).
+  "Que golpear cueste solo si golpea algo" (código) dejaría gratis golpear al aire: para G, sería como esta corrida.
+- **Cambiar el costo por defecto cambia una decisión de diseño:** la 14 de
+  [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md) lo puso para que golpear siempre acorte la vida.
+  Lo decide Fer.
+- **La larga con costo 0** diría si el costo frena también con la llave dada (el corte lo sugiere, en 3 de 5). Para el
+  spec no hace falta: su referencia es sin la llave.

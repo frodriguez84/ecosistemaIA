@@ -68,7 +68,9 @@ evaluación): la generación n dura y nace como la ⌈n/R⌉, el mismo reloj que
 TOPE_RELOJ·R + 1, como la TOPE_RELOJ (así el currículo no se corta si el control sigue). Deja en SALIDA, por corrida:
 corrida_*.csv (el CSV de main.py), agentes_*.csv (una fila por agente y generación) y
 geometria_*.csv (una por generación). Al final imprime "MEDICION inconsistencias=0":
-cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve.
+cada golpe se predice antes de llamar al original, y el ranking se compara con el de evolve. Antes, "ENERGIA_GOLPE": lo
+que cobró golpear por tick, medido en la energía en los ticks en que nada más la mueve (golpeando tiene que dar
+HIT_ENERGY_COST, y sin golpear, 0; si no, suma inconsistencias): el costo que se cobró, no el de config.py (LEC-010).
 
 Control: el corrida_*.csv tiene que ser byte a byte las primeras filas de la misma corrida sin el
 script (results/experimento_*); si no, el envoltorio cambió la corrida y los números no valen. No
@@ -245,6 +247,24 @@ def golpe(cerebro, p, pegado):
     return z[:, ORDEN_SALIDAS.index('hit')]
 
 
+ENERGIA = dict(golpe_ticks=0, golpe_extra=0.0, sin_ticks=0, sin_extra=0.0)  # lo que cobró golpear, medido en la energía
+
+
+def energia_de_golpear(agente, world, antes):
+    """Lo que el tick le restó al agente además del consumo, en los ticks en que nada más mueve la energía (no comió, no
+    tomó una poción, no está en el agua): golpeando tiene que ser HIT_ENERGY_COST, y sin golpear, 0. Mide el costo que se
+    cobró, no el que dice config.py (LEC-010). Solo lee el estado, sin azar."""
+    if agente.eating or agente.energy >= agente.max_energy or any(
+            o.type == "water" and o.collides_with(agente.x, agente.y, agente.radius) for o in world.obstacles):
+        return
+    extra = antes - agente.energy - SimulationConfig.AGENT_ENERGY_CONSUMPTION
+    k = "golpe" if agente.golpeando else "sin"
+    ENERGIA[k + "_ticks"] += 1
+    ENERGIA[k + "_extra"] += extra
+    if abs(extra - (SimulationConfig.HIT_ENERGY_COST if agente.golpeando else 0.0)) > 1e-9:
+        INCONS[0] += 1  # el tick cobró otra cosa que el costo de config.py
+
+
 _act = AdvancedAgent.act
 
 
@@ -280,7 +300,10 @@ def act(self, decisions, world, other_agents, tick):
             m['ticks_gira'] += int(predicho != 0.0)
             m['giro_abs'] += abs(predicho)
     self._med_percepcion = None
+    energia = self.energy
     _act(self, decisions, world, other_agents, tick)
+    if vivo:
+        energia_de_golpear(self, world, energia)
     if predicho is not None and abs((self.angle - angulo) - predicho) > 1e-9:
         INCONS[0] += 1  # giro() no es el de act()
     if not vivo or self.etapa != 1 or not world.door:
@@ -761,4 +784,7 @@ if evaluaciones > 1:
     print(f"EVALUACIONES episodios={len({f['generacion'] for f in FILAS})} evolve={len(EVOLVE_EN)}"
           f" (despues de los episodios {EVOLVE_EN[:2]}...{EVOLVE_EN[-1:]}) llamadas_ag_afuera={LLAMADAS_AG[0]}"
           f" adentro={LLAMADAS_DENTRO[0]}")
+print(f"ENERGIA_GOLPE golpeando: {ENERGIA['golpe_ticks']} ticks, {ENERGIA['golpe_extra'] / max(1, ENERGIA['golpe_ticks']):.6f}"
+      f" por tick | sin golpear: {ENERGIA['sin_ticks']} ticks, {ENERGIA['sin_extra'] / max(1, ENERGIA['sin_ticks']):.6f} por tick"
+      f" (HIT_ENERGY_COST={SimulationConfig.HIT_ENERGY_COST})")
 print(f"MEDICION inconsistencias={INCONS[0]} filas={len(FILAS)}")
