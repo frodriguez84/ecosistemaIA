@@ -1,6 +1,6 @@
 # Spec: Que aprendan el puzzle solos
 
-**Estado:** Parcial — paso 2 (llave roja) ✅; pasos 1 (comer) y 3 (puerta de madera) en curso; el resto pendiente. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22)
+**Estado:** Parcial — paso 2 (llave roja) ✅; paso 3 (puerta de madera) pasa con la referencia nueva, sin costo de golpear, y falta su línea base; paso 1 (comer), para después de la cadena; el resto pendiente. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22)
 **Prioridad:** Alta — es el rumbo del modo autónomo, pedido por Fer el 2026-11-21
 **Gate:** Ninguno
 **Bloquea:** el ítem 6 del [BACKLOG](../../product/BACKLOG.md) (mecánicas nuevas) y el hacha y los árboles: entran cuando el puzzle esté aprendido
@@ -38,7 +38,7 @@ Después de este spec (no en él): el hacha y los árboles, y las mecánicas nue
 |---|----------|
 | 1 | **El orden:** comer → llave roja → puerta de madera → llave dorada → puerta de hierro → cofre. El hacha y los árboles, después del cofre (Fer, 2026-11-21): la cadena está más cerca, y la red no ve ni el hacha ni los árboles, así que talar probablemente pida un sensor nuevo, que cambia la red y cortaría las comparaciones a mitad de camino. |
 | 2 | **"Solos"** (Fer, 2026-11-21): modo autónomo y nada dado al nacer **en la ventana que se mide** (las últimas 5 generaciones). Valen la brújula (es un sensor: igual tienen que aprender a usarla), la recompensa por acercarse, los switches del mundo (deslizar, fortalezas móviles) y un currículo que se corta antes de esa ventana, como el de la referencia (hasta la 30): es una ayuda de arranque, como acercarse (confirmado por Fer). Lo dado al nacer no cuenta como logro (`etapa_inicial`). |
-| 3 | **La referencia:** la condición de [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`, semillas 1 a 5, con su línea base sin evolución. Sus CSV y SHA-256 están publicados. La referencia vigente se anota en la bitácora: cuando un cambio pasa su criterio y Fer decide quedárselo, la corrida con ese cambio pasa a ser la referencia nueva, con su comando. |
+| 3 | **La referencia:** la condición de [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`, semillas 1 a 5, con su línea base sin evolución. Sus CSV y SHA-256 están publicados. La referencia vigente se anota en la bitácora: cuando un cambio pasa su criterio y Fer decide quedárselo, la corrida con ese cambio pasa a ser la referencia nueva, con su comando. Desde el 2026-11-22, la vigente es sin costo de golpear (Sesión 3). |
 | 4 | **Un cambio por vez** contra la referencia vigente (LEC-019). Si hace falta cambiar dos cosas, el diseño lleva el control que cambia una sola. |
 | 5 | **El criterio común de "aprendido",** el mismo en cada paso: en las últimas 5 generaciones, en **4 de 5 semillas** el paso supera a la línea base sin evolución de la misma semilla; con un **tamaño mínimo**; y se lee junto con **un control o una medida independiente** (LEC-018). Para los pasos del puzzle, el tamaño mínimo por defecto es el del ítem 5: al menos 1 agente por generación, en promedio, que da el paso (`agentes_llave_roja`, `agentes_puerta_madera`, `agentes_llave_dorada`, `agentes_puerta_hierro`, `agentes_cofre` del CSV de `main.py`). Comer se mide aparte (decisión 6). La sesión del bloque escribe los números de su criterio en AnalisisQA **antes de correr**. |
 | 6 | **Comer aprendido** no es comer más: el 16/11 comían más porque caminaban más, y la red no giraba hacia la comida ([brújula, deslizando](../../qa/AnalisisQA.md#brujula-c-deslizando)). Pide las dos cosas, que no dependen de cuánta comida queda: **la sensibilidad de la red a la comida** antes de abrir la puerta ((`sens_comida` + `sens_comida0`) / (`sens_ticks` + `sens_ticks0`)) ≥ 0,02 rad/tick (el umbral de la brújula) y por arriba de la línea base de la misma semilla, en 4 de 5 semillas; y, como medida independiente, que **dentro de cada generación los que giran más hacia la comida coman más** que los de su generación (el Spearman entre la sensibilidad y las manzanas de cada agente, mediana de las gens 121-150 de las 5 semillas, por arriba de la de la línea base). Las manzanas por 1.000 px se informan, sin criterio: con 70 manzanas sin reponer, la evolución se come del 80% al 90% y la medida queda sesgada en contra (LEC-022). Cambiada por Fer el 2026-11-22, con la [medición de comer](../../qa/AnalisisQA.md#comer); antes pedía más manzanas por 1.000 px en lugar de la medida de adentro de la generación. |
@@ -50,12 +50,12 @@ Después de este spec (no en él): el hacha y los árboles, y las mecánicas nue
 
 | # | Paso | Estado | Dónde |
 |---|------|--------|-------|
-| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). Lo que se prueba: `FITNESS_FOOD` en 20 (Fer, 2026-11-22) | [comer](../../qa/AnalisisQA.md#comer) |
+| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). **Con `FITNESS_FOOD` en 20 se aprende** (4 de 5, +0,045), **pero cuesta la llave roja** (28,9 por generación contra 44,5) **y la puerta** (0 de 5): no va a la referencia. Comer compite con la llave en el fitness. Se retoma después de la cadena, con la referencia nueva (Fer, 2026-11-22) | [comer](../../qa/AnalisisQA.md#comer), [la comida al doble](../../qa/AnalisisQA.md#costo-chico-comida20) |
 | 2 | Llave roja | ✅ En la referencia (2026-11-20): 44,5 de 60 por generación, 5 de 5 semillas, 38 veces la línea base y 9,8 veces por 1.000 px | [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada) |
-| 3 | Puerta de madera | 🔄 2 de 5 en la referencia (2,5 por generación). El cuello es golpear: el golpe en general (57%) y el condicionado a la distancia (43%). **El costo de golpear es lo que frena** (2026-11-21): sin `HIT_ENERGY_COST`, 7,6 por generación y el umbral del ítem 5 en 5 de 5, pero golpeando en todos lados. La referencia, con o sin costo, la decide Fer: antes, se mide el costo en 0,01 (Fer, 2026-11-22) | [golpear en la puerta](../../qa/AnalisisQA.md#sens-golpe), [el costo](../../qa/AnalisisQA.md#costo-golpe) |
-| 4 | Llave dorada | ⏳ Llegan las 5 semillas, pero pocos: 351 agentes en las gens 31-150. Sin costo de golpear, 2.056, como la larga | [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), [el costo](../../qa/AnalisisQA.md#costo-golpe) |
-| 5 | Puerta de hierro | ⏳ Nadie en la referencia (en la larga, con la llave dada, 8 agentes en la semilla 4). Sin costo de golpear, 21 agentes en 4 semillas | ídem |
-| 6 | Cofre | ⏳ Nadie en la referencia (en la larga, 6 en la semilla 4). Sin costo de golpear, 7 agentes en las semillas 1 y 4 | ídem |
+| 3 | Puerta de madera | 🔄 **Pasa con la referencia nueva, sin costo de golpear** (Fer, 2026-11-22): 7,6 por generación, 5 de 5 contra la línea base publicada, que es con costo. Lo aprendido es golpear siempre (P lejos 0,61), no golpear en la puerta: con ninguno de los costos medidos (0,05, 0,01 y 0) se condiciona el golpe. Queda ✅ cuando lo confirme su línea base sin costo (la próxima sesión). Con costo 0,05, 2 de 5; con 0,01, 4 de 5 y golpe en todos lados en 3 semillas | [golpear en la puerta](../../qa/AnalisisQA.md#sens-golpe), [el costo](../../qa/AnalisisQA.md#costo-golpe), [el costo en 0,01](../../qa/AnalisisQA.md#costo-chico-comida20) |
+| 4 | Llave dorada | ⏳ Con la referencia nueva, 2.056 agentes en las gens 31-150, como la larga (con costo 0,05, 351). Sin medir con el criterio | [el costo](../../qa/AnalisisQA.md#costo-golpe) |
+| 5 | Puerta de hierro | ⏳ Con la referencia nueva, 21 agentes en 4 semillas en las gens 31-150 (con costo 0,05, nadie). Sin medir con el criterio | ídem |
+| 6 | Cofre | ⏳ Con la referencia nueva, 7 agentes en las semillas 1 y 4 en las gens 31-150 (con costo 0,05, nadie). Sin medir con el criterio | ídem |
 | 7 | Todo junto | ⏳ Una corrida final con los 6 pasos | — |
 
 Un paso ✅ se vuelve a mirar en la corrida final: un cambio para un paso posterior puede romper uno anterior.
@@ -169,3 +169,52 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
     `analizar_costo_golpe.py` agarran más de un archivo, así que van en dos carpetas o con patrones nuevos. Contar las 10
     líneas `MEDICION` (LEC-017), y en (a), que `ENERGIA_GOLPE` dé 0,01 por tick golpeando. Cuando Fer decida la
     referencia con lo de (a), la (b) se vuelve a mirar en la corrida final.
+
+### Sesión 3 — 2026-11-22 — Pasos 3 y 1: el costo de golpear en 0,01 y la comida al doble
+- **Hecho:** una tanda de 10 corridas a la vez (1 h 48 min), dos experimentos de un cambio cada uno contra la referencia
+  con costo 0,05, con sus criterios escritos en AnalisisQA antes de lanzar ([AnalisisQA](../../qa/AnalisisQA.md#costo-chico-comida20)):
+  (a) `HIT_ENERGY_COST:0.01` y (b) `FITNESS_FOOD:20`, con `pesos=`, sin código. Dos scripts nuevos,
+  `mediciones/analizar_costo_chico.py` y `mediciones/analizar_comida20.py`, probados contra lo publicado antes de lanzar.
+  La lección LEC-023, con su regla en OPERACIONES: un control de la gen 1 comparaba manzanas que salen de un CSV
+  redondeado con tolerancia 1e-9, y la prueba con la misma corrida en los dos lados no podía verlo. Commit: el de esta
+  sesión, confirmado por Fer.
+- **Estados:**
+  - (a) Con 0,01 pasa la puerta (4 de 5, 3,56 por generación), pero en 3 de 5 semillas golpean en todos lados (P lejos
+    0,39), y el golpe condicionado no sube (2 de 5). Con ninguno de los tres costos medidos se condiciona el golpe.
+  - (b) Con 20, comer queda aprendido (4 de 5, +0,045), pero la llave roja cae a 28,9 por generación (pide 40,0) y la
+    puerta, a 0,08 (0 de 5). No va a la referencia.
+  - **La referencia vigente cambia (Fer, 2026-11-22): sin costo de golpear.** Es `medir_puerta.py . SALIDA S evolucion 150
+    acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+    pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, semillas 1 a 5, ya corrida
+    en `results/medicion_costo_golpe_20261121/` (sus SHA-256, en [el costo](../../qa/AnalisisQA.md#costo-golpe)). El valor
+    por defecto de `config.py` no cambia.
+  - El paso 3 pasa con ella (7,6 por generación, 5 de 5) contra la línea base publicada, que es con costo, y queda ✅
+    cuando lo confirme su línea base sin costo. El paso 1 sigue 🔄.
+- **Desvíos del spec:** el orden de trabajo. Comer, el paso 1, se retoma después de la cadena (Fer, 2026-11-22): compite
+  con la llave en el fitness y se ajusta mirando todos los pasos juntos. El orden de la decisión 1, lo que aprenden, no
+  cambia.
+- **A medias o bloqueado:** la referencia nueva no tiene su línea base sin evolución. La publicada es con costo, y sin
+  costo los agentes al azar viven más y pueden llegar a más.
+- **Para verificar en producción:** N/A.
+- **Próxima sesión:** los pasos 3 a 6 con la referencia sin costo, contra su línea base sin costo.
+  - **Primer paso, la línea base:** 5 corridas a la vez (~1 h 30 min; contar las 5 líneas `MEDICION`, LEC-017):
+    `medir_puerta.py . results/medicion_base_sin_costo_AAAAMMDD S sin_evolucion 150 acercarse deslizar
+    fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe
+    pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, semillas 1 a 5, con la
+    fecha de la sesión. Es la línea base publicada (`results/medicion_sin_llave_20261120/`) con `HIT_ENERGY_COST:0` y
+    `sens-golpe`, que solo suma columnas. Sin evolución, los pesos del fitness no cambian lo que hacen, y sin selección no
+    hay cruce. Control: `ENERGIA_GOLPE` da 0 golpeando.
+  - **Mientras corre:** controlar los SHA-256 de los 10 CSV de la referencia (`python mediciones/analizar_comida.py
+    results/medicion_sin_llave_20261120 results/medicion_corridas_largas_20261120 results/medicion_costo_golpe_20261121
+    prueba` da "errores: 0") y escribir en AnalisisQA, antes de calcular, el criterio de los pasos 3 a 6. Es la
+    decisión 5, en las gens 146-150, con `agentes_puerta_madera`, `agentes_llave_dorada`, `agentes_puerta_hierro` y
+    `agentes_cofre` del `corrida_*.csv`, contra la línea base nueva de la misma semilla. La medida independiente: para la
+    puerta, "En la puerta", la de [el costo](../../qa/AnalisisQA.md#costo-golpe); para los pasos 4 a 6, por 1.000 px,
+    como la llave roja en [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada).
+  - **Al terminar:** un script nuevo para la cadena, probado primero contra lo publicado (la puerta de la referencia,
+    9,8 · 10,2 · 3,2 · 6,0 · 8,8 por generación; la llave dorada, 2.056 en las 31-150). Cada paso que no pase sigue la
+    decisión 7: una medición de dónde se traba antes de cambiar nada.
+  - **Trampas:** `medir_puerta.py` mide la sensibilidad y el golpe solo en las etapas 0 y 1, así que para los pasos 4 a 6
+    no hay medidas de la red. Un paso con menos de 1 agente por generación no pasa, sea cual sea la línea base. La puerta
+    sin costo no es estable al final (13,5 y 7,6 por generación en las dos últimas ventanas): leerla por ventana. Los
+    archivos de la línea base terminan en `..._HIT_ENERGY_COST0_sin_evolucion.csv` y van en su propia carpeta.

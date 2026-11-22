@@ -4353,3 +4353,360 @@ adentro de cada generación; las manzanas por 1.000 px, sin criterio; LEC-022). 
 tampoco pasa: la sensibilidad, 3 de 5; el Spearman con las manzanas en las 121-150, +0,102 contra +0,041 de la línea
 base, sí. Lo que se prueba para comer es `FITNESS_FOOD` en 20, en la misma tanda que el costo de golpear en 0,01, cada uno
 contra la referencia ([el spec](../specs/active/PUZZLE_SOLOS.md)).
+
+---
+
+<a id="costo-chico-comida20"></a>
+## El costo de golpear en 0,01 y la comida al doble en el fitness: una tanda, dos cambios (2026-11-22)
+
+**La pregunta** (sesión 3 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md); los dos cambios, decididos
+por Fer el 2026-11-22 con [el costo](#costo-golpe) y [comer](#comer)): dos experimentos en la misma tanda de 10 corridas,
+cada uno con un solo cambio contra la referencia vigente, la de la decisión 3, con `HIT_ENERGY_COST` en 0,05 (decisiones 3
+y 4):
+- **(a) Paso 3, el costo de golpear en 0,01 (N1).** Con costo 0,05 la puerta pasa en 2 de 5 semillas; sin costo, en 4 de 5,
+  pero golpeando en todos lados (P lejos 0,61). ¿Hay un costo chico con el que pasa la puerta y golpean en la puerta y no
+  en todos lados? Con eso, Fer decide la referencia.
+- **(b) Paso 1, `FITNESS_FOOD` en 20 (NF), el doble.** En la referencia, desde la 60 la selección casi no ve el giro hacia la
+  comida, aunque los que giran comen más que los de su generación. ¿Con la comida al doble en el fitness, comer queda
+  aprendido (decisión 6) sin que caigan la llave roja y la puerta?
+
+Medición de una sesión; sin cambios en la simulación ni en `medir_puerta.py`: los dos cambios van con `pesos=` (decisión 7).
+
+**Las corridas** (semillas 1 a 5 de cada una, las 10 a la vez, con `python -u`):
+- **(a):** `medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0
+  sens-golpe cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0.01`, en
+  `results/medicion_costo_chico_20261122/`.
+- **(b):** la misma con `pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,FITNESS_FOOD:20`, en
+  `results/medicion_comida20_20261122/`.
+
+Las dos son la corrida de [el costo](#costo-golpe) con otro último peso; (b) lleva `sens-golpe` para informar el golpe. Van
+en dos carpetas: los pesos van en el nombre de los archivos, y en una sola los patrones de los scripts agarrarían los dos.
+
+**Las comparaciones,** publicadas, que no se corren otra vez. Antes de escribir esto, sus CSV dieron el SHA-256 publicado:
+`analizar_comida.py ... prueba` (la referencia, su línea base, la larga, la suya y sin costo) y la prueba de
+`analizar_costo_golpe.py` (los de `sens-golpe`), "errores: 0" las dos y con los números publicados.
+- **N, la referencia:** con `sens-golpe` en `results/medicion_golpe_20261121/`, y sin él, con su **línea base sin evolución
+  (NB)**, en `results/medicion_sin_llave_20261120/` (los `corrida_*.csv` son los mismos).
+- **N0, sin costo** (`results/medicion_costo_golpe_20261121/`), para (a); **la larga** (`results/medicion_golpe_20261121/`),
+  sin criterio.
+
+**Criterio (a), fijado antes de correr** (gens 146-150; por semilla; LEC-018):
+1. **Pasa la puerta (lo que decide; la decisión 5, el criterio del ítem 5):** en 4 de 5 semillas, N1 con al menos 1 agente
+   por generación con la puerta de madera abierta (`agentes_puerta_madera`, promedio) y más que la línea base de la misma
+   semilla. **Tamaño mínimo:** el de la decisión 5, 1 por generación. La línea base es la publicada, con costo 0,05 (la
+   puerta, 0 en las 5): con 0,01 no se corre, porque no podría abrir más puertas que agentes con la llave tiene (de 0,8 a
+   1,6 por generación); una semilla de N1 entre 1 y 1,6 se anota. N la pasa en 2 de 5 (2,48 por generación); N0, en 5 de 5
+   (7,60).
+2. **Golpean en la puerta (el golpe condicionado sube desde el corte):** en 4 de 5 semillas, ΔS = S(146-150) − S(26-30) de
+   N1 mayor que el de N. **Tamaño mínimo:** el promedio de ΔS de N1, al menos +0,419 (un tercio de la distancia de N a la
+   larga, el de [el costo](#costo-golpe)). Con 0,01 la corrida cambia desde la gen 1 (la energía es el sensor 1): por eso,
+   desde el corte. N0 no lo cumplió (3 de 5).
+3. **No golpean en todos lados:** P lejos (la parte de los ticks de la etapa 1 en que la red golpearía lejos del paso), el
+   promedio de las 5, a lo sumo 0,311 (el de la larga, que aprende la puerta con la llave dada), y menor que el de N0 de la
+   misma semilla en 4 de 5. N0, 0,614; N, 0,055.
+
+- **El veredicto:**
+  - el 1, el 2 y el 3: **con costo 0,01 pasa la puerta, golpeando en la puerta:** la candidata a referencia;
+  - el 1 y el 3, sin el 2: **pasa la puerta sin golpear en todos lados, pero sin condicionar el golpe;**
+  - el 1 sin el 3: **pasa la puerta, pero golpean en todos lados, como sin costo;**
+  - sin el 1: **con 0,01 la puerta no pasa** (se lee con ΔG: si el golpe en general cae desde el corte, como con 0,05).
+- **Lo esperado,** sin decidir: 0,01 es un quinto del costo; golpear siempre gasta un 10% más que el consumo (0,1 por tick),
+  contra un 50% con 0,05.
+- **Se lee con:**
+  - **"En la puerta",** la medida independiente: de los que tienen la llave y llegan a 25 px, la parte que golpea ahí (N,
+    23%; N0, 83%; la larga, 82%), cuántos llegan y cuántos la abren;
+  - **ΔG desde el corte,** el criterio 2 de [el costo](#costo-golpe): ΔG de N1 mayor que el de N en 4 de 5, y el promedio
+    al menos −0,382 (un tercio de la caída de N);
+  - **las ventanas** 26-30, 31-35, 56-60, 86-90, 116-120 y 146-150 (S, G, P lejos y la puerta), P pegado − P lejos (el golpe
+    condicionado en decisiones), por semilla y la etapa 0.
+- **Se informan, sin criterio:** contra N0 y contra la larga; la cadena después de la puerta (llave dorada, puerta de
+  hierro, cofre); la llave roja, las manzanas, la sensibilidad a la brújula y a la comida, la edad; la parte de los ticks
+  golpeando (`ENERGIA_GOLPE`).
+
+**Criterio (b), fijado antes de correr** (gens 146-150; la decisión 6; NF contra NB de la misma semilla: sin evolución, los
+pesos del fitness no cambian lo que hacen):
+1. **Giran hacia la comida:** en 4 de 5 semillas, la sensibilidad a la comida antes de abrir la puerta ((`sens_comida` +
+   `sens_comida0`) / (`sens_ticks` + `sens_ticks0`), promedio de las filas de la ventana) ≥ 0,02 rad/tick y mayor que la de
+   NB. **Tamaño mínimo:** el 0,02 por semilla, el umbral de la brújula. N: 3 de 5, +0,0138.
+2. **Los que giran comen más que los de su generación (la medida independiente):** el Spearman entre la sensibilidad a la
+   comida y las manzanas de cada agente, dentro de cada generación, mediana de las gens 121-150 de las 5 semillas, mayor que
+   el de NB (+0,041). N: +0,102.
+
+- **Comer está aprendido con `FITNESS_FOOD` en 20 si cumple los dos** (decisión 6).
+- **Las guardas, contra N (que la llave roja y la puerta no caigan):**
+  - **la llave roja:** sigue pasando la decisión 5 (en 4 de 5 semillas, al menos 1 por generación y más que NB) y el
+    promedio de las 5 es al menos el 90% del de N (44,48: al menos 40,0);
+  - **la puerta:** al menos tantas semillas como N con al menos 1 por generación y más que NB (N: 2), y el promedio, al
+    menos la mitad del de N (2,48: al menos 1,24).
+- **El veredicto:** los dos y las dos guardas, **comer aprendido, sin costar la llave ni la puerta**; los dos sin una guarda,
+  **comer aprendido, pero cuesta la llave o la puerta**; uno solo o ninguno, **comer no aprendido con `FITNESS_FOOD` en 20**.
+- **Lo esperado,** sin decidir: con 20, el término de la comida pasa de ~7 a ~14 al lado de ~48 de acercarse
+  ([sin la llave dada](#sin-la-llave-dada)); puede no alcanzar.
+- **Se lee con:**
+  - **contra N, por semilla** (+0,0215 · +0,0281 · +0,0182 · +0,0313 · −0,0299): si NF cumple el 1 pero su promedio no
+    queda por arriba del de N (+0,0138), el cambio no se atribuye;
+  - **lo que ve la selección:** el Spearman entre la sensibilidad a la comida y el fitness, dentro de cada generación, por
+    tramo (N: +0,18 en las 31-60 y de +0,02 a +0,05 después). Si el cambio actúa por donde se espera, desde la 60 no cae
+    como en N;
+  - **las ventanas** (la sensibilidad sube hasta la 60 y se pierde, en N) y por etapa.
+- **Se informan, sin criterio:** las manzanas por 1.000 px y la comida comida de la disponible (LEC-022); el término de la
+  comida; la sensibilidad a la brújula (N, +0,1105); el golpe y la cadena después de la puerta.
+
+**Controles en la tanda.**
+- Las 10 corridas terminan con `MEDICION inconsistencias=0 filas=9000` (las 10 líneas contadas, LEC-017).
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30`, `CROSSOVER_RATE=0.2` y los pesos (`'HIT_ENERGY_COST': 0.01` en (a),
+  `'FITNESS_FOOD': 20.0` en (b)), y la columna `pesos` de `agentes_*.csv` termina en `HIT_ENERGY_COST:0.01` o en
+  `FITNESS_FOOD:20` en todas las filas.
+- **(a) El costo fue 0,01** (LEC-010): `ENERGIA_GOLPE` da 0,010000 por tick golpeando y 0 sin golpear. La gen 1 del
+  `corrida_*.csv` ya es distinta de la de N.
+- **(b) La comida pesa 20** (LEC-010): las manzanas de cada agente, `f_comida` / 20 al cuadrado, son enteras y suman
+  `manzanas_prom` × 60 en cada generación. En la gen 1, las mismas redes con lo mismo que ven: las columnas de la
+  sensibilidad y del golpe de `agentes_*.csv` son las de N (el fitness actúa desde la selección).
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, y ninguna fila sin ticks medidos tiene valor.
+
+**Los scripts.** Dos nuevos, con las funciones de los de [el costo](#costo-golpe) y [comer](#comer), que no cambian:
+`mediciones/analizar_costo_chico.py` para (a) y `mediciones/analizar_comida20.py` para (b). Se prueban antes de leer nada
+nuevo: con N en el lugar de N1 o de NF tienen que dar los números de N (en (a), S +0,089 · G −1,221 · P pegado 0,117 · P
+lejos 0,055, la puerta 2,48, "En la puerta" 41% y 23%; en (b), la sensibilidad a la comida +0,0138 con 3 de 5 y el Spearman
++0,102 contra +0,041) y los controles de lo publicado, con 0 errores.
+
+**Tiempo:** las 10 a la vez, de 1 h 30 min a 1 h 45 min.
+
+**Cómo se corrió.** Las 10 a la vez con `python -u`, el 2026-11-22 de 12:03 a 13:51 (1 h 48 min). Después,
+`python mediciones/analizar_costo_chico.py results/medicion_costo_chico_20261122 results/medicion_golpe_20261121
+results/medicion_costo_golpe_20261121 results/medicion_sin_llave_20261120` y `python mediciones/analizar_comida20.py
+results/medicion_comida20_20261122 results/medicion_golpe_20261121 results/medicion_sin_llave_20261120`. Antes de lanzar,
+los dos scripts se probaron con N en el lugar de N1 y de NF: dieron los números de N y 0 errores.
+
+**Controles, hechos** (0 errores en los dos scripts):
+- Las 10 líneas `MEDICION inconsistencias=0 filas=9000`, contadas.
+- Los CSV de comparación (N, N0 y la línea base), con su SHA-256 publicado, archivo por archivo.
+- Los logs dicen los pesos, `CURRICULO_HASTA_GENERACION=30` y `CROSSOVER_RATE=0.2`, y la columna `pesos` termina en
+  `HIT_ENERGY_COST:0.01` o en `FITNESS_FOOD:20` en todas las filas.
+- **(a)** `ENERGIA_GOLPE` da 0,010000 por tick golpeando y 0 sin golpear, en las 5 (golpeando el 10%, 13%, 36%, 44% y 44%
+  de los ticks medidos). La gen 1 ya es distinta de la de N.
+- **(b)** Las manzanas, `f_comida` / 20 al cuadrado, son enteras y suman `manzanas_prom` × 60 en las 150 generaciones. La
+  gen 1 es la de N en las 55 columnas de comportamiento y en las manzanas, en las 5 semillas, y la gen 2 ya es distinta.
+  `ENERGIA_GOLPE` da el costo de siempre, 0,05.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, ninguna fila sin ticks tiene valor y ninguna de la ventana queda
+  sin medir.
+- **Un control falló primero, y el error era del script** (LEC-023): el de la gen 1 de (b) dio 26 errores. Eran 13 agentes
+  con 2 manzanas: `f_comida` se escribe con 4 decimales (14,1421 con 10, 28,2843 con 20), y al cuadrado da 1,99999 y
+  2,000004. El script las comparaba con tolerancia 1e-9 y las contaba dos veces, porque las manzanas estaban también entre
+  las columnas. Las 55 columnas no tenían ninguna diferencia. Ahora se comparan redondeadas, como en el control de enteras,
+  y la prueba sigue dando lo publicado con 0 errores.
+
+<details><summary>SHA-256 de las 10 corridas (se regeneran con medir_puerta.py ... HIT_ENERGY_COST:0.01 y ... FITNESS_FOOD:20)</summary>
+
+| Semilla | Costo 0,01, `corrida_*.csv` | Costo 0,01, `agentes_*.csv` |
+|---|---|---|
+| 1 | `0cb5c8a927cf38ef87e0033a3caaa79d36675837a9b95935bd7dfeada254f470` | `31e67d3fd8e10673f520844b6ab64ad01a00f733f86cade32bdaa627686a7f26` |
+| 2 | `d4abd08ea0f067f56647382d79c58a28635465b11a5ed28b336ab5688484b7b1` | `370f1beb031f0ac3a1634c200f3a582fc325e98d365cb5ab5e4963161ba252e6` |
+| 3 | `473e3f98cfac064afe61f2eda6587669bacf5f564c3ea9d15c37e6c6bb05e484` | `709278c1342b06c39195f96c9303f7801e3a7210277777acff6347b81bf0ab98` |
+| 4 | `55a7a995d871a9200ce4e460340ec8ba6b1f515f832f9aabcb96409d5aac38c9` | `ad0a81e4b2db88dffb0569a38df16be288b2a6e552bfa1b2cd26ef82e7c0da50` |
+| 5 | `76e8a3eb83cdc165fa53f5bb3f4220b05099f1347a0a5521777ece526b4b7190` | `507246e0af94b98a1469b78694713ad06546a8ab9acfec0a6e30bdbda2494f7e` |
+
+| Semilla | Comida 20, `corrida_*.csv` | Comida 20, `agentes_*.csv` |
+|---|---|---|
+| 1 | `c634e925e860df0d0ecd60feeaadfe235f4a240a0f61dca0ae85c06742a943a2` | `7186828c316dbfd3f2f96cdece7de4e853553b9dc70eaa88ddd2364c53fddbeb` |
+| 2 | `75dfc91b97a084e0f1e0f65b4354f789239647869e000975fb6fa764075da4b2` | `15004036d4930ddc7f95804cea0d56f91a8edcdd5ac8acae125812055fe3390c` |
+| 3 | `8c3957994270f8352e87087c448463c0609d56ab7ec7c07335baf6a2d6dcc6d2` | `26876fa8698ed1670283fa07ff850a1e583c40f0814e46e90f46c0bb67200f99` |
+| 4 | `4ce70767e9474cb3ecba4faffb660958e2b1018e12b10bfef1d076bb0b6adfe0` | `9ee548b8928f711b3f9e0dcf7f93bc442c5c61727657e3b3b7ffd670beb2638e` |
+| 5 | `5b05a69ef315e42b208ab67dabb5ef67fc02d71919e7b2bdd2c511c342b1aa4e` | `77001b58bbee48604183d7921bd78b0b83e495d95569480bed25fa0328d57660` |
+
+</details>
+
+### (a) El costo de golpear en 0,01
+
+**El criterio** (gens 146-150; la puerta por generación · ΔG desde el corte · ΔS desde el corte · P lejos; en negrita,
+donde N1 cumple por semilla):
+
+| Semilla | Costo 0,01 (N1) | Costo 0,05 (N) | Sin costo (N0) |
+|---|---|---|---|
+| 1 | **1,2** · +2,12 · −1,36 · **0,18** | 0 · −1,18 · −0,54 · 0,05 | 9,8 · +1,75 · +0,75 · 0,80 |
+| 2 | **2,4** · +0,47 · **+0,59** · **0,03** | 0,4 · −2,20 · +0,10 · 0,01 | 10,2 · +0,39 · +0,89 · 0,44 |
+| 3 | **9,4** · +0,08 · **+0,64** · 0,51 | 0,4 · −0,93 · +0,22 · 0,04 | 3,2 · −0,64 · +1,20 · 0,26 |
+| 4 | **4,6** · +0,83 · +0,50 · **0,54** | 1,8 · −2,67 · +0,51 · 0,00 | 6,0 · +0,11 · +0,11 · 0,69 |
+| 5 | 0,2 · +1,08 · −1,40 · **0,70** | 9,8 · +1,25 · +0,39 · 0,18 | 8,8 · +0,61 · +0,28 · 0,89 |
+| **Promedio** | **3,56** · +0,917 · −0,207 · 0,393 | 2,48 · −1,146 · +0,134 · 0,055 | 7,60 · +0,445 · +0,644 · 0,614 |
+
+1. **Pasa la puerta: 4 de 5** (al menos 1 por generación y más que la línea base; pide 4; la 5, 0,2), 3,56 por generación
+   (N 2,48, N0 7,60). Ninguna semilla entre 1 y lo que su línea base tiene con la llave (la 1, 1,2 contra 0,8). **Cumple.**
+2. **Golpean en la puerta: 2 de 5** (ΔS mayor que el de N, la 2 y la 3; la 4 empata, +0,501 contra +0,505; pide 4), y el
+   promedio da −0,207 (pide al menos +0,419). **No cumple.**
+3. **No golpean en todos lados:** P lejos da 0,393 en promedio (pide a lo sumo 0,311, el de la larga). Es menor que el de
+   N0 en 4 de 5 (la 3, no). **No cumple.**
+
+**Veredicto (a): con costo 0,01 pasa la puerta, pero golpean en todos lados, como sin costo** (el 1 sin el 3).
+
+**Se lee con ΔG:** mayor que el de N en 4 de 5, y +0,917 en promedio (pide al menos −0,382): el golpe en general no cae,
+como sin costo. P pegado − P lejos, el golpe condicionado en decisiones, da +0,033 (N +0,063, N0 +0,079, la larga +0,264).
+
+**Las semillas se parten en dos** (gens 146-150: P lejos · golpeando, de los ticks medidos en toda la corrida · la puerta):
+- **La 1 y la 2 casi no golpean lejos** (0,18 y 0,03 · 10% y 13%) y abren poco (1,2 y 2,4).
+- **La 3, la 4 y la 5 golpean en todos lados** (0,51, 0,54 y 0,70 · 36%, 44% y 44%). La 3 y la 4 abren 9,4 y 4,6. La 5 no
+  abre (0,2): llegan pocos a la puerta, porque la llave roja nunca subió (14,8 por generación al final, y en ninguna
+  ventana pasa de 15,2; N, 43,0).
+
+**Por ventana** (promedio de las 5 semillas: S · G · P lejos · la puerta por generación):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Costo 0,01 | +0,40 · −0,83 · 0,24 · 0,2 | +0,56 · −0,74 · 0,31 · 0 | +0,21 · −0,32 · 0,37 · 0,2 | +0,18 · +0,02 · 0,32 · 1,2 | −0,15 · −0,04 · 0,32 · 3,6 | +0,20 · +0,09 · 0,39 · 3,6 |
+| Costo 0,05 | −0,04 · −0,08 · 0,31 · 1,2 | +0,07 · −0,18 · 0,32 · 0,2 | +0,12 · −0,69 · 0,22 · 0,6 | +0,08 · −0,89 · 0,14 · 0,9 | +0,22 · −1,29 · 0,06 · 1,9 | +0,09 · −1,22 · 0,05 · 2,5 |
+| Sin costo | −0,12 · +0,63 · 0,50 · 3,6 | −0,22 · +0,72 · 0,50 · 2,8 | −0,11 · +0,88 · 0,54 · 2,6 | +0,03 · +1,19 · 0,70 · 8,6 | +0,16 · +1,34 · 0,68 · 13,5 | +0,52 · +1,08 · 0,61 · 7,6 |
+
+- **La puerta sube tarde:** de 0 a 0,2 hasta las 56-60, 1,2 en las 86-90 y 3,6 desde las 116-120. Sin costo, ya da 8,6 en
+  las 86-90.
+- **S no sube:** de +0,40 en el corte a +0,20 al final, pasando por −0,15 en las 116-120.
+- **G y P lejos quedan entre los dos:** G sube desde el corte hasta cerca de 0 y no cae como con 0,05. P lejos, 0,39.
+- **El corte, distinto de N** (G −0,83 contra −0,08): con 0,01 la corrida cambia desde la gen 1. Son la 1 y la 2 (−2,63 y
+  −2,02), y con 5 semillas no alcanza para atribuirlo al costo.
+
+**En la puerta** (sin criterio; gens 146-150, todas las semillas; los que tienen la llave):
+
+| | Con la llave, por generación | Llegan a 25 px | De los que llegan: ticks a 25 px | Golpean ahí (ticks golpeando) | La abren |
+|---|---|---|---|---|---|
+| Costo 0,01 | 39,3 | 31% (12,2 por generación) | 180 | 46% (14,5%) | 29% |
+| Costo 0,05 | 44,5 | 41% (18,4) | 338 | 23% (3,4%) | 13% |
+| Sin costo | 42,5 | 29% (12,5) | 97 | 83% (53,6%) | 61% |
+| Larga | 60 | 35% (20,8) | 127 | 82% (37,5%) | 49% |
+
+Por semilla, de los que llegan golpea ahí el 9%, 33%, 74%, 96% y 57%.
+
+**La etapa 0** (sin criterio; hacia la llave, gens 146-150): con 0,01, G es −0,17 (con 0,05, −0,86; sin costo, +1,06) y P
+lejos 0,31 (0,09 y 0,61). S, +0,21 (+0,19 y +0,28).
+
+**El puzzle** (gens 31-150, sin criterio; agentes que llegan a cada paso, sumados; semillas 1 a 5):
+
+| | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|
+| Costo 0,01 | 18 · 62 · 272 · 189 · 2 (543) | 0 · 0 · 1 · 1 · 0 (2) | 0 |
+| Costo 0,05 | 23 · 84 · 39 · 4 · 201 (351) | 0 | 0 |
+| Sin costo | 575 · 317 · 11 · 290 · 863 (2.056) | 4 · 0 · 1 · 6 · 10 (21) | 3 · 0 · 0 · 4 · 0 (7) |
+
+**Se informan, sin criterio** (gens 146-150; entre paréntesis, costo 0,05 y sin costo):
+- la llave roja, 39,3 por generación (44,5 y 42,5), con la semilla 5 en 14,8;
+- las manzanas, 1,094 (0,987 y 0,993);
+- la sensibilidad a la brújula, +0,095 (+0,111 y +0,108), y a la comida, +0,023 (+0,014 y +0,035);
+- la edad, 1.017 ticks (1.008 y 1.046);
+- la gen 1: S +0,060 · G −0,008 · P pegado 0,379 · P lejos 0,376 (con 0,05: +0,058 · −0,031 · 0,370 · 0,366).
+
+### (b) La comida al doble en el fitness
+
+**El criterio** (gens 146-150; sensibilidad a la comida · la llave roja por generación · la puerta por generación; en
+negrita, donde NF cumple el 1):
+
+| Semilla | Comida 20 (NF) | Referencia (N) | Línea base (NB) |
+|---|---|---|---|
+| 1 | **+0,0640** · 39,2 · 0 | +0,0215 · 46,6 · 0 | +0,0020 · 0,8 · 0 |
+| 2 | **+0,0492** · 22,2 · 0 | +0,0281 · 43,8 · 0,4 | +0,0005 · 1,0 · 0 |
+| 3 | **+0,0751** · 23,8 · 0 | +0,0182 · 38,4 · 0,4 | +0,0008 · 1,0 · 0 |
+| 4 | +0,0058 · 37,8 · 0,4 | +0,0313 · 50,6 · 1,8 | +0,0006 · 1,4 · 0 |
+| 5 | **+0,0313** · 21,4 · 0 | −0,0299 · 43,0 · 9,8 | −0,0024 · 1,6 · 0 |
+| **Promedio** | **+0,0451** · 28,9 · 0,08 | +0,0138 · 44,5 · 2,48 | +0,0003 · 1,2 · 0 |
+
+1. **Giran hacia la comida: 4 de 5** (≥ 0,02 y mayor que la línea base; pide 4; la 4, +0,006). En promedio da +0,0451,
+   3,3 veces el de N. **Cumple.**
+2. **Los que giran comen más que los de su generación:** el Spearman con las manzanas, mediana de las 121-150, da +0,099
+   contra +0,041 de la línea base. **Cumple.** N da +0,102: esta medida ya la pasaba la referencia.
+- **Guarda, la llave roja:** pasa la decisión 5 en 5 de 5, pero el promedio da 28,9 (pide al menos 40,0; N 44,5), y queda
+  abajo del de N en las 5 semillas. **Cae.**
+- **Guarda, la puerta:** pasa en 0 semillas (N, 2), y el promedio da 0,08 por generación (pide al menos 1,24). **Cae.**
+
+**Veredicto (b): con `FITNESS_FOOD` en 20 comer queda aprendido, pero cuesta la llave y la puerta.**
+
+**Se lee con:**
+- **Contra N, por semilla:** +0,0425 · +0,0211 · +0,0569 · −0,0255 · +0,0612, arriba en 4 de 5. El promedio de NF queda
+  por arriba del de N, así que el cambio se atribuye.
+- **Lo que ve la selección** (Spearman con la sensibilidad a la comida dentro de cada generación; mediana del tramo de las
+  5 semillas, y % de generaciones con r > 0):
+
+| Gens | 1-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|
+| Comida 20, con las manzanas | +0,109 (78%) | +0,118 (87%) | +0,126 (81%) | +0,111 (79%) | +0,099 (74%) |
+| Comida 20, con el fitness | +0,106 (78%) | +0,174 (86%) | **+0,128** (83%) | **+0,154** (78%) | **+0,142** (74%) |
+| Referencia, con las manzanas | +0,117 (78%) | +0,127 (79%) | +0,074 (74%) | +0,109 (73%) | +0,102 (71%) |
+| Referencia, con el fitness | +0,141 (80%) | +0,180 (78%) | +0,024 (56%) | +0,047 (57%) | +0,040 (60%) |
+| Línea base, con las manzanas | +0,037 (65%) | +0,029 (55%) | +0,008 (51%) | +0,042 (63%) | +0,041 (68%) |
+| Línea base, con el fitness | +0,014 (53%) | +0,010 (53%) | −0,014 (47%) | +0,002 (51%) | +0,012 (53%) |
+
+  El cambio actúa por donde se esperaba: desde la 60, la selección sigue viendo el giro hacia la comida (de +0,13 a +0,15;
+  en N, de +0,02 a +0,05).
+- **Por ventana** (promedio de las 5 semillas: sensibilidad a la comida · la llave roja · la puerta · la comida comida de
+  la disponible):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Comida 20 | +0,026 · 60 · 0 · 94% | +0,034 · 4,0 · 0 · 95% | +0,052 · 9,5 · 0 · 98% | +0,060 · 17,1 · 0 · 99% | +0,060 · 26,9 · 0,3 · 94% | +0,045 · 28,9 · 0,1 · 95% |
+| Referencia | +0,026 · 60 · 1,2 · 91% | +0,030 · 10,8 · 0,2 · 95% | +0,047 · 20,3 · 0,6 · 91% | +0,038 · 33,4 · 0,9 · 88% | +0,022 · 41,7 · 1,9 · 84% | +0,014 · 44,5 · 2,5 · 84% |
+| Línea base | +0,001 · 60 · 0,3 · 27% | +0,001 · 1,2 · 0 · 31% | +0,002 · 0,6 · 0 · 29% | −0,001 · 0,8 · 0 · 29% | +0,001 · 1,0 · 0 · 27% | 0,000 · 1,2 · 0 · 33% |
+
+  - **La sensibilidad no se pierde después de la 60** (+0,060 en las 86-90 y en las 116-120; N baja a +0,022). Al final
+    baja algo (+0,045).
+  - **La llave roja se aprende más lento desde el corte:** 4,0 · 9,5 · 17,1 · 26,9 · 28,9 (N: 10,8 · 20,3 · 33,4 · 41,7 ·
+    44,5). Al final, la 1 y la 4 siguen subiendo (39,2 y 37,8), y la 2, la 3 y la 5 se quedan en ~22.
+  - **Se comen casi todas:** desde el corte, del 94% al 99% de la disponible (N, del 84% al 95%).
+- **Por etapa:** +0,046 en la etapa 0 y +0,043 en la 1 (N, +0,016 y +0,012).
+
+**Se informan, sin criterio** (gens 146-150; entre paréntesis, la referencia y la línea base):
+- las manzanas por 1.000 px, 0,715 (0,768 y 1,175), y por agente, 1,156 (0,987 y 0,382);
+- el término de la comida, 15,79 (7,06 y 2,30);
+- la sensibilidad a la brújula, +0,078 (+0,111 y −0,001), y la edad, 1.019 ticks (1.008 y 905);
+- la cadena: 6 agentes con la llave dorada en las gens 31-150 (N, 351), y ninguno con la puerta de hierro ni el cofre;
+- el golpe, en la etapa 1: S −0,680 · G −1,731 · P pegado 0,016 · P lejos 0,077 (N: +0,089 · −1,221 · 0,117 · 0,055).
+
+**Lectura.**
+1. **(a) Con 0,01, la puerta pasa el criterio del ítem 5 (4 de 5), pero el golpe no se condiciona** (ΔS en 2 de 5,
+   −0,21), y en 3 de 5 semillas golpean en todos lados. Todo queda entre 0,05 y sin costo: la puerta, 3,6 (2,5 y 7,6); P
+   lejos, 0,39 (0,05 y 0,61); de los que llegan golpea el 46% (23% y 83%); la llave dorada, 543 (351 y 2.056). El cofre, en
+   ninguna semilla (sin costo, en 2).
+2. **El costo es una perilla entre no golpear y golpear siempre, y ninguno de los tres valores condiciona el golpe.** De
+   0,05 a 0, la puerta va de 2,5 a 3,6 y a 7,6, y el golpe en general y el de todos lados suben juntos. Con ninguno, S
+   sube en 4 de 5. Lo condiciona la larga (ΔS +0,99, P pegado − P lejos +0,26), que tiene la llave desde que nace y pasa
+   el 68% de los ticks en la etapa 1 (sin la llave, del 40% al 47%).
+3. **Con 0,01, las semillas se parten:** dos casi no golpean y abren poco, y tres golpean en todos lados. De esas tres, dos
+   abren la puerta y la otra, la 5, nunca aprendió bien la llave roja. El costo chico no fija un comportamiento.
+4. **(b) Con la comida al doble, comer queda aprendido por la decisión 6** (4 de 5, +0,045, 3,3 veces la referencia), y por
+   donde se esperaba: desde la 60, la selección sigue viendo el giro hacia la comida. Pero la llave roja se aprende más
+   lento (28,9 contra 44,5, abajo en las 5) y la puerta no pasa (0 de 5). También giran menos hacia la brújula (+0,078
+   contra +0,111).
+5. **Comer y la llave compiten en el fitness:** el término de la comida pasó de 7 a 16, al lado de ~48 de acercarse, y lo
+   que gana la comida lo pierde la llave. Y comer da poco más: ya se comían el 84% de la disponible, y con 20, el 95%
+   (LEC-022).
+6. **En (a), un valor intermedio dio un resultado intermedio,** no lo mejor de los dos extremos.
+
+**Qué sugiere** (lo decide Fer):
+- **La referencia (paso 3).** Con el criterio fijado, 0,01 no es candidata. Las tres opciones, con sus números (gens
+  146-150; la cadena, en las 31-150):
+
+  | Costo de golpear | La puerta (ítem 5) | P lejos (golpe en todos lados) | ΔS contra 0,05 | Llave dorada · puerta de hierro · cofre |
+  |---|---|---|---|---|
+  | 0,05 (la vigente) | 2,5 por generación, 2 de 5 | 0,05 | — (+0,13) | 351 · 0 · 0 |
+  | 0,01 | 3,6, 4 de 5 | 0,39 (3 semillas, arriba de 0,5) | 2 de 5 (−0,21) | 543 · 2 · 0 |
+  | 0 | 7,6, 5 de 5 | 0,61 | 3 de 5 (+0,64) | 2.056 · 21 · 7 |
+
+  **Recomiendo sin costo (0) como referencia nueva.** Con ninguno de los tres se condiciona el golpe, así que 0,01 no da
+  nada a cambio de la puerta y la cadena que pierde. Sin costo, la puerta pasa la decisión 5 en 5 de 5 (el paso 3 quedaría
+  ✅, con la medida independiente: de los que llegan golpea el 83% y la abre el 61%), y la cadena llega al cofre. Lo
+  aprendido para la puerta sería golpear siempre, y así se escribe. Va con `pesos=`: el valor por defecto de `config.py`
+  no cambia (eso sería la decisión 14 de [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md), y lo decide
+  Fer aparte). Con esa referencia, los pasos 4 a 6 se miden sobre los 10 CSV publicados de sin costo, sin corridas.
+- **Si Fer quiere que golpeen en la puerta y no en todos lados, el costo no lo da.** Lo que podría darlo, sin medir: que
+  golpear al aire cueste y golpear algo golpeable (una puerta, el cofre, un árbol) no. Así, golpear en todos lados se paga y
+  golpear en la puerta no. Es código, con un switch apagado por defecto y sus tests (decisión 7). Una trampa: hoy el costo
+  se cobra en el agente antes de que `main.py` pruebe qué golpea (los `_try_*`). Queda en
+  [mejoras futuras](../product/mejoras_futuras.md).
+- **Comer:** 20 no va a la referencia, porque las guardas caen. Comer se aprende cuando la selección lo ve, pero le saca
+  a la llave. Dos caminos:
+  - un valor intermedio (`FITNESS_FOOD` en 15), que por lo visto en (a) probablemente dé algo intermedio;
+  - seguir la cadena primero y volver a comer con la referencia nueva. Comer es el único paso que compite con los otros en
+    el fitness: se ajusta mirando todos juntos.
+
+  Recomiendo el segundo.
+
+**Decidido por Fer (2026-11-22):** la referencia nueva es **sin costo de golpear**, la corrida de [el costo](#costo-golpe)
+(`results/medicion_costo_golpe_20261121/`, con sus SHA-256 publicados), con `HIT_ENERGY_COST:0` en `pesos=`. El valor por
+defecto de `config.py` no cambia. Comer se retoma después de la cadena, con la referencia nueva. Esa referencia no tiene
+línea base sin evolución propia: la publicada es con costo, y sin costo los agentes al azar viven más y pueden llegar a más.
+La corre la próxima sesión ([el spec](../specs/active/PUZZLE_SOLOS.md)).

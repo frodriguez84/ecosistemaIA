@@ -5,6 +5,19 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-023 — 2026-11-22 — Un control de igualdad no lo prueba la misma corrida en los dos lados
+
+**Qué pasó.** En [el costo en 0,01 y la comida al doble](../qa/AnalisisQA.md#costo-chico-comida20), un control de
+`mediciones/analizar_comida20.py` pedía que la gen 1 con `FITNESS_FOOD` en 20 fuera la de la referencia, manzanas
+incluidas. Antes de lanzar, el script se probó con la referencia en los dos lados y dio 0 errores. Con la corrida nueva dio
+26. Eran 13 agentes con 2 manzanas: `f_comida` se escribe con 4 decimales (14,1421 con 10, 28,2843 con 20), y al cuadrado
+da 1,99999 y 2,000004. El control comparaba con tolerancia 1e-9 y, con el mismo archivo en los dos lados, no podía fallar.
+Antes de leer resultados, el diagnóstico mostró que las columnas eran iguales y que el error estaba en el script.
+
+**Regla.** La prueba con la misma corrida en los dos lados no ejercita un control de igualdad: siempre da igual. Un valor
+que sale de una columna redondeada del CSV (las manzanas, de `f_comida`) se compara con la tolerancia del redondeo desde
+que se escribe el control. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
+
 ## LEC-022 — 2026-11-22 — Una medida "por px" de un recurso que se agota no compara poblaciones
 
 **Qué pasó.** La decisión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md) pedía, para comer,

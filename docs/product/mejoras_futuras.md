@@ -128,10 +128,13 @@ Con la [medición](../qa/AnalisisQA.md#sens-golpe): sin la llave dada, los que l
 ## Aparecido al medir el costo de golpear — 2026-11-21
 
 Con la [medición](../qa/AnalisisQA.md#costo-golpe): sin `HIT_ENERGY_COST`, la puerta sin la llave se triplica, pero
-golpean en todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), la referencia (con
-costo o sin él) la decide Fer ([BACKLOG](BACKLOG.md), "Decisiones pendientes de Fer").
+golpean en todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), Fer decidió el
+2026-11-22, después de medir el costo en 0,01, que la referencia sea sin costo ([BACKLOG](BACKLOG.md)).
 
-- [ ] **Un costo de golpear más chico:** la referencia con `HIT_ENERGY_COST` en 0,01 (`pesos=`, sin código), contra la
+- [x] 2026-11-22 — medido ([AnalisisQA](../qa/AnalisisQA.md#costo-chico-comida20)): **con 0,01 pasa la puerta (4 de 5),
+  pero golpean en todos lados** en 3 de 5 semillas (P lejos 0,39), y el golpe condicionado no sube (2 de 5). Todo queda
+  entre 0,05 y sin costo, y el cofre en ninguna. Lo que sigue, abajo, en "Aparecido con el costo en 0,01".
+  **Un costo de golpear más chico:** la referencia con `HIT_ENERGY_COST` en 0,01 (`pesos=`, sin código), contra la
   corrida sin costo y contra la referencia. Si hay un costo que no hunde el golpe en general y con el que golpear en la
   puerta, y no en todos lados, paga (el golpe condicionado, S, sube en 4 de 5). 5 corridas, ~1 h 30 min. **Decidido por
   Fer (2026-11-22):** va en la próxima sesión del spec, en la misma tanda que `FITNESS_FOOD` en 20; con eso decide la
@@ -141,6 +144,19 @@ costo o sin él) la decide Fer ([BACKLOG](BACKLOG.md), "Decisiones pendientes de
   (su referencia es sin la llave).
 - [ ] **La puerta sin costo no es estable al final:** 13,5 y 7,6 por generación en las dos últimas ventanas (la semilla 1,
   de 27,8 a 9,8; la 5, de 22,0 a 8,8). Si la referencia pasa a ser sin costo, mirarlo con más generaciones.
+
+## Aparecido con el costo en 0,01 y la comida al doble — 2026-11-22
+
+Con la [medición](../qa/AnalisisQA.md#costo-chico-comida20): el costo de golpear es una perilla entre no golpear y
+golpear siempre, y con ninguno de los tres valores medidos (0,05, 0,01 y 0) la red condiciona el golpe a la distancia.
+
+- [ ] **Que golpear al aire cueste y golpear algo no:** hoy golpear se paga golpee algo o no (decisión 14 de
+  [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md)). Si el golpe que no toca nada golpeable (una
+  puerta, el cofre, un árbol) cuesta y el que toca no, golpear en todos lados se paga y golpear en la puerta no: la
+  selección vería el golpe condicionado. Sin medir. Es código, con un switch apagado por defecto y sus tests (decisión 7
+  del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)). **Trampa:** el costo se cobra en el agente
+  (`act()`, `advanced_agent.py`) antes de que `main.py` pruebe qué golpea (los `_try_*`), así que el cobro tendría que
+  moverse después de esas pruebas.
 
 ## El hacha y los árboles, después del cofre — 2026-11-21
 

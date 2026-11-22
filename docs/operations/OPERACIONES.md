@@ -44,6 +44,9 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
 - **Una medida "por px" o "por tick" de un recurso compartido y finito se sesga en contra de la
   población que más lo consume:** con evolución se comen casi todas las manzanas. Se mide con algo que
   no dependa de cuánto queda: la red, o dentro de la misma generación (LEC-022).
+- **Un control de igualdad entre dos corridas no lo prueba la misma corrida en los dos lados,** que
+  siempre da igual: lo que sale de una columna redondeada del CSV (las manzanas, de `f_comida`) se
+  compara con la tolerancia del redondeo desde el principio (LEC-023).
 - **El scratchpad es de una sola sesión.** Un CSV de referencia que otra sesión tiene que comparar
   deja su SHA-256 en la bitácora, con el commit desde el que se regenera (LEC-011).
 
