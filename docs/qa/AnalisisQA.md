@@ -4710,3 +4710,212 @@ negrita, donde NF cumple el 1):
 defecto de `config.py` no cambia. Comer se retoma después de la cadena, con la referencia nueva. Esa referencia no tiene
 línea base sin evolución propia: la publicada es con costo, y sin costo los agentes al azar viven más y pueden llegar a más.
 La corre la próxima sesión ([el spec](../specs/active/PUZZLE_SOLOS.md)).
+
+---
+
+<a id="cadena-sin-costo"></a>
+## Los pasos 3 a 6 en la referencia sin costo, contra su línea base sin costo (2026-11-22)
+
+**La pregunta** (sesión 4 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)): con la referencia
+vigente, sin costo de golpear (decidida por Fer el 2026-11-22, en [la sección anterior](#costo-chico-comida20)), ¿qué pasos
+de la cadena cumplen el criterio común (la decisión 5 del spec) contra su propia línea base sin evolución? La puerta de
+madera pasó contra la línea base publicada, que es con costo: sin costo, los agentes al azar golpean gratis y viven más, y
+pueden abrir más. La llave dorada, la puerta de hierro y el cofre nunca se midieron con el criterio. Medición de una
+sesión; sin cambios en la simulación ni en `medir_puerta.py`.
+
+**Diseño.** Una sola corrida nueva, la línea base sin evolución de la referencia (NB0). Es la línea base publicada (NB,
+`results/medicion_sin_llave_20261120/`) con `HIT_ENERGY_COST:0`, lo único que cambió la referencia. Además lleva los pesos
+de la referencia, que sin evolución cambian solo la columna del fitness (no hay selección), y `sens-golpe`, que solo suma
+columnas. Sin selección no hay cruce: va sin `cruce=`.
+- **La referencia (N0)** es la corrida de [el costo](#costo-golpe), en `results/medicion_costo_golpe_20261121/`, y no se
+  corre otra vez. Antes de escribir esto, sus 10 CSV dieron el SHA-256 publicado (`analizar_comida.py ... prueba`,
+  "errores: 0").
+- **NB, la línea base con costo,** se informa sin criterio: cuánto cambia la línea base con el costo en 0.
+
+**La corrida** (semillas 1 a 5, las 5 a la vez con `python -u`, lanzadas a las 14:50, antes de escribir este criterio y
+sin leer nada de ellas): `medir_puerta.py . results/medicion_base_sin_costo_20261122 S sin_evolucion 150 acercarse
+deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe
+pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`.
+
+**Qué se mide** (gens 146-150, del `corrida_*.csv` de `main.py`, promedio por generación, la misma cuenta en N0 y en NB0):
+el paso 3, `agentes_puerta_madera`; el 4, `agentes_llave_dorada`; el 5, `agentes_puerta_hierro`; el 6, `agentes_cofre`.
+Cuentan los agentes que llegaron al menos a ese paso; desde la 31 nadie nace con nada, así que en la ventana todo es
+logrado.
+
+**Criterio, fijado antes de leer la línea base** (la decisión 5; por semilla, N0 contra NB0 de la misma semilla; LEC-018).
+Cada paso, por separado:
+- **Pasa** si en 4 de 5 semillas N0 tiene al menos 1 agente por generación que da el paso (promedio de las 146-150, el
+  tamaño mínimo de la decisión 5) y más que NB0 (un empate no cuenta). Con menos de 1 por generación no pasa, sea cual
+  sea la línea base.
+- **Lo esperado,** sin decidir: el paso 3, probablemente (N0, 9,8 · 10,2 · 3,2 · 6,0 · 8,8 por generación; con costo, NB
+  tenía la llave de 0,8 a 1,6 por generación y no puede abrir más puertas que eso). El 4, sin decidir: 2.056 agentes en
+  las 31-150, pero 11 en la semilla 3. El 5 y el 6, muy probablemente no, por el tamaño mínimo: 21 y 7 agentes en las
+  31-150, en las 5 semillas juntas.
+- **Se lee con la medida independiente** (decisión 5):
+  - **El paso 3, "En la puerta"** (la cuenta de [golpear en la puerta](#sens-golpe)): de los que tienen la llave y llegan
+    a 25 px de la puerta, la parte que golpea ahí y la que la abre, N0 contra NB0, todas las semillas juntas. N0: llegan
+    el 29%, golpean el 83% y la abren el 61%. Acompaña si la parte que la abre es más alta en N0. Sin costo, la red al
+    azar ya golpea en ~38% de los ticks (P lejos de la gen 1, 0,384): si NB0 golpea en la puerta casi como N0, lo que N0
+    aprendió para la puerta es llegar con la llave, no golpear ahí. Se informan P pegado y P lejos de NB0.
+  - **Los pasos 4 a 6, por 1.000 px:** los agentes por generación divididos por `distancia_prom` × 1.000, la cuenta de la
+    llave roja en [sin la llave dada](#sin-la-llave-dada), N0 contra NB0 por semilla. Separa dar el paso de caminar más.
+    Acompaña si N0 queda arriba en las semillas que pasan. Si NB0 da 0, no agrega nada a la cuenta, y se anota.
+  - Si un paso pasa el criterio y su medida no acompaña, se anota así y lo decide Fer.
+- **Por ventana** (26-30, 31-35, 56-60, 86-90, 116-120 y 146-150), cada paso en N0 y en NB0: la puerta sin costo no es
+  estable al final (13,5 y 7,6 por generación en las dos últimas ventanas). El veredicto es el de las 146-150, como en los
+  otros pasos; si en las 116-120 da otro, se anota.
+- **Se informan, sin criterio:**
+  - **el embudo,** para la decisión 7 de los pasos que no pasen: de los que dan cada paso, la parte que da el siguiente,
+    en las 31-150 y en las 146-150, en N0 y en NB0;
+  - **la llave roja,** con la misma cuenta: el paso 2 quedó ✅ con la referencia anterior, y su estado no cambia acá (se
+    vuelve a mirar en la corrida final);
+  - **NB0 contra NB:** la llave roja, la puerta, la edad y los ticks golpeando.
+
+**Controles en la tanda.**
+- Las 5 corridas terminan con `MEDICION inconsistencias=0 filas=9000` (las 5 líneas contadas, LEC-017).
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`, y la columna `pesos` de
+  `agentes_*.csv` termina en `HIT_ENERGY_COST:0` en todas las filas.
+- **El costo fue 0** (LEC-010): `ENERGIA_GOLPE` da 0 por tick golpeando y sin golpear.
+- **La gen 1 es la de la referencia:** la misma población inicial, el mismo mundo y los mismos pesos, así que la fila de la
+  gen 1 del `corrida_*.csv` de NB0 es la de N0 salvo la columna `evolucion`. Con las publicadas (NB contra la referencia
+  con costo), la gen 1 coincide salvo `evolucion` y el fitness, porque NB no lleva los pesos.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150.
+- En cada generación, en N0 y en NB0, `agentes_puerta_madera` es la suma de `abrio`, y `agentes_llave_dorada`,
+  `agentes_puerta_hierro` y `agentes_cofre`, los agentes con `etapa` ≥ 3, 4 y 5 de `agentes_*.csv`.
+
+**El script.** Uno nuevo, `mediciones/analizar_cadena.py`, con las funciones de los anteriores (que no cambian). Se prueba
+antes de leer NB0, con NB en su lugar: tiene que dar lo publicado (la puerta de N0, 9,8 · 10,2 · 3,2 · 6,0 · 8,8 por
+generación; en las 31-150, la llave dorada de N0, 575 · 317 · 11 · 290 · 863, la puerta de hierro 21 y el cofre 7, y los
+de NB, 0 · 0 · 0 · 1 · 0, 0 y 0; la llave roja de NB, 1,16 por generación y 3,6 por 1.000 px; "En la puerta" de N0,
+29% · 83% · 61%) y los controles de lo publicado, con 0 errores.
+
+**Tiempo:** las 5 a la vez, ~1 h 30 min.
+
+**Cómo se corrió.** Las 5 a la vez con `python -u`, el 2026-11-22 de 14:50 a 15:34 (44 min). La salida, en
+`results/medicion_base_sin_costo_20261122/` (fuera del repo). Las tablas, con `python mediciones/analizar_cadena.py
+results/medicion_costo_golpe_20261121 results/medicion_base_sin_costo_20261122 results/medicion_sin_llave_20261120`. Antes
+de que terminara la tanda, el script se probó con NB en el lugar de NB0 (`... results/medicion_sin_llave_20261120
+results/medicion_sin_llave_20261120`): dio lo publicado, que controla solo, y 0 errores.
+
+**Controles, hechos** (0 errores en el script):
+- **Las 5 líneas `MEDICION inconsistencias=0 filas=9000`,** contadas.
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`, y la columna `pesos` termina en
+  `HIT_ENERGY_COST:0` en todas las filas.
+- **El costo fue 0:** `ENERGIA_GOLPE` da 0,000000 por tick golpeando y sin golpear, en 3,2 a 3,3 millones de ticks
+  golpeando por corrida (el 35% y el 36% de los ticks contados).
+- **La gen 1 es la de la referencia:** la fila de la gen 1 de NB0 es la de N0 salvo `evolucion`, 5 de 5. En la prueba, la
+  de NB es la de la referencia con costo salvo `evolucion` y el fitness, 5 de 5.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, y los `agentes_*` son la suma de `abrio` y los agentes con su
+  `etapa`: 0 diferencias en N0 y en NB0.
+- N0 y NB dan su SHA-256 publicado, archivo por archivo.
+
+<details><summary>SHA-256 de las 5 corridas (se regeneran con medir_puerta.py ... sin_evolucion ... HIT_ENERGY_COST:0 desde el commit de esta sesión)</summary>
+
+| Semilla | Línea base sin costo, `corrida_*.csv` | Línea base sin costo, `agentes_*.csv` |
+|---|---|---|
+| 1 | `485981540f2731725c5c7537f07499107a15dabddfcfb09c33bb468899afc061` | `186aa93a610f34e8eca20192a7328d939ad11e68eae59a3688b76fd65c20c0e1` |
+| 2 | `b1befc2871d4476d0528380f1739cf8a8e21d572fdccc8a44ed4a959d005fde1` | `7d24d743d58f5524b915de08786b3d4c4c43daaa6b7dd3e6d11650eb8f660038` |
+| 3 | `11c03da69cf847957a99d4a8b4fa23f073794fea86a3bb3a149a0d1205cbfc04` | `6045fd6d8fb715d9d1b8e7b5295ce9b1172a4631d9c3710f3f34c94a9df269bb` |
+| 4 | `8e791c066f67cdf6e5e205a33a48602042212d9ed91a7969e9734ed7042ac34d` | `6453635300cafed93990d7e8b491473368e51b9addd9657b6801a46dcf34856e` |
+| 5 | `e0e7c44a2a73187a7f08e0effae7705fad3b5d28e879bed004d9d8d2ec230eed` | `3493396351de6b522300dc3d6ccc5c8e72962c22edfce6a802e56590d035709d` |
+
+</details>
+
+**El criterio** (gens 146-150; agentes por generación que dan el paso, N0 · NB0; en negrita, donde N0 cumple):
+
+| Semilla | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|
+| 1 | **9,8** · 0,2 | **6,0** · 0 | 0 · 0 | 0 · 0 |
+| 2 | **10,2** · 0 | **5,0** · 0 | 0 · 0 | 0 · 0 |
+| 3 | **3,2** · 0 | **1,4** · 0 | 0,2 · 0 | 0 · 0 |
+| 4 | **6,0** · 0 | **3,0** · 0 | 0,4 · 0 | 0,4 · 0 |
+| 5 | **8,8** · 0 | **4,6** · 0 | 0,2 · 0 | 0 · 0 |
+| **Promedio** | 7,60 · 0,04 | 4,00 · 0 | 0,16 · 0 | 0,08 · 0 |
+| **El criterio** (pide 4 de 5) | **5 de 5: pasa** | **5 de 5: pasa** | 0 de 5: no pasa | 0 de 5: no pasa |
+
+- **El paso 3, la puerta de madera, pasa: 5 de 5.** Sin costo, la línea base abre 0,04 por generación (1 agente en la
+  ventana, en la semilla 1); con costo, 0. Por 1.000 px, N0 da 7,30 · 6,80 · 2,20 · 4,28 · 7,25 y NB0, 0,57 en la semilla
+  1 y 0 en las otras.
+- **El paso 4, la llave dorada, pasa: 5 de 5.** La medida por 1.000 px acompaña (N0, 4,47 · 3,34 · 0,96 · 2,14 · 3,79),
+  pero no agrega nada: NB0 da 0 en las 5.
+- **Los pasos 5 y 6 no pasan:** ninguna semilla llega a 1 agente por generación. La puerta de hierro llega a 0,4 como
+  máximo, y el cofre, a 0,4 en la semilla 4.
+
+**En la puerta,** la medida independiente del paso 3 (gens 146-150, todas las semillas; los que tienen la llave):
+
+| | Con la llave, por generación | Llegan a 25 px | De los que llegan, golpean ahí | De los que llegan, la abren |
+|---|---|---|---|---|
+| N0 | 42,5 | 29% (313) | 83% (261) | 61% (190) |
+| NB0 | 1,2 | 3% (1) | 100% (1) | 100% (1) |
+| NB (con costo) | 1,2 | 0% (0) | — | — |
+
+- **Como se fijó, no acompaña:** la parte que la abre es más alta en NB0, 100% contra 61%. Pero el 100% es un solo agente:
+  de los 31 con la llave en la ventana, llega 1, que golpea y la abre. No dice nada, y la regla que lo evita va a LEC-024.
+- **Lo que sí se puede comparar:**
+  - **llegar:** de los que tienen la llave, llega a la puerta el 29% en N0 contra el 3% en NB0 (1 de 31);
+  - **la red:** en N0 golpearía en el 69% de los ticks pegada a la puerta y en el 61% lejos (P pegado 0,693 · P lejos 0,614).
+    En NB0, en el 37% y el 35% (0,370 · 0,352, en 31 filas con la llave), lo mismo que en la etapa 0 (0,345 · 0,347, en
+    1.500 filas) y que en la gen 1 (0,382 · 0,384). N0 golpea casi el doble que el azar, cerca y lejos.
+
+**Por ventana** (agentes por generación, promedio de las 5 semillas):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Puerta de madera, N0 | 3,56 | 2,76 | 2,64 | 8,60 | 13,48 | 7,60 |
+| Puerta de madera, NB0 | 0,16 | 0,04 | 0 | 0 | 0,04 | 0,04 |
+| Llave dorada, N0 | 2,16 | 2,16 | 1,40 | 4,76 | 8,36 | 4,00 |
+| Llave dorada, NB0 | 0,04 | 0 | 0 | 0 | 0 | 0 |
+| Puerta de hierro, N0 | 0,12 | 0 | 0,20 | 0,16 | 0,16 | 0,16 |
+| Cofre, N0 | 0 | 0 | 0 | 0,08 | 0,04 | 0,08 |
+
+NB0 da 0 en la puerta de hierro y el cofre en todas las ventanas. En las 116-120, la puerta y la llave dorada pasan en 4 de 5
+(la semilla 3, con 0,4 y 0): el veredicto no cambia. La llave dorada sube y baja con la puerta.
+
+**El embudo** (sin criterio; agentes que dan cada paso, sumados en las 5 semillas; entre paréntesis, la parte de los del
+paso anterior):
+
+| | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| N0, gens 31-150 | 17.918 | 3.881 (22%) | 2.056 (53%) | 21 (1%) | 7 (33%) |
+| N0, gens 146-150 | 1.063 | 190 (18%) | 100 (53%) | 4 (4%) | 2 (50%) |
+| NB0, gens 31-150 | 652 | 9 (1%) | 3 (33%) | 0 | 0 |
+| NB, gens 31-150 | 615 | 4 (1%) | 1 (25%) | 0 | 0 |
+
+**La cadena se corta en la puerta de hierro:** de los que tienen la llave dorada, la abre el 1% (en la ventana, 4 de 100).
+Hasta ahí, de los que abren la puerta de madera, el 53% agarra la llave dorada, igual en toda la corrida y en la ventana. La
+puerta de hierro pide 3 golpes con `DOOR_HIT_COOLDOWN` (90 ticks) entre golpe y golpe, a menos de 25 px de su centro (la de
+madera, 2). Por semilla, en las 31-150, la abren 4 · 0 · 1 · 6 · 10 agentes, y el cofre, 3 · 0 · 0 · 4 · 0.
+
+**Se informan, sin criterio** (gens 146-150):
+- **La llave roja sigue pasando con la referencia nueva:** 5 de 5, 42,5 contra 1,24 por generación (34 veces), y 9,1 veces
+  por 1.000 px (31,1 contra 3,4).
+- **NB0 contra NB, lo que cambia la línea base sin costo:** vive más (1.032 ticks contra 905), agarra la llave roja casi
+  igual (1,24 contra 1,16 por generación; 652 contra 615 en las 31-150) y abre 9 puertas en las 31-150 (con costo, 4). Las
+  manzanas, 0,391 contra 0,382. Golpea en el 35-36% de los ticks contados (NB se corrió antes de `ENERGIA_GOLPE`).
+
+**Lectura.**
+1. **La puerta de madera y la llave dorada pasan contra la línea base sin costo,** en 5 de 5 semillas: 7,6 y 4,0 por
+   generación contra 0,04 y 0. Sin costo, la línea base vive más, pero sin aprender no llega a la puerta: de los 31 con la
+   llave en la ventana, llega 1.
+2. **Lo aprendido para la puerta es llegar con la llave y golpear siempre.** Llegan nueve veces más que al azar (29% contra
+   3%), y la red golpea casi el doble que al azar, pegada y lejos por igual. La medida fijada antes, la parte que la abre de
+   los que llegan, no acompaña por la letra (61% contra 100%), pero ese 100% es un solo agente.
+3. **La llave dorada viene con la puerta:** la agarra la mitad de los que abren la puerta, en toda la corrida.
+4. **La cadena se corta en la puerta de hierro:** la abre el 1% de los que tienen la llave dorada. El cofre está detrás.
+5. **La llave roja sigue pasando con la referencia nueva** (5 de 5, 34 veces su línea base).
+
+**Qué sugiere** (lo decide Fer):
+- **El paso 3, ✅,** escribiendo lo aprendido como es: llegar con la llave y golpear siempre. La medida independiente fijada
+  no acompaña por un solo agente; las dos que se pueden comparar (cuántos llegan, cuánto golpea la red) sí.
+- **El paso 4 queda ✅ por el criterio fijado,** sin decisión de Fer: pasa, y su medida acompaña, aunque sin agregar (NB0 en
+  0). Lo que agrega, sin criterio, es el embudo: la mitad de los que abren la puerta agarra la llave dorada.
+- **El paso 5, la puerta de hierro, sigue la decisión 7: medir dónde se traba antes de cambiar nada.** `medir_puerta.py`
+  mide la puerta de madera en la etapa 1, y la de hierro es la etapa 3. Haría falta un argumento nuevo que mida en la etapa 3
+  lo mismo que en la 1: la distancia a la puerta al empezar la etapa y la mínima, los ticks a 25 px, los ticks golpeando
+  ahí, cada golpe y qué lo frenó, y cuánto le queda de la generación al agarrar la llave dorada. Con él se corre otra vez la
+  referencia (5 corridas, ~1 h 30 min). Su `corrida_*.csv` tiene que dar el SHA-256 publicado, porque medir no cambia la
+  corrida. Diría si no llegan, si llegan sin tiempo o si llegan y no completan los 3 golpes.
+
+**Decidido por Fer (2026-11-22):** el paso 3 queda ✅, con lo aprendido escrito como es: llegar con la llave y golpear
+siempre, no golpear en la puerta. La medida independiente fijada queda anotada como no acompaña, por un solo agente de la
+línea base.

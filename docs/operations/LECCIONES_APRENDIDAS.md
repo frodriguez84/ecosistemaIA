@@ -5,6 +5,20 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-024 — 2026-11-22 — Una medida independiente que es una proporción necesita casos en la línea base
+
+**Qué pasó.** En [los pasos 3 a 6 sin costo](../qa/AnalisisQA.md#cadena-sin-costo), la medida independiente de la puerta
+de madera se fijó antes de correr como "de los que llegan a la puerta, la parte que la abre, más alta en la referencia
+que en la línea base". En la línea base nueva, de los 31 agentes con la llave en la ventana llegó 1, que la abrió: 100%
+contra 61%, y la medida "no acompañó" por un solo agente. El paso tuvo que ir a Fer. Se podía ver antes de fijarla: en la
+línea base publicada (con costo), en esa ventana no llegaba nadie, y la prueba del script lo mostró ("llegan 0%"). Lo
+mismo con la medida por 1.000 px de la llave dorada: la línea base daba 0, así que acompañó sin agregar nada.
+
+**Regla.** Antes de fijar una medida independiente que sea una proporción o un cociente contra la línea base, contar en la
+línea base publicada más parecida cuántos casos tendría el denominador. Si va a dar 0 o casi, la medida tiene que ser otra:
+una que no dependa de cuántos llegan en la línea base (la red contra la gen 1, cuántos llegan de los que pueden) o una
+dentro de la misma condición (el embudo). Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
+
 ## LEC-023 — 2026-11-22 — Un control de igualdad no lo prueba la misma corrida en los dos lados
 
 **Qué pasó.** En [el costo en 0,01 y la comida al doble](../qa/AnalisisQA.md#costo-chico-comida20), un control de

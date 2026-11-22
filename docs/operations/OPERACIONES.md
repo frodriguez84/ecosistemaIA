@@ -38,7 +38,9 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   también donde el razonamiento dice que da 0 (LEC-016). Una proyección de lo que hace un cambio
   cambia solo lo que el cambio toca: si promedia también la variable con que se mide, sobreestima (LEC-021).
 - **Un criterio fijado antes de medir lleva un tamaño mínimo, no solo "K de N semillas",** y se lee con
-  un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018).
+  un control o una medida independiente: 4 de 5 sale por azar el 19% de las veces (LEC-018). Si la
+  medida independiente es una proporción o un cociente contra la línea base, antes de fijarla se cuentan
+  sus casos en la línea base publicada más parecida: con 0 o casi, no dice nada (LEC-024).
 - **Un experimento que cambia más de una cosa contra su comparación lleva el control que cambia una
   sola:** si el efecto aparece donde difieren las dos, sin ese control no se atribuye (LEC-019).
 - **Una medida "por px" o "por tick" de un recurso compartido y finito se sesga en contra de la
