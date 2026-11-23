@@ -159,13 +159,19 @@ def _leer_argumentos(argv):
     parser.add_argument("--brujula-camino", action="store_true",
                         help="La brújula (sensores 9 y 11) sigue el camino libre más corto al próximo paso "
                              "del puzzle, no la recta, en los dos modos. Pisa BRUJULA_CAMINO de config.py.")
+    parser.add_argument("--acercarse-camino", action="store_true",
+                        help="La recompensa por acercarse mide la distancia por el camino libre, la de la "
+                             "brújula por el camino, no la recta. Va con --acercarse. Pisa ACERCARSE_CAMINO "
+                             "de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
-                             "[_acercarse][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]"
+                             "[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]"
                              "_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
+    if args.acercarse_camino and not (args.acercarse or SimulationConfig.RECOMPENSA_ACERCARSE):
+        parser.error("--acercarse-camino va con --acercarse: sin la recompensa por acercarse no hace nada")
     if args.generaciones is not None and args.generaciones < 1:
         parser.error("--generaciones tiene que ser 1 o más")
     if args.semilla is not None and not 0 <= args.semilla < 2**32:
@@ -210,11 +216,13 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 
 def _ruta_csv_por_defecto(semilla, evolucion):
-    """results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar][_fortalezas_moviles]
+    """results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles]
     [_brujula_camino]_<evolucion|sin_evolucion>.csv, con el modo y los switches de SimulationConfig
-    (spec PUZZLE_APRENDIBLE, decisión 11). Deslizar, las fortalezas móviles y la brújula por el camino
-    no son columnas del CSV: van solo en el nombre."""
+    (spec PUZZLE_APRENDIBLE, decisión 11). Acercarse por el camino, deslizar, las fortalezas móviles y la
+    brújula por el camino no son columnas del CSV: van solo en el nombre."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
+    if acercarse and SimulationConfig.ACERCARSE_CAMINO:
+        acercarse = "_acercarse_camino"
     curriculo = "_curriculo" if SimulationConfig.CURRICULO else ""
     deslizar = "_deslizar" if SimulationConfig.DESLIZAR else ""
     moviles = "_fortalezas_moviles" if SimulationConfig.FORTALEZAS_MOVILES else ""
@@ -306,6 +314,8 @@ def main(argv=None):
         SimulationConfig.FORTALEZAS_MOVILES = True
     if args.brujula_camino:
         SimulationConfig.BRUJULA_CAMINO = True
+    if args.acercarse_camino:
+        SimulationConfig.ACERCARSE_CAMINO = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir

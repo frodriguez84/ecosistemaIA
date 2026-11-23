@@ -10,7 +10,7 @@ currículo, la puerta de madera y el criterio del ítem 5: spec PUZZLE_APRENDIBL
 
 Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--modos guiado autonomo]
                            [--acercarse] [--curriculo] [--deslizar] [--fortalezas-moviles]
-                           [--brujula-camino] [--paralelo K]
+                           [--brujula-camino] [--acercarse-camino] [--paralelo K]
 
 El resumen usa solo la librería estándar (decisión 18).
 """
@@ -254,13 +254,14 @@ def _comparaciones(corridas):
     return lineas
 
 
-def resumen_markdown(corridas, fallidas, comando, deslizar=False, moviles=False, brujula=False):
+def resumen_markdown(corridas, fallidas, comando, deslizar=False, moviles=False, brujula=False,
+                     acercarse_camino=False):
     """Arma el resumen en Markdown: por grupo (modo × evolución), las comparaciones pareadas, por
     corrida, las que tienen generaciones del currículo en las últimas 5 y las que fallaron. deslizar,
-    moviles (las fortalezas móviles) y brujula (la brújula por el camino) vienen de los flags: no son
-    columnas del CSV."""
-    ayudas = [nombre for nombre, clave in (("recompensa por acercarse", "acercarse"),
-                                           ("currículo", "curriculo"))
+    moviles (las fortalezas móviles), brujula (la brújula por el camino) y acercarse_camino (la
+    recompensa por acercarse, por el camino) vienen de los flags: no son columnas del CSV."""
+    acercarse = "recompensa por acercarse" + (", por el camino" if acercarse_camino else "")
+    ayudas = [nombre for nombre, clave in ((acercarse, "acercarse"), ("currículo", "curriculo"))
               if any(corrida[clave] for corrida in corridas)]
     ayudas = " y ".join(ayudas + (["deslizar al chocar"] if deslizar else [])) or "ninguna"
     lineas = [f"`{comando}`", "",
@@ -357,9 +358,14 @@ def _leer_argumentos(argv):
     parser.add_argument("--brujula-camino", action="store_true",
                         help="Corre todas con la brújula por el camino: los sensores 9 y 11 siguen el "
                              "camino libre más corto al próximo paso (--brujula-camino de main.py).")
+    parser.add_argument("--acercarse-camino", action="store_true",
+                        help="Corre todas con la recompensa por acercarse medida por el camino libre, no "
+                             "la recta (--acercarse-camino de main.py). Va con --acercarse.")
     parser.add_argument("--paralelo", type=int, default=max(1, (os.cpu_count() or 2) - 1), metavar="K",
                         help="Corridas a la vez. Por defecto, los núcleos menos uno.")
     args = parser.parse_args(argv)
+    if args.acercarse_camino and not args.acercarse:
+        parser.error("--acercarse-camino va con --acercarse: sin la recompensa por acercarse no hace nada")
     if args.generaciones < MINIMO_GENERACIONES:
         parser.error(f"--generaciones tiene que ser {MINIMO_GENERACIONES} o más: el resumen compara "
                      f"las {VENTANA} primeras generaciones con las {VENTANA} últimas")
@@ -373,10 +379,11 @@ def _leer_argumentos(argv):
 
 
 def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, curriculo=False,
-            deslizar=False, moviles=False, brujula=False):
+            deslizar=False, moviles=False, brujula=False, acercarse_camino=False):
     """Corre main.py sin ventana, con la salida a un log, y devuelve cómo terminó. El CSV y el log se
     llaman como la ruta por defecto de main.py."""
     nombre = (f"corrida_s{semilla}_{modo}{'_acercarse' if acercarse else ''}"
+              f"{'_camino' if acercarse and acercarse_camino else ''}"
               f"{'_curriculo' if curriculo else ''}{'_deslizar' if deslizar else ''}"
               f"{'_fortalezas_moviles' if moviles else ''}{'_brujula_camino' if brujula else ''}_"
               f"{'evolucion' if evolucion else 'sin_evolucion'}")
@@ -396,6 +403,8 @@ def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, cu
         comando.append("--fortalezas-moviles")
     if brujula:
         comando.append("--brujula-camino")
+    if acercarse_camino:
+        comando.append("--acercarse-camino")
     inicio = time.monotonic()
     # cwd en la raíz: main.py carga los sprites con una ruta relativa
     with open(ruta_log, "wb") as log:
@@ -420,7 +429,8 @@ def main(argv=None):
     resultados = []
     with ThreadPoolExecutor(max_workers=args.paralelo) as pool:
         futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta, args.acercarse,
-                               args.curriculo, args.deslizar, args.fortalezas_moviles, args.brujula_camino)
+                               args.curriculo, args.deslizar, args.fortalezas_moviles, args.brujula_camino,
+                               args.acercarse_camino)
                    for semilla, modo, evolucion in tareas]
         for futuro in as_completed(futuros):
             resultado = futuro.result()
@@ -437,11 +447,12 @@ def main(argv=None):
                f"{' --acercarse' if args.acercarse else ''}{' --curriculo' if args.curriculo else ''}"
                f"{' --deslizar' if args.deslizar else ''}"
                f"{' --fortalezas-moviles' if args.fortalezas_moviles else ''}"
-               f"{' --brujula-camino' if args.brujula_camino else ''}")
+               f"{' --brujula-camino' if args.brujula_camino else ''}"
+               f"{' --acercarse-camino' if args.acercarse_camino else ''}")
     texto = (f"# Experimento: modos guiado y autónomo, con evolución y sin ella\n\n"
              f"{datetime.now():%Y-%m-%d} · carpeta `{_ruta_md(carpeta)}`\n\n"
              + resumen_markdown(corridas, fallidas, comando, args.deslizar, args.fortalezas_moviles,
-                                args.brujula_camino))
+                                args.brujula_camino, args.acercarse_camino))
     (carpeta / "resumen.md").write_text(texto, encoding="utf-8")
     print()
     print(texto)

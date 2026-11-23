@@ -8,10 +8,11 @@ lección: la historia, en [LECCIONES_APRENDIDAS.md](LECCIONES_APRENDIDAS.md).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
   sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento,
-  `--fortalezas-moviles` las fortalezas móviles y `--brujula-camino`, la brújula por el camino). El
-  experimento con los dos modos, con evolución y sin ella, en varias semillas es `python experimento.py`
-  (`--modos` elige los modos; `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles` y
-  `--brujula-camino` pasan a todas las corridas).
+  `--fortalezas-moviles` las fortalezas móviles, `--brujula-camino` la brújula por el camino y
+  `--acercarse-camino`, con `--acercarse`, la recompensa medida por el camino). El experimento con los
+  dos modos, con evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige
+  los modos; `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino` y
+  `--acercarse-camino` pasan a todas las corridas).
 - **`mediciones/`:** scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control
   byte a byte).
 - **La salida de `medir_puerta.py` va a `results/`, no al scratchpad:** sus nombres llevan cada argumento (pasan los 140

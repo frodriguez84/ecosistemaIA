@@ -58,6 +58,9 @@ class SimulationConfig:
     # Brújula por el camino, en los dos modos (--brujula-camino la prende): los sensores 9 y 11 siguen
     # el camino libre más corto al próximo paso, no la recta. Apagada, la recta de siempre
     BRUJULA_CAMINO = False
+    # Recompensa por acercarse medida por el camino libre, la distancia de la brújula por el camino, no la
+    # recta (--acercarse-camino la prende). Sin RECOMPENSA_ACERCARSE no hace nada
+    ACERCARSE_CAMINO = False
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)

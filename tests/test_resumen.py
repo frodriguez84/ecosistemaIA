@@ -315,6 +315,8 @@ def test_el_resumen_dice_las_ayudas_prendidas(tmp_path):
     assert corrida["curriculo"] is False
     texto = experimento.resumen_markdown([corrida], [], "python experimento.py --acercarse")
     assert "**Ayudas prendidas:** recompensa por acercarse." in texto
+    texto = experimento.resumen_markdown([corrida], [], "", acercarse_camino=True)  # viene del flag
+    assert "**Ayudas prendidas:** recompensa por acercarse, por el camino." in texto
 
     # El currículo se ve en etapa_inicial: alguna generación nació con la llave roja
     ruta = _escribir_corrida(tmp_path, semilla=2, evolucion=True, fitness=[10] * 10,

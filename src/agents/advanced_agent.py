@@ -219,11 +219,16 @@ class AdvancedAgent:
     def _medir_acercamiento(self, world):
         """Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisiones 4, 6 y 7): en el primer tick de
         una etapa, d0 es la distancia en línea recta al objetivo de la brújula; después, solo cuenta
-        si se acerca más. Sin objetivo en el mapa (etapa 5, o el paso no está) no mide. No usa el azar."""
+        si se acerca más. Con ACERCARSE_CAMINO, la distancia por el camino libre, la del sensor 11 de la
+        brújula por el camino (spec PUZZLE_SOLOS). Sin objetivo en el mapa (etapa 5, o el paso no está)
+        no mide. No usa el azar."""
         objetivo = self._proximo_paso(world)
         if objetivo is None:
             return
-        distancia = math.hypot(objetivo[0] - float(self.x), objetivo[1] - float(self.y))
+        if SimulationConfig.ACERCARSE_CAMINO:
+            distancia = camino.distancia(world, self.etapa, float(self.x), float(self.y))
+        else:
+            distancia = math.hypot(objetivo[0] - float(self.x), objetivo[1] - float(self.y))
         if self.acercarse_etapa != self.etapa:
             self.acercarse_etapa, self.acercarse_d0, self.acercarse_dmin = self.etapa, distancia, distancia
         else:

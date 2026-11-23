@@ -130,7 +130,7 @@ EcosistemaEvolutivo/
   * **Sistema de puzzle**: Llave roja, puerta de madera, llave dorada, puerta de hierro y cofre; el avance es de cada agente y se reinicia en cada generación
   * **Recursos**: Comida (manzanas), árboles que pueden cortarse, huts destructibles
   * **Estanque móvil**: Estanque que se regenera dinámicamente
-* **`camino.py`**: la brújula por el camino (`BRUJULA_CAMINO`): por etapa del puzzle, una grilla con la distancia por el camino libre al próximo paso y su rumbo
+* **`camino.py`**: la brújula por el camino (`BRUJULA_CAMINO`): por etapa del puzzle, una grilla con la distancia por el camino libre al próximo paso y su rumbo. La recompensa por acercarse por el camino (`ACERCARSE_CAMINO`) lee la misma distancia
 * **`obstacles.py`**:
 
   * Tipos de obstáculos: `tree`, `wall`, `water`, `hut`
@@ -320,16 +320,17 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 
 ### Ayudas para aprender el puzzle
 
-Tres switches en `config.py`, apagados por defecto e independientes, que valen para los dos modos. Apagados, la corrida es la de siempre.
+Tres switches en `config.py`, apagados por defecto e independientes, que valen para los dos modos, y un cuarto que cambia cómo mide la recompensa por acercarse. Apagados, la corrida es la de siempre.
 
 * **Recompensa por acercarse** (`RECOMPENSA_ACERCARSE`, `--acercarse`): suma al fitness 10 × (pasos que dio + avance en el paso actual) (`FITNESS_ACERCARSE`). El avance va de 0 a 1 y cuenta lo más cerca que llegó al objetivo de la brújula, (distancia al empezar el paso − la más corta) / distancia al empezar; en las puertas, la mitad es ese camino y la otra mitad, los golpes que contaron sobre los necesarios. Quedarse cerca no suma más que pasar una vez, y alejarse después no resta
+* **Acercarse por el camino** (`ACERCARSE_CAMINO`, `--acercarse-camino`, va con `--acercarse`): el avance mide la distancia por el camino libre, la de la brújula por el camino, no la recta; en el objetivo, sin camino o sin celda libre cerca, la recta. Usa la grilla de la brújula por el camino, pero no pide prenderla. Sin la recompensa por acercarse no hace nada. No es una columna del CSV: en el nombre del archivo, `_acercarse` pasa a ser `_acercarse_camino`, y el panel dice "acercarse por el camino"
 * **Currículo** (`CURRICULO`, `--curriculo`): las generaciones 1 a 15 (`CURRICULO_HASTA_GENERACION`) nacen con la llave roja, sin su premio, y desde la 16 sin ella. El mapa no cambia: la brújula apunta a la puerta de madera, que sigue siendo pared hasta que el agente la abre
 * **Deslizar contra lo que choca** (`DESLIZAR`, `--deslizar`): si el paso choca (una pared, un árbol, una casita, una puerta que no abrió, el perímetro o el estanque), el agente se mueve por el eje libre: primero solo en x y, si no, solo en y. Apagado, se queda donde está. Cambia todo el caminar, también hacia la comida. No es una columna del CSV: va en el nombre del archivo (`_deslizar`)
 * **Lo dado al nacer no es un logro**: los avisos de hito, la primera vez del boletín y los pasos de la recompensa cuentan solo los pasos que el agente dio. Las columnas `agentes_*` del CSV cuentan quién llegó al menos a cada paso, también con la llave dada; la columna `etapa_inicial` dice con qué etapa nació la generación
 
 **Fortalezas móviles** (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`, apagado por defecto, en los dos modos). No es una ayuda: desde la generación 2, las dos fortalezas van a un lugar al azar en cada generación, con sus puertas, la llave dorada y el cofre, así la puerta se encuentra con la brújula y no con una ruta aprendida de memoria. La generación 1 queda como siempre. Cada fortaleza queda lejos del borde con el frente de su puerta, y las dos separadas; el estanque y el resto del mapa se generan después y las esquivan. No es una columna del CSV: va en el nombre del archivo (`_fortalezas_moviles`), y el panel lo dice en su renglón
 
-**Brújula por el camino** (`BRUJULA_CAMINO`, `--brujula-camino`, apagado por defecto, en los dos modos). Los sensores 9 y 11 siguen el camino libre más corto al próximo paso, no la recta, que desde la llave dorada cruza las paredes de la fortaleza chica. Por etapa, una grilla de celdas de 5 px con lo que deja pasar el choque de esa etapa (las puertas que no abrió son pared) y la distancia por el camino, euclídea alrededor de las paredes; el sensor 9 apunta contra su gradiente y el 11 es esa distancia. En el objetivo y sin camino, la recta. La grilla se arma al empezar cada generación: un árbol talado después no la cambia. La recompensa por acercarse sigue midiendo la recta. No es una columna del CSV: va en el nombre del archivo (`_brujula_camino`), y el panel lo dice en su renglón
+**Brújula por el camino** (`BRUJULA_CAMINO`, `--brujula-camino`, apagado por defecto, en los dos modos). Los sensores 9 y 11 siguen el camino libre más corto al próximo paso, no la recta, que desde la llave dorada cruza las paredes de la fortaleza chica. Por etapa, una grilla de celdas de 5 px con lo que deja pasar el choque de esa etapa (las puertas que no abrió son pared) y la distancia por el camino, euclídea alrededor de las paredes; el sensor 9 apunta contra su gradiente y el 11 es esa distancia. En el objetivo y sin camino, la recta. La grilla se arma al empezar cada generación: un árbol talado después no la cambia. La recompensa por acercarse sigue midiendo la recta, salvo con acercarse por el camino. No es una columna del CSV: va en el nombre del archivo (`_brujula_camino`), y el panel lo dice en su renglón
 
 ---
 
@@ -505,7 +506,8 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--deslizar` | Si el paso choca, el agente se mueve por el eje libre. Pisa `DESLIZAR`. |
 | `--fortalezas-moviles` | Desde la generación 2, las fortalezas cambian de lugar en cada generación. Pisa `FORTALEZAS_MOVILES`. |
 | `--brujula-camino` | La brújula sigue el camino libre más corto al próximo paso, no la recta. Pisa `BRUJULA_CAMINO`. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]_<evolucion\|sin_evolucion>.csv`. |
+| `--acercarse-camino` | La recompensa por acercarse mide la distancia por el camino libre, no la recta. Va con `--acercarse`. Pisa `ACERCARSE_CAMINO`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]_<evolucion\|sin_evolucion>.csv`. |
 
 Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, si la
 recompensa por acercarse estaba prendida, la etapa con la que nació la generación, fitness,
@@ -528,7 +530,7 @@ grupo (modo × evolución): fitness y manzanas por agente en las primeras y las 
 generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
 comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
 guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
-minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles` y `--brujula-camino` pasan a todas las
+minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino` y `--acercarse-camino` pasan a todas las
 corridas; el resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
 1.000 px de recorrido, y en el autónomo aplica el criterio del ítem 5 del BACKLOG (¿aprende a pasar
 la puerta de madera?).

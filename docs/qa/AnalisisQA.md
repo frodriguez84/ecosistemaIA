@@ -5385,3 +5385,251 @@ y en 300 sin deslizar (N0: 12 y 1). A la puerta de madera, deslizando, llega des
 `results/medicion_brujula_camino_20261122/`, sus SHA-256 arriba). El valor por defecto de `config.py` no cambia. Lo
 próximo, para la puerta de hierro: la recompensa por acercarse con la distancia por el camino, con un switch apagado por
 defecto.
+
+<a id="acercarse-camino"></a>
+## La recompensa por acercarse, por el camino: los pasos 2 a 6 contra la línea base de la referencia (2026-11-22)
+
+**La pregunta** (sesión 7 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)): con la recompensa por
+acercarse medida por el camino libre (`ACERCARSE_CAMINO`, decidida por Fer en [la brújula por el camino](#brujula-camino)),
+¿pasa la puerta de hierro, el paso 5? ¿Y el cofre, el 6? Los pasos 2 a 4, que pasan con la referencia, no tienen que
+perder.
+
+**El cambio.** La sección [La recompensa por acercarse, por el
+camino](../specs/active/PUZZLE_SOLOS.md#la-recompensa-por-acercarse-por-el-camino) del spec. `_medir_acercamiento` mide
+d0 y dmín con la distancia por el camino de la brújula (`camino.distancia`, la de `camino.rumbo` leída para un punto); en
+el objetivo, sin camino o sin celda libre cerca, la recta. No cambian la fórmula del avance, los pasos, `FITNESS_ACERCARSE`
+ni la brújula. Con la recta, el agente que queda contra la pared de la fortaleza chica tiene el mejor avance que puede
+tener ahí: desde el rincón donde queda el seguidor de la recta, ir hasta la puerta de madera lo aleja en línea recta.
+
+**Cómo se probó el switch, antes de la tanda.**
+- **Apagado no cambia nada.** Las 5 corridas cortas de la Sesión 6 (las 4 de la Sesión 5 y c6, la c5 con
+  `brujula-camino`), corridas con el código de 7c2075b antes de tocarlo y otra vez con el switch, dan los mismos SHA-256 en
+  sus 15 CSV, con `inconsistencias=0`; los `corrida_*.csv` de c5 y c6 dan `3db0df62…` y `2e484f8f…`, los de la Sesión 6.
+- **Los tests nuevos** (`tests/test_acercarse_camino.py`, y dos líneas en `tests/test_resumen.py`): `camino.distancia` da
+  lo mismo que la distancia de `camino.rumbo` en más de 3.000 puntos por etapa, con un árbol talado después de armar la
+  grilla, en sus dos casos (la recta y la celda); leerla no consume azar; con la llave dorada, desde el rincón donde queda
+  el seguidor de la recta (122, 123), ir a la puerta de madera sube el avance por el camino y no lo sube con la recta; en la
+  gen 1 de `main._simular` cambia solo el fitness; los tres comandos rechazan `acercarse-camino` sin `acercarse`; y la
+  ruta, el panel, el boletín y el resumen del experimento lo nombran.
+- **Prendido, en la gen 1 cambia solo el fitness.** c7, la c6 con `acercarse-camino`: en el `corrida_*.csv`, solo
+  `fitness_prom`, `fitness_max` y `fitness_desvio`; en `agentes_*.csv`, con las filas alineadas por `id` (el orden sale del
+  fitness), solo `fitness`, `f_acercarse`, `lugar`, `en_pool` y `aporte`. `inconsistencias=0`: los términos siguen sumando
+  el fitness.
+- **Los saltos a la recta fuera del objetivo** (el diseño los dejaba para contar): en c7, 7 de 353.922 mediciones caen en
+  una celda sin camino o sin celda libre cerca, todas en la etapa 1, y ninguna baja dmín. No se corrige.
+- **Sin evolución, el fitness no cambia lo que hacen.** La configuración de NCB0 (semilla 5, 4 generaciones, `hierro
+  brujula-camino`, sin `cruce=`), con `acercarse-camino` y sin él: en las 4 generaciones cambian solo las columnas del
+  fitness en el `corrida_*.csv`, y `fitness`, `f_acercarse`, `lugar` y `en_pool` en `agentes_*.csv`. Por eso la línea
+  base de NA es NCB0, y no se corre otra vez.
+- **El tiempo** (el diseño lo dejaba para medir): sin evolución, donde los agentes hacen lo mismo, 93 s contra 92 s; c7
+  contra c6, corridas a la vez, 146 s contra 142 s. `camino.rumbo` para un punto hubiera costado ~15 min más por corrida
+  de 150 generaciones.
+
+**Diseño.** Un solo cambio contra la referencia vigente, NC (decisión 4): la distancia de la recompensa. 5 corridas, a la
+vez:
+- **NA,** la referencia con la recompensa por acercarse por el camino: `medir_puerta.py .
+  results/medicion_acercarse_camino_20261122 S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30
+  sens-etapa0 sens-golpe cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0
+  hierro brujula-camino acercarse-camino`.
+- **NCB0 no se corre:** sin evolución, el fitness no cambia lo que hacen (el control de arriba), así que la línea base de
+  NA es la de NC, en `results/medicion_brujula_camino_20261122/` (sus SHA-256, en [la brújula por el
+  camino](#brujula-camino)).
+- **NC** tampoco: es la referencia, en la misma carpeta.
+
+`hierro`, `sens-etapa0` y `sens-golpe` solo miden: no cambian la corrida.
+
+**Criterio, fijado antes de lanzar** (la decisión 5 del spec; gens 146-150; por semilla, NA contra NCB0 de la misma
+semilla; agentes por generación que dan el paso, del `corrida_*.csv`). Cada paso, del 2 al 6, por separado:
+- **Pasa** si en 4 de 5 semillas NA tiene al menos 1 agente por generación que da el paso y más que NCB0 (un empate no
+  cuenta). Con menos de 1 por generación no pasa, sea cual sea la línea base.
+- **Los pasos 2 a 4 no pierden** si siguen pasando. Si alguno deja de pasar, la recompensa nueva cuesta lo que ya estaba
+  aprendido, y se anota así.
+- **Se lee con la medida independiente** (LEC-018), por paso:
+  - **el 5, la puerta de hierro:** de los que tienen la llave dorada y ticks en la etapa 3, la parte que llega a 25 px de
+    su centro (`h_dmin` < 25), NA contra NC, en las 31-150, las semillas juntas. NC: 4.070 de 10.915 (37%). Contra NC y no
+    contra NCB0, porque sin evolución casi nadie tiene la llave dorada (NCB0: 5 en las 31-150; LEC-024). Acompaña si en NA
+    es más alta;
+  - **el 3, la puerta de madera:** de los que tienen la llave roja, la parte que llega a 25 px, NA contra NCB0, en las
+    31-150 (NCB0: 47 de 671, el 7%). Acompaña si en NA es más alta;
+  - **los pasos 2, 4 y 6, por 1.000 px,** NA contra NCB0. Acompaña si NA queda arriba en las semillas que pasan; si NCB0 da
+    0 (en la llave dorada y el cofre dio 0), no agrega, y se anota.
+  - Si un paso pasa y su medida no acompaña, se anota así y lo decide Fer.
+- **Qué diría cada resultado:**
+  - **el paso 5 pasa:** pagar el camino destraba la puerta de hierro. Si queda en la referencia lo decide Fer (decisión 9);
+  - **no pasa, y la parte que llega sube:** llegar deja de ser el freno. El próximo cuello sale de dónde se traba: llegan
+    sin tiempo, no golpean o no completan los 3 golpes;
+  - **no pasa, y la parte que llega no sube:** pagar el camino no cambia adónde van. Queda la otra opción de la Sesión 6,
+    más generaciones;
+  - **un paso de 2 a 4 deja de pasar:** el costo de la recompensa nueva, para que lo decida Fer.
+- **Se informan, sin criterio:** NA contra NC en cada paso (por semilla y promedio) y por ventana (26-30 a 146-150); el
+  embudo, en las 31-150 y en las 146-150, también por semilla (las semillas 4 y 5 iban atrasadas en toda la cadena); dónde
+  se traba la puerta de hierro en NA, contra NC; `f_acercarse` (NA mide el camino y NC la recta: no se comparan como
+  fitness); la edad, la distancia y las manzanas; y cuánto tarda la tanda.
+
+**Controles en la tanda.**
+- Las 5 corridas terminan con `MEDICION inconsistencias=0 filas=9000` (las 5 líneas contadas, LEC-017).
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`; la columna `pesos` termina en
+  `HIT_ENERGY_COST:0`, y `brujula_camino` y `acercarse_camino` son 1 en todas las filas de `agentes_*.csv` y
+  `geometria_*.csv`.
+- **El costo fue 0** (LEC-010): `ENERGIA_GOLPE` da 0 por tick golpeando y sin golpear.
+- **La gen 1 de NA es la de NC salvo el fitness:** en el `corrida_*.csv`, las columnas del fitness; en `agentes_*.csv`,
+  alineadas por `id`, `fitness`, `f_acercarse`, `lugar`, `en_pool`, `elite` y `aporte`.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, y los `agentes_*` del `corrida_*.csv` son la suma de `abrio` y
+  los agentes con su `etapa`.
+- NC y NCB0 dan su SHA-256 publicado.
+
+**El script.** Uno nuevo, `mediciones/analizar_acercarse_camino.py`, con las funciones de `analizar_brujula_camino.py`. Se
+probó antes de lanzar con NC en el lugar de NA: dio lo publicado en [la brújula por el camino](#brujula-camino) (el
+criterio de NC contra NCB0, la puerta de madera, 24.441 · 18.127 y 671 · 47, la puerta de hierro de NC, 10.915 · 4.070 ·
+1.504, y la puerta de hierro y el cofre de NC por semilla), que controla solo, con 0 errores.
+
+**Tiempo:** las 5 a la vez, ~2 h (NC y NCB0, 10 a la vez, tardaron 2 h 18 min; la lectura nueva suma ~1%).
+
+**Cómo se corrió.** Las 5 a la vez con `python -u`, del 2026-11-22 a las 23:38 al 2026-11-23 a la 1:19 (1 h 41 min). La
+salida, en `results/medicion_acercarse_camino_20261122/` (fuera del repo). Las tablas, con `python
+mediciones/analizar_acercarse_camino.py results/medicion_acercarse_camino_20261122 results/medicion_brujula_camino_20261122`.
+Después de leer la tanda, dos cuentas sin criterio: la puerta de hierro y el cofre por semilla en las 116-120, y la llegada a
+la puerta de hierro por semilla.
+
+**Controles, hechos** (0 errores en el script):
+- **Las 5 líneas `MEDICION inconsistencias=0 filas=9000`,** contadas.
+- Los logs dicen el currículo y los pesos; `pesos` termina en `HIT_ENERGY_COST:0`, y `brujula_camino` y `acercarse_camino`
+  son 1 en todas las filas de `agentes_*.csv` y `geometria_*.csv`.
+- **El costo fue 0:** `ENERGIA_GOLPE` da 0 por tick, golpeando y sin golpear.
+- **La gen 1 de NA es la de NC salvo el fitness,** 5 de 5: en el `corrida_*.csv`, solo las columnas del fitness; en
+  `agentes_*.csv`, alineadas por `id`, solo las del fitness, en 16 a 21 de los 60 agentes según la semilla.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, y los `agentes_*` son la suma de `abrio` y los agentes con su
+  `etapa`: 0 diferencias.
+- NC y NCB0 dan su SHA-256 publicado.
+
+<details><summary>SHA-256 de la tanda (se regenera con medir_puerta.py ... hierro brujula-camino acercarse-camino desde el commit de esta sesión)</summary>
+
+| Semilla | NA, `corrida_*.csv` | NA, `agentes_*.csv` | NA, `geometria_*.csv` |
+|---|---|---|---|
+| 1 | `019b795269d3b06346db9c02f7aa5e3742f9e338ef8f95ce6d56c27a9e78593e` | `52aa48c1099bf0069748cee294f1fde51ae60a58291c0253f309fba11ad2b39f` | `d6c8786f11f48195e6f8ead2a3b52d0b27490f73a77a2ebbb076f2caa6e752ad` |
+| 2 | `b6a3167e163794f0fbe6389a73d17e1439d41fc5953c031cafa844da6d5feb3e` | `f08ee38c20ec3f92b00a4cd4b0313bb75bd44255ba696879e686e447acf01e5e` | `9886ea0e25fef57a80b8e5acb2c6675b7358b38d4ba01c75929634892eab0a30` |
+| 3 | `8ded72bf6916ae36df4c2b807c609b50ce661afec0d3a166aee42efcf7c577d1` | `e41b7f541492e29069177361234b760c356c193e5813ee0e9c102c6821dd455e` | `d41dff244166014b4162be51bf3a4d271140706d1418715bf3fb7af97780528e` |
+| 4 | `d7dc32d0c9f771a12a17d82671f06ef597c336d605f42a9c3ef778b7f9cb056a` | `874defdcdc826e0e365b03d0d39772fbce0b52a28a4dcc735e40240185b940ef` | `57814c02683ff434e826638032d1c62ad265ef931e190895b45d1e2f024de951` |
+| 5 | `073548e4656a558137ade412a2e2278376043f805efe6151bf8fce718cdaa6f5` | `13bc285b928fa07844417b10bf22e83f01b7941ae0f014b587dbdc193700e6c0` | `67b5012c3300711215604e72d1d1152c7d525623994e1fb75fa08c2d2c747a2e` |
+
+Los de NC y NCB0, en [la brújula por el camino](#brujula-camino).
+
+</details>
+
+**El criterio** (gens 146-150; agentes por generación que dan el paso, NA · NCB0; en negrita, donde NA cumple):
+
+| Semilla | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| 1 | **54,0** · 1,6 | **36,8** · 0 | **33,2** · 0 | **3,4** · 0 | **1,2** · 0 |
+| 2 | **56,2** · 1,0 | **46,6** · 0 | **41,4** · 0 | **13,6** · 0 | **9,2** · 0 |
+| 3 | **55,8** · 0,6 | **49,4** · 0 | **49,0** · 0 | **11,6** · 0 | **6,0** · 0 |
+| 4 | **53,6** · 1,2 | **43,8** · 0 | **42,6** · 0 | **8,6** · 0 | **6,2** · 0 |
+| 5 | **54,4** · 1,8 | **42,2** · 0 | **38,6** · 0 | **2,4** · 0 | **1,4** · 0 |
+| **Promedio** | 54,80 · 1,24 | 43,76 · 0 | 40,96 · 0 | 7,92 · 0 | 4,80 · 0 |
+| NC, la referencia (sin criterio) | 52,16 | 32,96 | 26,96 | 3,80 | 2,12 |
+| **El criterio** (pide 4 de 5) | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** |
+
+- **El paso 5, la puerta de hierro, pasa: 5 de 5.** La semilla más baja, la 5, da 2,4 por generación. NC pasaba en 3.
+- **El paso 6, el cofre, pasa: 5 de 5,** con poco margen en dos semillas: la 1 da 1,2 por generación y la 5, 1,4. NC pasaba
+  en 1.
+- **Los pasos 2 a 4 no pierden:** siguen 5 de 5, y suben contra NC.
+- En las 116-120 (sin criterio), la puerta de hierro hubiera pasado 5 de 5 (5,8 · 10,2 · 13,2 · 5,2 · 1,0; la semilla 5,
+  justo en 1) y el cofre 4 de 5 (4,4 · 7,8 · 10,4 · 2,6 · 0). El veredicto de las 146-150 es el que vale.
+
+**Las medidas independientes:**
+
+| Paso | Medida | NA | Contra | Acompaña |
+|---|---|---|---|---|
+| 2, llave roja | por 1.000 px, gens 146-150 | 27,0 (las 5 arriba) | NCB0, 3,5 | sí |
+| 3, puerta de madera | de los que tienen la llave roja, llegan a 25 px, gens 31-150 | 78% (21.414 de 27.556) | NCB0, 7% (47 de 671) | sí |
+| 4, llave dorada | por 1.000 px | 20,2 | NCB0, 0 | no agrega: NCB0 da 0 |
+| 5, puerta de hierro | de los que tienen la llave dorada, llegan a 25 px, gens 31-150 | 43% (6.725 de 15.561) | NC, 37% (4.070 de 10.915) | sí |
+| 6, cofre | por 1.000 px | 2,5 | NCB0, 0 | no agrega: NCB0 da 0 |
+
+La llegada a la puerta de hierro, por semilla (sin criterio, después de leer la tanda: juntas, las semillas pesan distinto
+en NA y en NC, y la 5 de NC tiene solo 106 agentes con la llave dorada): NA 42% · 48% · 58% · 43% · 23%, NC 36% · 27% ·
+53% · 30% · 0%. NA es más alta en las 5. En las 146-150, NA 47% (484 de 1.024), NC 40%.
+
+**El embudo** (sin criterio; sumados en las 5 semillas; entre paréntesis, la parte de los del paso anterior):
+
+| | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| NA, gens 31-150 | 27.556 | 17.009 (62%) | 15.568 (92%) | 3.192 (21%) | 2.174 (68%) |
+| NA, gens 146-150 | 1.370 | 1.094 (80%) | 1.024 (94%) | 198 (19%) | 120 (61%) |
+| NC, gens 31-150 | 24.441 | 12.498 (51%) | 10.919 (87%) | 1.504 (14%) | 856 (57%) |
+| NC, gens 146-150 | 1.304 | 824 (63%) | 674 (82%) | 95 (14%) | 53 (56%) |
+| NCB0, gens 31-150 | 671 | 14 (2%) | 5 (36%) | 0 | 0 |
+
+Por semilla, en las 31-150, NA abre la puerta de madera 2.772 · 4.789 · 2.486 · 3.853 · 3.109 veces (NC: 4.295 · 3.310 ·
+3.165 · 1.497 · 231), la de hierro 423 · 1.122 · 789 · 600 · 258 (NC: 563 · 217 · 696 · 28 · 0) y el cofre 276 · 809 · 585
+· 432 · 72 (NC: 278 · 99 · 477 · 2 · 0). En las semillas 1 y 3, NA abre menos puertas de madera que NC en las 31-150 y más
+en las 146-150: ahí arranca más lento.
+
+**Por ventana** (agentes por generación, promedio de las 5 semillas):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Puerta de madera, NA | 9,16 | 7,32 | 15,00 | 30,04 | 39,56 | 43,76 |
+| Puerta de madera, NC | 8,08 | 3,12 | 8,84 | 20,04 | 30,72 | 32,96 |
+| Llave dorada, NA | 6,40 | 6,80 | 12,68 | 27,84 | 36,28 | 40,96 |
+| Llave dorada, NC | 6,52 | 2,16 | 8,00 | 17,36 | 26,76 | 26,96 |
+| Puerta de hierro, NA | 0,04 | 0,32 | 0,56 | 3,96 | 7,08 | 7,92 |
+| Puerta de hierro, NC | 0,20 | 0,04 | 0,80 | 1,80 | 5,00 | 3,80 |
+| Cofre, NA | 0,04 | 0,12 | 0,40 | 2,72 | 5,04 | 4,80 |
+| Cofre, NC | 0,08 | 0 | 0,20 | 1,08 | 3,28 | 2,12 |
+| Puerta de hierro por semilla, NA | | | | | 5,8 · 10,2 · 13,2 · 5,2 · 1,0 | 3,4 · 13,6 · 11,6 · 8,6 · 2,4 |
+
+La llave roja, en NA, da 20,12 por generación en las 31-35 (NC, 21,96) y 54,80 en las 146-150. NCB0 da 0 en la puerta de
+hierro y el cofre en todas las ventanas.
+
+**Dónde se traba ahora la puerta de hierro** (gens 31-150; la cuenta de [dónde se traba](#medicion-puerta-hierro)):
+
+| | NA | NC |
+|---|---|---|
+| Con la llave dorada | 15.561 | 10.915 |
+| La abren | 3.192 (21%) | 1.504 (14%) |
+| No llegan a 25 px | 8.836 (57%; el 71% de los que no la abren) | 6.845 (63%; el 73%) |
+| Llegan sin tiempo | 2.835 (18%; el 23%) | 1.796 (16%; el 19%) |
+| Llegan y no golpean ahí | 59 (0,4%) | 161 (1%) |
+| No completan | 639 (4%) | 609 (6%) |
+
+**Se informan, sin criterio** (gens 146-150):
+- **Comen como antes de la brújula por el camino:** 0,988 manzanas contra 0,849 de NC (N0, 0,993). Caminan un poco más
+  (2.049 px contra 1.965), y la edad es la misma (1.046 contra 1.041 ticks).
+- `f_acercarse`, 116,7 por agente contra 93,9 de NC: NA mide el camino y NC la recta, así que no se comparan.
+
+**Lectura.**
+1. **Con la recompensa por acercarse por el camino pasan los cinco pasos de la cadena, 5 de 5,** contra una línea base que
+   no da ninguno de los cuatro últimos (LEC-001): la puerta de hierro pasa de 3,80 a 7,92 por generación y el cofre, de
+   2,12 a 4,80. La medida independiente de la puerta de hierro acompaña: llega el 43% de los que tienen la llave dorada
+   (NC, el 37%), y por semilla es más alta en las 5.
+2. **Suma en toda la cadena, no solo en la puerta de hierro:** la puerta de madera sube de 32,96 a 43,76 por generación y la
+   llave dorada, de 26,96 a 40,96, con NA arriba de NC en las 5 semillas. Llegar a la puerta de madera también pide rodear:
+   el seguidor de la recta llegaba desde un tercio de los arranques ([la brújula por el camino](#brujula-camino)).
+3. **Las semillas atrasadas se pusieron al día:** la 5, que con NC abría 12,0 puertas de madera por generación y ninguna de
+   hierro, abre 42,2 y 2,4; la 4, que abría 30,4 y 0,4, abre 43,8 y 8,6. La 5 sigue siendo la más baja en la de hierro
+   (llega el 23% de los que tienen la llave dorada).
+4. **El margen es chico en el cofre de las semillas 1 y 5** (1,2 y 1,4 por generación, con un mínimo de 1) y en la puerta
+   de hierro de la 5 (2,4). En las 116-120, el cofre hubiera sido 4 de 5.
+5. **NA contra NC no tiene criterio:** lo que pasa es NA contra NCB0. Con 5 semillas, una diferencia en 4 de 5 sale por
+   azar el 19% de las veces (LEC-018). En la puerta de hierro, NA es más alta en 4 de 5 (en la 3, 11,6 contra 12,6); en
+   la de madera y la llave dorada, en 5 de 5 (el 3%).
+6. **En la puerta de hierro, el freno sigue siendo llegar** (el 71% de los que no la abren), y crece "llegan sin tiempo" (el
+   23%).
+7. **Comen como antes de la brújula por el camino** (0,99 manzanas; NC, 0,85). Sin criterio.
+
+**Qué sugiere** (lo decide Fer, decisión 9):
+- **NA, a la referencia.** Pasa los pasos 2 a 6 en 5 de 5. La referencia nueva sería NA, con NCB0 de línea base (sus
+  SHA-256, arriba y en [la brújula por el camino](#brujula-camino)). Prender `ACERCARSE_CAMINO` por defecto en `config.py`
+  es otra decisión.
+- **Con esa referencia, sigue el paso 1, comer,** que se retomaba después de la cadena. La tanda de NA y NCB0 ya tiene las
+  columnas de la decisión 6 (`sens_comida` y `sens_comida0`, por `sens-etapa0`): se puede medir sin correr nada, con un
+  script que use las cuentas de `analizar_comida.py` y el criterio escrito antes de leer. Si comer pasa, NA cumple los
+  seis pasos en la misma tanda, sin nada dado al nacer en la ventana: puede ser la corrida final del paso 7.
+- **Si comer no pasa,** el cambio para comer va contra NA, un cambio por vez (decisión 7). Con la referencia vieja, la
+  comida al doble costó la llave roja.
+
+**Decidido por Fer (2026-11-23):** NA pasa a la referencia del spec, con NCB0 de línea base (NA en
+`results/medicion_acercarse_camino_20261122/` y NCB0 en `results/medicion_brujula_camino_20261122/`, sus SHA-256 arriba y
+en [la brújula por el camino](#brujula-camino)). El valor por defecto de `config.py` no cambia. Lo próximo es el paso 1,
+comer, medido sobre la tanda de NA y NCB0, sin correr nada.

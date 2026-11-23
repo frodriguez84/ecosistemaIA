@@ -52,7 +52,7 @@ def datos_de_la_generacion(generation, agents, world, tick):
     segundos = tick // 60
     vivos = len([agent for agent in agents if agent.alive])
     ayudas = nombre_de_las_ayudas(SimulationConfig.RECOMPENSA_ACERCARSE, SimulationConfig.CURRICULO,
-                                  SimulationConfig.DESLIZAR)
+                                  SimulationConfig.DESLIZAR, SimulationConfig.ACERCARSE_CAMINO)
     return [
         ("Generación", f"{generation} de {SimulationConfig.MAX_GENERATIONS}"),
         ("Modo", NOMBRES_DE_MODOS.get(SimulationConfig.MODO, SimulationConfig.MODO)),

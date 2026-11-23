@@ -233,3 +233,17 @@ def rumbo(world, etapa, x, y):
     return (np.where(recta, np.arctan2(dy, dx), angulo),
             np.where(recta, np.sqrt(dx * dx + dy * dy), campo.distancia[i, j]))
 
+
+def distancia(world, etapa, x, y):
+    """La distancia de rumbo(), para un punto y con números de Python: rumbo() con numpy cuesta ~40 veces más,
+    y la recompensa por acercarse por el camino (ACERCARSE_CAMINO) la lee por agente y por tick, aparte del
+    sensor 11."""
+    px, py = punto_del_paso(world, etapa)
+    campo = campos(world)[etapa]
+    j = min(max(int(x // CELDA), 0), campo.nx - 1)
+    i = min(max(int(y // CELDA), 0), campo.ny - 1)
+    if campo.recta[i, j]:
+        dx, dy = px - x, py - y
+        return math.sqrt(dx * dx + dy * dy)
+    return float(campo.distancia[i, j])
+

@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [acercarse-camino] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -60,6 +60,9 @@ brujula-camino le pasa --brujula-camino a main.py (la brújula por el camino, sp
 brujula_camino a agentes_*.csv y a geometria_*.csv; los dos seguidores (el de la puerta de madera y, con hierro, el de la
 de hierro) siguen el rumbo de src/world/camino.py, la misma función que el sensor 9, con la etapa 1 y la 3. Sin el
 argumento, siguen la recta y los tres CSV son los de antes.
+acercarse-camino (va con acercarse) le pasa --acercarse-camino a main.py (la recompensa por acercarse medida por el
+camino, spec PUZZLE_SOLOS), suma camino_ al nombre después de acercarse_ y la columna acercarse_camino a agentes_*.csv y a
+geometria_*.csv. f_acercarse sale del estado del agente: no cambia. Sin el argumento, los tres CSV son los de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -111,6 +114,9 @@ sens_etapa0 = "sens-etapa0" in sys.argv[6:]
 sens_golpe = "sens-golpe" in sys.argv[6:]
 hierro = "hierro" in sys.argv[6:]
 brujula = "brujula-camino" in sys.argv[6:]
+acercarse_camino = "acercarse-camino" in sys.argv[6:]
+if acercarse_camino and not acercarse:
+    sys.exit("acercarse-camino va con acercarse: sin la recompensa por acercarse no hace nada")
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -852,7 +858,8 @@ for par in filter(None, pesos.split(",")):
 if PESOS:
     print(f"PESOS {PESOS}")
 etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, v in PESOS.items()) + "_" if PESOS else ""
-nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
+nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'camino_' if acercarse_camino else ''}"
+          f"{'deslizar_' if deslizar else ''}"
           f"{'moviles_' if moviles else ''}{'brujula_camino_' if brujula else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'curriculo{curriculo}_' if curriculo is not None else ''}"
@@ -870,6 +877,8 @@ if moviles:
     argv.append("--fortalezas-moviles")
 if brujula:
     argv.append("--brujula-camino")
+if acercarse_camino:
+    argv.append("--acercarse-camino")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
@@ -890,12 +899,16 @@ for f in FILAS:
         f["reloj"] = reloj
     if brujula:  # sin el argumento, la columna no está: el CSV es el de antes
         f["brujula_camino"] = 1
+    if acercarse_camino:  # igual
+        f["acercarse_camino"] = 1
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
     g["laboratorio"] = int(laboratorio)
     if brujula:
         g["brujula_camino"] = 1
+    if acercarse_camino:
+        g["acercarse_camino"] = 1
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()

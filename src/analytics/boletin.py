@@ -55,18 +55,20 @@ def veces(valor):
     return f"×{numero(valor, 1)}"
 
 
-def nombre_de_las_ayudas(acercarse, curriculo, deslizar=False):
+def nombre_de_las_ayudas(acercarse, curriculo, deslizar=False, acercarse_camino=False):
     """Las ayudas prendidas: "acercarse", "currículo", "deslizar" o varias con " + "; "" si ninguna
-    (spec PUZZLE_APRENDIBLE, decisión 11). El panel las pone en un renglón propio."""
-    ayudas = (("acercarse", acercarse), ("currículo", curriculo), ("deslizar", deslizar))
+    (spec PUZZLE_APRENDIBLE, decisión 11). Con acercarse_camino, "acercarse por el camino". El panel las
+    pone en un renglón propio."""
+    ayudas = (("acercarse por el camino" if acercarse_camino else "acercarse", acercarse),
+              ("currículo", curriculo), ("deslizar", deslizar))
     return " + ".join(nombre for nombre, prendida in ayudas if prendida)
 
 
-def nombre_del_modo(modo, acercarse, curriculo=False, deslizar=False):
+def nombre_del_modo(modo, acercarse, curriculo=False, deslizar=False, acercarse_camino=False):
     """El modo, y las ayudas prendidas: "autónomo + acercarse + currículo". Lo usa el encabezado del
     boletín."""
     nombre = NOMBRES_DE_MODOS.get(modo, modo)
-    ayudas = nombre_de_las_ayudas(acercarse, curriculo, deslizar)
+    ayudas = nombre_de_las_ayudas(acercarse, curriculo, deslizar, acercarse_camino)
     return f"{nombre} + {ayudas}" if ayudas else nombre
 
 
@@ -160,10 +162,11 @@ def armar_boletin(registro):
     poblacion = SimulationConfig.POPULATION_SIZE
 
     minutos = minutos_simulados(sum(fila["ticks"] for fila in historia))
-    # Deslizar, las fortalezas móviles y la brújula por el camino no van en el CSV: se leen de los
-    # switches, que main() pisa con --deslizar, --fortalezas-moviles y --brujula-camino
+    # Acercarse por el camino, deslizar, las fortalezas móviles y la brújula por el camino no van en el
+    # CSV: se leen de los switches, que main() pisa con --acercarse-camino, --deslizar,
+    # --fortalezas-moviles y --brujula-camino
     modo = nombre_del_modo(primera['modo'], primera['acercarse'], primera['etapa_inicial'] > 0,
-                           SimulationConfig.DESLIZAR)
+                           SimulationConfig.DESLIZAR, SimulationConfig.ACERCARSE_CAMINO)
     subtitulo = " · ".join([
         f"Modo {modo}",
         *(["fortalezas móviles"] if SimulationConfig.FORTALEZAS_MOVILES else []),
