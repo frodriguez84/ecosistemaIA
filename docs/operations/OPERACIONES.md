@@ -55,6 +55,9 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
 - **Un control de igualdad entre dos corridas no lo prueba la misma corrida en los dos lados,** que
   siempre da igual: lo que sale de una columna redondeada del CSV (las manzanas, de `f_comida`) se
   compara con la tolerancia del redondeo desde el principio (LEC-023).
+- **Antes de leer lo que ve la selección, o de sugerir un cambio de pesos, se cuenta cuántos agentes
+  tienen el fitness en el tope de 100,** por ventana: entre ellos la selección no distingue nada. Con la
+  cadena aprendida, en la referencia NA, son el 74% (LEC-028).
 - **El scratchpad es de una sola sesión.** Un CSV de referencia que otra sesión tiene que comparar
   deja su SHA-256 en la bitácora, con el commit desde el que se regenera (LEC-011).
 

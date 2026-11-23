@@ -1,6 +1,6 @@
 # Spec: Que aprendan el puzzle solos
 
-**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`) y la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`), las dos apagadas por defecto: la puerta de hierro, 7,92 por generación, y el cofre, 4,80, con poco margen en dos semillas (1,2 y 1,4). Esa corrida (NA, Sesión 7) es la referencia desde el 2026-11-23 (Fer). Falta el paso 1 (comer), que se mide sobre la tanda de NA sin correr nada, y el 7 (todo junto). Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22 y con la recompensa por acercarse por el camino desde el 2026-11-23)
+**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`) y la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`), las dos apagadas por defecto: la puerta de hierro, 7,92 por generación, y el cofre, 4,80, con poco margen en dos semillas (1,2 y 1,4). Esa corrida (NA, Sesión 7) es la referencia desde el 2026-11-23 (Fer). Falta el paso 1 (comer), que no pasa en NA (Sesión 8): el 74% de los agentes tiene el fitness en el tope de 100 y la selección no ve la comida; Fer decidió probar sacar el tope, con un switch. Y falta el 7 (todo junto). Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22 y con la recompensa por acercarse por el camino desde el 2026-11-23)
 **Prioridad:** Alta — es el rumbo del modo autónomo, pedido por Fer el 2026-11-21
 **Gate:** Ninguno
 **Bloquea:** el ítem 6 del [BACKLOG](../../product/BACKLOG.md) (mecánicas nuevas) y el hacha y los árboles: entran cuando el puzzle esté aprendido
@@ -133,13 +133,13 @@ defecto.
 
 | # | Paso | Estado | Dónde |
 |---|------|--------|-------|
-| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). **Con `FITNESS_FOOD` en 20 se aprende** (4 de 5, +0,045), **pero cuesta la llave roja** (28,9 por generación contra 44,5) **y la puerta** (0 de 5): no va a la referencia. Comer compite con la llave en el fitness. Se retoma después de la cadena, con la referencia nueva (Fer, 2026-11-22). **Lo próximo** (Fer, 2026-11-23): medirlo sobre la tanda de NA y NCB0, que ya tiene las columnas de la decisión 6 | [comer](../../qa/AnalisisQA.md#comer), [la comida al doble](../../qa/AnalisisQA.md#costo-chico-comida20) |
+| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). **Con `FITNESS_FOOD` en 20 se aprende** (4 de 5, +0,045), **pero cuesta la llave roja** (28,9 por generación contra 44,5) **y la puerta** (0 de 5): no va a la referencia. Comer compite con la llave en el fitness. Se retoma después de la cadena, con la referencia nueva (Fer, 2026-11-22). **No aprendido en NA** (2026-11-23, Sesión 8): la sensibilidad, 2 de 5 (+0,006); la medida de adentro de la generación cumple por poco (+0,068 contra +0,049 de NCB0). Sube hasta la 60 y se pierde mientras se aprende la cadena; al final la selección la castiga (−0,075 con el fitness). **El tope del fitness la esconde:** el 74% de los agentes tiene el fitness en 100 (desde que abren la puerta de madera, el 99-100%; en N, el 2%), y a ellos comer no les cambia nada. **Lo próximo** (Fer, 2026-11-23): sacar el tope, con un switch apagado por defecto | [comer](../../qa/AnalisisQA.md#comer), [la comida al doble](../../qa/AnalisisQA.md#costo-chico-comida20), [comer en NA](../../qa/AnalisisQA.md#comer-na) |
 | 2 | Llave roja | ✅ En la referencia (2026-11-20): 44,5 de 60 por generación, 5 de 5 semillas, 38 veces la línea base y 9,8 veces por 1.000 px. Con la referencia sin costo sigue pasando (2026-11-22, sin criterio): 42,5 contra 1,24 de su línea base, 5 de 5. Con la brújula por el camino (2026-11-22, Sesión 6, sin cambiar la referencia): 52,2 contra 1,24 de su línea base, 5 de 5. Con la recompensa por acercarse por el camino (Sesión 7, la referencia desde el 2026-11-23): 54,8 contra 1,24, 5 de 5 | [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino) |
 | 3 | Puerta de madera | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 7,6 por generación contra 0,04, 5 de 5. **Lo aprendido es llegar con la llave y golpear siempre, no golpear en la puerta:** de los que tienen la llave llega el 29% (al azar, el 3%), y la red golpea casi el doble que al azar, pegada y lejos por igual (P lejos 0,61). Con ninguno de los costos medidos (0,05, 0,01 y 0) se condiciona el golpe. La medida independiente fijada no acompañó por un solo agente de la línea base (LEC-024): ✅ decidido por Fer. Con la brújula por el camino (Sesión 6): 33,0 por generación contra 0, 5 de 5, 4,3 veces N0; llega a la puerta el 74% de los que tienen la llave (N0, 34%). Con la recompensa por acercarse por el camino (Sesión 7, la referencia): 43,8 contra 0, 5 de 5; llega el 78% | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [golpear en la puerta](../../qa/AnalisisQA.md#sens-golpe), [el costo](../../qa/AnalisisQA.md#costo-golpe), [el costo en 0,01](../../qa/AnalisisQA.md#costo-chico-comida20), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino) |
 | 4 | Llave dorada | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 4,0 por generación contra 0, 5 de 5. Viene con la puerta: la agarra el 53% de los que la abren, en toda la corrida. Con la brújula por el camino (Sesión 6): 27,0 contra 0, 5 de 5, 6,7 veces N0. Con la recompensa por acercarse por el camino (Sesión 7, la referencia): 41,0 contra 0, 5 de 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino) |
 | 5 | Puerta de hierro | ✅ **Pasa con la recompensa por acercarse por el camino** (2026-11-23, Sesión 7, la referencia): 5 de 5 (3,4 · 13,6 · 11,6 · 8,6 · 2,4 por generación, 7,92 en promedio; la línea base, 0). Llega el 43% de los que tienen la llave dorada (NC, 37%; más en las 5 semillas) y la abre el 21%. Sigue frenando llegar (el 71% de los que no la abren), y llega sin tiempo el 23%. **Antes:** no pasaba (2026-11-22): ninguna semilla llega a 1 por generación (0,16 en promedio; la línea base, 0). **La cadena se corta acá:** la abre el 1% de los que tienen la llave dorada (21 de 2.056 en las 31-150). Pide 3 golpes con 90 ticks entre golpe y golpe (la de madera, 2). **Se traba en llegar** (2026-11-22): el 99% de los que tienen la llave dorada nunca está a 25 px, y los que llegan la abren (21 de 29). La brújula y la recompensa por acercarse apuntan en línea recta, y desde la llave dorada, adentro de la fortaleza chica, esa recta cruza paredes en los 600 mapas: el seguidor perfecto no llega en 588, y los agentes quedan donde queda él. Fer decidió probar una brújula que siga el camino libre, con un switch. **Con la brújula por el camino** (2026-11-22, Sesión 6): **3 de 5, no pasa** (1,6 · 4,4 · 12,6 · 0,4 · 0 por generación; de 0,16 a 3,80 en promedio). Llega el 37% de los que tienen la llave dorada (N0, 1%) y la abre el 14%. Las semillas 4 y 5 van atrasadas en toda la cadena. Sigue trabándose en llegar (el 73% de los que no la abren), y el 19% llega sin tiempo; la recompensa por acercarse todavía mide la recta | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [dónde se traba](../../qa/AnalisisQA.md#medicion-puerta-hierro), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino) |
 | 6 | Cofre | ✅ **Pasa con la recompensa por acercarse por el camino** (2026-11-23, Sesión 7, la referencia): 5 de 5 (1,2 · 9,2 · 6,0 · 6,2 · 1,4 por generación, 4,80 en promedio; la línea base, 0), con poco margen en las semillas 1 y 5; en las 116-120 hubiera sido 4 de 5. Lo abre el 68% de los que abren la puerta de hierro (gens 31-150). **Antes:** no pasaba (2026-11-22): 0,08 por generación, detrás de la puerta de hierro (7 agentes en las 31-150, en las semillas 1 y 4). Se vuelve a medir cuando pase el paso 5. Con la brújula por el camino (Sesión 6): 1 de 5 (la semilla 3, 9,4 por generación; 2,12 en promedio), 856 agentes en las 31-150; en las 116-120 hubieran sido 3 de 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino) |
-| 7 | Todo junto | ⏳ Una corrida final con los 6 pasos. Si comer pasa en la tanda de NA, esa tanda puede serlo (lo decide Fer) | — |
+| 7 | Todo junto | ⏳ Una corrida final con los 6 pasos. Comer no pasa en la tanda de NA (Sesión 8): la candidata es la tanda del cambio que haga pasar comer, si los pasos 2 a 6 siguen pasando (lo decide Fer). Con el tope del fitness, los pasos 4 a 6 pasan sin que la selección distinga a quienes los dan de los que solo abren la puerta de madera | [comer en NA](../../qa/AnalisisQA.md#comer-na) |
 
 Un paso ✅ se vuelve a mirar en la corrida final: un cambio para un paso posterior puede romper uno anterior.
 
@@ -622,3 +622,97 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
     - `f_comida` va redondeada en el CSV: las manzanas que salen de ahí se comparan con la tolerancia del redondeo
       (LEC-023);
     - NCB0 no tiene `acercarse-camino`: sin evolución, el fitness no cambia lo que hacen (el control de esta sesión).
+
+### Sesión 8 — 2026-11-23 — Paso 1, comer, en la referencia (NA)
+- **Hecho:**
+  - los datos: los 15 CSV de NA y los 15 de NCB0 dan el SHA-256 publicado (30 de 30), y los 10 logs terminan con
+    `MEDICION inconsistencias=0 filas=9000`;
+  - un script nuevo, `mediciones/analizar_comer_na.py`, con las cuentas de `analizar_comida.py`. Probado antes de leer con N
+    y NB en el lugar de NA y NCB0 (`prueba`): da lo publicado en [comer](../../qa/AnalisisQA.md#comer), que controla solo,
+    con 0 errores. Con `conteo` imprime solo las filas medidas y los controles;
+  - el criterio, escrito en AnalisisQA antes de leer, con el conteo de la trampa de la Sesión 7: en las 146-150, la mediana
+    de ticks medidos es 688 en NA y 1.001 en NCB0, y ninguna fila queda sin medir
+    ([comer en la referencia nueva](../../qa/AnalisisQA.md#comer-na));
+  - después de leer, una cuenta sin criterio en el script: el tope del fitness. Y una lección, LEC-028, con su regla en
+    OPERACIONES.
+
+  Commit: el de esta sesión, confirmado por Fer.
+- **Estados:**
+  - **el paso 1 sigue 🔄: comer no está aprendido en NA.** La sensibilidad a la comida, 2 de 5 (+0,0245 · −0,0082 ·
+    +0,0211 · +0,0072 · −0,0126; NCB0, +0,0003). La medida de adentro de la generación cumple por poco: +0,068 contra +0,049,
+    y por semilla, 3 de 5. Como en la Sesión 2, sube hasta las 56-60 (+0,025) y se pierde mientras se aprende la cadena. Al
+    final la selección la castiga: con el fitness, −0,075 en las 121-150;
+  - **la causa medida: el tope del fitness.** `_calculate_fitness` recorta la suma de los términos a 100. En NA, en las
+    146-150, el 74% de los agentes está en el tope, con 96 puntos de sobra (mediana); desde la etapa 2 (abren la puerta de
+    madera), el 99-100%. A ellos comer no les cambia nada. En N (Sesión 2) el tope tocaba al 2%, y en NC al 56%;
+  - **el tope también esconde los pasos 4 a 6:** el que abre el cofre (los términos suman 342) vale lo mismo que el que solo
+    abre la puerta de madera (123). Los pasos 2 a 6 siguen ✅ (no se volvieron a medir: es la misma tanda);
+  - el paso 7 sigue ⏳: la candidata a corrida final es la tanda del cambio que haga pasar comer, si los pasos 2 a 6 siguen
+    pasando.
+- **Decidido por Fer (2026-11-23):** para comer se prueba sacar el tope del fitness, con un switch apagado por defecto,
+  contra NA. Las otras opciones eran subir `FITNESS_FOOD` (con el tope, al 74% no le cambia nada) y comida que rebrota (una
+  mecánica nueva).
+- **Desvíos del spec:**
+  - **una cuenta después de leer:** el tope del fitness, por ventana, por semilla y por la etapa en que terminan. Va en el
+    script, marcada "sin criterio, sumado después de leer"; la prueba sigue dando 0 errores y el resto de la salida no
+    cambió;
+  - **un conteo sin criterio en el criterio escrito:** el Spearman entre los ticks medidos y las manzanas, para ver si los que
+    se miden menos comen distinto (NA +0,128; en NCB0, +0,890, porque se mide la vida entera).
+- **A medias o bloqueado:** nada.
+- **Para verificar en producción:** N/A.
+- **Próxima sesión:** el paso 1, con el fitness sin tope. Es código: va con un switch apagado por defecto y sus tests
+  (decisión 7). Puede llevar dos sesiones, como la 6 y la 7: una implementa y controla, y la tanda va en la siguiente si no
+  entra.
+  - **Primer paso, antes de tocar el código: las 6 corridas cortas con el código del commit de esta sesión,** las 6 a la
+    vez, con la salida en `results/sesion9_antes/` (en el scratchpad la ruta pasa los 260 caracteres, LEC-026). Las de la
+    Sesión 7 no quedaron. Con `P=pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0`:
+    - c1, c2, c3 y c5 son las cuatro de la "Próxima sesión" de la Sesión 5, y c6 la de la Sesión 6, con
+      `results/sesion9_antes/cN` de salida;
+    - c7 es la c6 con `acercarse-camino` (la configuración de NA): `medir_puerta.py . results/sesion9_antes/c7 5 evolucion 6
+      acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2 $P,HIT_ENERGY_COST:0 hierro
+      brujula-camino acercarse-camino`.
+
+    Control: las 6 líneas `MEDICION inconsistencias=0`. El `corrida_*.csv` de c5 da `3db0df62…` y el de c6, `2e484f8f…`. Los
+    SHA-256 de los 18 CSV quedan anotados en AnalisisQA: son el "antes" del control de apagado.
+  - **Después, el diseño en este spec, antes del código** (una sección debajo de "La recompensa por acercarse, por el
+    camino"). Lo que tiene que fijar:
+    - **qué cambia:** solo el final de `_calculate_fitness` (`advanced_agent.py`): con el switch, el fitness es la suma de
+      los términos con piso en 0, sin el recorte a 100. Decidir qué pasa con el tope por tiempo vivido (50 + 50 × la parte
+      vivida de `BASE_TICKS`): en NA recorta el 0,1% de las filas de las 31-150 (39 de 36.000), y el piso en 0, 19;
+    - **qué más lee el fitness como si fuera de 0 a 100,** y qué hace cada uno con el switch: el color de los agentes
+      (`fitness / 100`, `advanced_agent.py`), el panel (`src/ui/stats.py`), el boletín, el monitor, el registro, el resumen
+      de `experimento.py` y los umbrales de la guía del modo guiado (30 y 65, en `decide()`). Los switches son comunes a los
+      dos modos: si en el guiado cambia la guía, se escribe así;
+    - **los nombres:** `FITNESS_SIN_TOPE = False` en `config.py`, `--fitness-sin-tope` en `main.py` y `experimento.py`, y
+      `fitness-sin-tope` en `medir_puerta.py`; en el nombre del archivo, `sin_tope_`. Como los otros switches, va en el
+      panel, el boletín y el resumen, no en una columna del CSV;
+    - **`medir_puerta.py`:** el control de `terminos_fitness` compara los términos con el fitness recortado (`min(max(0,
+      min(100, total)), tope)`). Con el switch, tiene que comparar con la suma sin el recorte: sin ese arreglo, cada agente
+      arriba de 100 es una inconsistencia (como el sensor 11 en la Sesión 6).
+  - **Los tests,** como `tests/test_acercarse_camino.py`:
+    - apagado no cambia nada: las 6 corridas cortas, byte a byte, y `python -m pytest -q` pasa;
+    - prendido: un agente cuyos términos suman más de 100 tiene ese fitness, y uno con la suma negativa, 0;
+    - no consume azar;
+    - prendido, en la gen 1 de c7 cambian solo el fitness y lo que sale de él (`lugar`, `en_pool`, `elite`, `aporte`), y
+      sin evolución (la configuración de NCB0) cambian solo las columnas del fitness: así NCB0 sigue siendo la línea base.
+  - **El criterio en AnalisisQA, antes de lanzar,** contra NA y su línea base NCB0 (gens 146-150, por semilla):
+    - comer, la decisión 6: la sensibilidad a la comida ≥ 0,02 y más que NCB0 en 4 de 5, y el Spearman con las manzanas de
+      las 121-150 por arriba del de NCB0;
+    - las guardas: los pasos 2 a 6, la decisión 5 contra NCB0. Si alguno deja de pasar, el cambio cuesta lo aprendido;
+    - sin criterio: lo que ve la selección (el Spearman con el fitness por tramo), la sensibilidad por ventana, y cada paso
+      contra NA.
+  - **La tanda: 5 corridas** (NT), el comando de NA con `fitness-sin-tope` al final, en
+    `results/medicion_sin_tope_AAAAMMDD/` con la fecha de la sesión (~1 h 40 las 5 a la vez). Contar las 5 líneas
+    `MEDICION` (LEC-017). La línea base sigue siendo NCB0 si el control de sin evolución da lo esperado; si no, se corre
+    también la línea base con el switch (el comando de NCB0 con `fitness-sin-tope`, 5 corridas más, las 10 a la vez).
+  - **El script:** uno nuevo, con las cuentas de `analizar_comer_na.py` (comer) y de `analizar_acercarse_camino.py` (los
+    pasos 2 a 6). Antes de lanzar, se prueba con NA en el lugar de NT: tiene que dar lo publicado en las dos secciones.
+  - **Trampas:**
+    - la ruta: con `sin_tope_`, la más larga de NT queda en ~230 caracteres desde `c:\Fer\EcosistemaEvolutivo\` (la de NA,
+      227); en el scratchpad no entra (LEC-026);
+    - desde la gen 2 la selección cambia: el único control byte a byte es la gen 1;
+    - sacar el tope cambia lo que ve la selección en toda la cadena, no solo en comer: la guarda de los pasos 2 a 6 es parte
+      del criterio, y puede pasar que los pasos 4 a 6 suban;
+    - puede no alcanzar para comer: en N casi nadie llegaba al tope, y la selección tampoco veía la comida desde la 60. Si
+      no alcanza, el próximo cambio es `FITNESS_FOOD`, contra la referencia sin tope (lo decide Fer);
+    - los scripts que editan archivos leen y escriben bytes (LEC-027). Qué archivos son CRLF está en OPERACIONES.

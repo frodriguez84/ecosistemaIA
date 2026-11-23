@@ -5,6 +5,22 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-028 — 2026-11-23 — El tope del fitness esconde lo que pasa por arriba, y pesa más cuanto mejor aprenden
+
+**Qué pasó.** En la sesión de comer sobre la referencia nueva (NA), la sensibilidad a la comida no pasó, y dentro de cada
+generación la selección la castigaba (Spearman con el fitness, −0,075). Buscando por qué, sumé los términos del fitness:
+daban 172 por agente, y el fitness, 91. `_calculate_fitness` recorta la suma a 100, y el 74% de los agentes estaba en el
+tope: casi todos los que abren la puerta de madera. Para la selección, el que abre el cofre valía lo mismo que el que
+solo abre la madera, y el que come tres manzanas lo mismo que el que no come. En la referencia de la Sesión 2, el tope
+tocaba al 2%. Cada cambio que mejoró la cadena (sin costo de golpear, la brújula por el camino, acercarse por el camino)
+subió la parte en el tope, y ninguna medición la contaba: `terminos_fitness` de `medir_puerta.py` calcula los términos
+"sin el recorte", y su control los compara con el fitness recortado, pero ningún análisis miraba cuántos quedaban
+recortados.
+
+**Regla.** Antes de leer lo que ve la selección (un Spearman con el fitness, un paso que la selección "no ve") o de sugerir
+un cambio de pesos, se cuenta la parte de los agentes con el fitness en el tope, por ventana. Si es alta, entre ellos la
+selección no distingue nada, y se escribe antes de la lectura. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
+
 ## LEC-027 — 2026-11-22 — `Path.write_text` en Windows pasa a CRLF un archivo LF entero
 
 **Qué pasó.** En la sesión de la brújula por el camino edité una docena de archivos con scripts de Python que leían con
