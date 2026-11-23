@@ -52,16 +52,19 @@ El detalle de cada punto, con sus números, está en el README.
   generación (a 1 con el currículo), y abrir el cofre no termina la corrida.
 - **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso: en línea recta o, con
   `BRUJULA_CAMINO`, por el camino libre más corto.
-- **Seis switches en `config.py`, apagados por defecto y comunes a los dos modos.** Apagados, la
+- **Siete switches en `config.py`, apagados por defecto y comunes a los dos modos.** Apagados, la
   corrida es la de antes:
   - la recompensa por acercarse (`RECOMPENSA_ACERCARSE`, `--acercarse`) y el currículo (`CURRICULO`,
     `--curriculo`: hasta la generación 15 nacen con la llave roja, sin su premio). Lo dado al nacer
     no es un logro: cuenta solo lo hecho (`etapa_inicial`) ([spec](docs/specs/done/PUZZLE_APRENDIBLE.md));
   - deslizar contra lo que choca (`DESLIZAR`, `--deslizar`), las fortalezas móviles
     (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`), la brújula por el camino (`BRUJULA_CAMINO`,
-    `--brujula-camino`) y la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`,
-    `--acercarse-camino`, va con `--acercarse`; [spec](docs/specs/active/PUZZLE_SOLOS.md)). No son
-    columnas del CSV: van en el nombre del archivo, el panel, el boletín y el resumen del experimento.
+    `--brujula-camino`), la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`,
+    `--acercarse-camino`, va con `--acercarse`) y el fitness sin tope (`FITNESS_SIN_TOPE`,
+    `--fitness-sin-tope`: la selección ordena por la suma de los términos; la mutación adaptativa y
+    la guía siguen leyendo `fitness_con_tope`, de 0 a 100; [spec](docs/specs/active/PUZZLE_SOLOS.md)).
+    No son columnas del CSV: van en el nombre del archivo, el panel, el boletín y el resumen del
+    experimento.
 
 ## Convenciones de código
 

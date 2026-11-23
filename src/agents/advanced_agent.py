@@ -52,6 +52,7 @@ class AdvancedAgent:
         self.max_energy = SimulationConfig.AGENT_ENERGY
         self.age = 0
         self.fitness = 0.0
+        self.fitness_con_tope = 0.0  # el de 0 a 100; con FITNESS_SIN_TOPE, fitness es la suma sin el tope
         
         # Cerebro
         if brain:
@@ -260,7 +261,7 @@ class AdvancedAgent:
         
         # De acá al final, la guía del modo guiado (decisión 3).
         # Aplicar lógica adicional para comportamiento inteligente (sistema mejorado)
-        if self.fitness > 30:  # Agentes con fitness medio-alto
+        if self.fitness_con_tope > 30:  # Agentes con fitness medio-alto (de 0 a 100, también sin tope)
             # Verificar si hay poca comida y puede cortar árboles
             food_ratio = perceptions[9] if len(perceptions) > 9 else 1.0  # Sensor 10: ratio de comida
             has_axe = 1.0 if self.tiene_hacha else 0.0  # el hacha propia, no la de cualquiera (decisión 6)
@@ -368,7 +369,7 @@ class AdvancedAgent:
         proximo_paso = self._proximo_paso(world)
 
         # Ir a la puerta que le toca y golpearla (guía probabilística y menos agresiva)
-        if self.fitness > puzzle_threshold_door and random.random() < puzzle_guidance_probability:
+        if self.fitness_con_tope > puzzle_threshold_door and random.random() < puzzle_guidance_probability:
             if proximo_paso and self.etapa in (1, 3):  # el próximo paso es una puerta
                 target_angle = float(np.arctan2(proximo_paso[1] - float(self.y), proximo_paso[0] - float(self.x)))
                 angle_diff = target_angle - self.angle
@@ -392,7 +393,7 @@ class AdvancedAgent:
                 self.target_food = None
         
         # Ir a la llave que le toca o al cofre (guía probabilística y menos agresiva)
-        if self.fitness > puzzle_threshold_key and random.random() < puzzle_guidance_probability:
+        if self.fitness_con_tope > puzzle_threshold_key and random.random() < puzzle_guidance_probability:
             if proximo_paso and self.etapa in (0, 2, 4):  # el próximo paso es una llave o el cofre
                 target_angle = float(np.arctan2(proximo_paso[1] - float(self.y), proximo_paso[0] - float(self.x)))
                 angle_diff = target_angle - self.angle
@@ -826,7 +827,10 @@ class AdvancedAgent:
         cap_range = 50.0  # Rango fijo (aumentado para permitir más crecimiento)
         max_allowed = base_cap + cap_range * time_ratio  # 50-100 según tiempo vivido
         
-        self.fitness = min(unclamped, max_allowed)
+        self.fitness_con_tope = min(unclamped, max_allowed)
+        # Con FITNESS_SIN_TOPE, la selección ve la suma con piso en 0: sin el recorte a 100 ni el tope por
+        # tiempo, que vale 100 como mucho (spec PUZZLE_SOLOS, "El fitness sin tope")
+        self.fitness = max(0, total_fitness) if SimulationConfig.FITNESS_SIN_TOPE else self.fitness_con_tope
         
         return self.fitness
 

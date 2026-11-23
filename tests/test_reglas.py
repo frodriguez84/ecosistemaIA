@@ -155,12 +155,12 @@ def test_la_penalizacion_por_agua_se_topea_en_WATER_PENALTY_MAX(monkeypatch):
 def test_la_exploracion_extra_es_solo_para_fitness_bajo():
     # DIAG-13: el else colgaba del if de la guía de llaves, así que corría también con fitness 50
     con_50 = AdvancedAgent(100, 100)
-    con_50.fitness = 50.0
+    con_50.fitness = con_50.fitness_con_tope = 50.0  # la guía lee el de 0 a 100 (FITNESS_SIN_TOPE)
     con_50.decide(_mundo(), [], None)
     assert getattr(con_50, "exploration_timer", 0) == 0
 
     con_20 = AdvancedAgent(100, 100)
-    con_20.fitness = 20.0
+    con_20.fitness = con_20.fitness_con_tope = 20.0
     con_20.decide(_mundo(), [], None)
     assert con_20.exploration_timer == 1
 

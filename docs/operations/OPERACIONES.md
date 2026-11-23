@@ -8,11 +8,12 @@ lección: la historia, en [LECCIONES_APRENDIDAS.md](LECCIONES_APRENDIDAS.md).
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
   sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento,
-  `--fortalezas-moviles` las fortalezas móviles, `--brujula-camino` la brújula por el camino y
-  `--acercarse-camino`, con `--acercarse`, la recompensa medida por el camino). El experimento con los
-  dos modos, con evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige
-  los modos; `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino` y
-  `--acercarse-camino` pasan a todas las corridas).
+  `--fortalezas-moviles` las fortalezas móviles, `--brujula-camino` la brújula por el camino,
+  `--acercarse-camino`, con `--acercarse`, la recompensa medida por el camino y `--fitness-sin-tope` la
+  selección por la suma del fitness, sin el tope de 100). El experimento con los dos modos, con
+  evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige los modos;
+  `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino`,
+  `--acercarse-camino` y `--fitness-sin-tope` pasan a todas las corridas).
 - **`mediciones/`:** scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control
   byte a byte).
 - **La salida de `medir_puerta.py` va a `results/`, no al scratchpad:** sus nombres llevan cada argumento (pasan los 140
@@ -57,7 +58,14 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   compara con la tolerancia del redondeo desde el principio (LEC-023).
 - **Antes de leer lo que ve la selección, o de sugerir un cambio de pesos, se cuenta cuántos agentes
   tienen el fitness en el tope de 100,** por ventana: entre ellos la selección no distingue nada. Con la
-  cadena aprendida, en la referencia NA, son el 74% (LEC-028).
+  cadena aprendida, en la referencia NA, son el 74% (LEC-028). Con `FITNESS_SIN_TOPE`, el fitness del
+  CSV es la suma: el de 0 a 100 está en `fitness_con_tope` de `agentes_*.csv`.
+- **Antes de cambiar la escala de una variable, se buscan todas sus lecturas,** también las que usan su
+  promedio, su desvío o su orden, no solo las que la comparan con un número; y se mide en la referencia
+  cuánto actúa cada una. La mutación adaptativa lee el desvío del fitness (LEC-030).
+- **Un control de que un switch prendido cambia solo ciertas columnas tiene que verlas cambiar,** y
+  se anota en cuántas filas. Si no cambian, la corrida no ejercita el switch: se fuerza el caso
+  (`pesos=`) y se repite (LEC-029).
 - **El scratchpad es de una sola sesión.** Un CSV de referencia que otra sesión tiene que comparar
   deja su SHA-256 en la bitácora, con el commit desde el que se regenera (LEC-011).
 

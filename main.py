@@ -163,10 +163,13 @@ def _leer_argumentos(argv):
                         help="La recompensa por acercarse mide la distancia por el camino libre, la de la "
                              "brújula por el camino, no la recta. Va con --acercarse. Pisa ACERCARSE_CAMINO "
                              "de config.py.")
+    parser.add_argument("--fitness-sin-tope", action="store_true",
+                        help="La selección ordena por la suma de los términos del fitness, sin el tope de 100, "
+                             "en los dos modos. Pisa FITNESS_SIN_TOPE de config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
                              "[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]"
-                             "_<evolucion|sin_evolucion>.csv.")
+                             "[_sin_tope]_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -217,9 +220,9 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 def _ruta_csv_por_defecto(semilla, evolucion):
     """results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles]
-    [_brujula_camino]_<evolucion|sin_evolucion>.csv, con el modo y los switches de SimulationConfig
-    (spec PUZZLE_APRENDIBLE, decisión 11). Acercarse por el camino, deslizar, las fortalezas móviles y la
-    brújula por el camino no son columnas del CSV: van solo en el nombre."""
+    [_brujula_camino][_sin_tope]_<evolucion|sin_evolucion>.csv, con el modo y los switches de SimulationConfig
+    (spec PUZZLE_APRENDIBLE, decisión 11). Acercarse por el camino, deslizar, las fortalezas móviles, la
+    brújula por el camino y el fitness sin tope no son columnas del CSV: van solo en el nombre."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
     if acercarse and SimulationConfig.ACERCARSE_CAMINO:
         acercarse = "_acercarse_camino"
@@ -227,8 +230,10 @@ def _ruta_csv_por_defecto(semilla, evolucion):
     deslizar = "_deslizar" if SimulationConfig.DESLIZAR else ""
     moviles = "_fortalezas_moviles" if SimulationConfig.FORTALEZAS_MOVILES else ""
     brujula = "_brujula_camino" if SimulationConfig.BRUJULA_CAMINO else ""
+    sin_tope = "_sin_tope" if SimulationConfig.FITNESS_SIN_TOPE else ""
     return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}"
-                                   f"{deslizar}{moviles}{brujula}_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
+                                   f"{deslizar}{moviles}{brujula}{sin_tope}"
+                                   f"_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
 def _ticks_de_generacion(config, generacion):
@@ -271,10 +276,11 @@ def _imprimir_fin_de_generacion(generation, tick, agents, alive_agents, world, l
     diversity = learning_monitor.calculate_diversity(agents)
 
     # ESTANDARIZAR LOGS - Siempre el mismo formato y orden
+    de_100 = "" if SimulationConfig.FITNESS_SIN_TOPE else "/100"  # sin tope, pasa de 100
     print(f"   📊 FITNESS:")
-    print(f"      - Promedio: {avg_fitness:.1f}/100")
-    print(f"      - Máximo: {max_fitness:.1f}/100")
-    print(f"      - Mínimo: {min_fitness:.1f}/100")
+    print(f"      - Promedio: {avg_fitness:.1f}{de_100}")
+    print(f"      - Máximo: {max_fitness:.1f}{de_100}")
+    print(f"      - Mínimo: {min_fitness:.1f}{de_100}")
     print(f"   🍎 COMIDA:")
     print(f"      - Promedio: {avg_food:.1f}")
     print(f"      - Máximo: {max_food}")
@@ -316,6 +322,8 @@ def main(argv=None):
         SimulationConfig.BRUJULA_CAMINO = True
     if args.acercarse_camino:
         SimulationConfig.ACERCARSE_CAMINO = True
+    if args.fitness_sin_tope:
+        SimulationConfig.FITNESS_SIN_TOPE = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir

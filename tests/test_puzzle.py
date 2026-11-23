@@ -277,12 +277,15 @@ def test_la_guia_apunta_al_paso_del_agente_y_aprieta_golpear(monkeypatch, mundo)
     monkeypatch.setattr(random, "random", lambda: 0.1)
     x, y = _centro(mundo.door)
     con_llave = _agente_en(x, y + 60, etapa=1)
-    con_llave.fitness, con_llave.angle = 80.0, -math.pi / 2  # alineado con la puerta, su paso
+    # La guía lee el fitness de 0 a 100 (FITNESS_SIN_TOPE); alineado con la puerta, su paso
+    con_llave.fitness = con_llave.fitness_con_tope = 80.0
+    con_llave.angle = -math.pi / 2
     assert con_llave.decide(mundo, [], None)['hit'] == pytest.approx(0.9)
 
     # Mismo lugar y rumbo, sin la llave: su paso es la llave roja, y la guía no golpea la puerta
     sin_llave = _agente_en(x, y + 60, etapa=0)
-    sin_llave.fitness, sin_llave.angle = 80.0, -math.pi / 2
+    sin_llave.fitness = sin_llave.fitness_con_tope = 80.0
+    sin_llave.angle = -math.pi / 2
     sin_llave.brain = con_llave.brain
     assert sin_llave.decide(mundo, [], None)['hit'] != pytest.approx(0.9)
 
@@ -295,7 +298,8 @@ def test_la_guia_apunta_al_paso_del_agente_y_aprieta_golpear(monkeypatch, mundo)
     cercano = min(mundo.trees, key=lambda t: (t.x - ax) ** 2 + (t.y - ay) ** 2)
     for tiene_hacha, golpea in ((True, True), (False, False)):
         agente = _agente_en(ax, ay, etapa=5)
-        agente.fitness, agente.tiene_hacha = 40.0, tiene_hacha
+        agente.fitness = agente.fitness_con_tope = 40.0
+        agente.tiene_hacha = tiene_hacha
         agente.angle = math.atan2(cercano.y - ay, cercano.x - ax)  # alineado con el árbol más cercano
         agente.brain = con_llave.brain
         hit = agente.decide(mundo, [], None)['hit']

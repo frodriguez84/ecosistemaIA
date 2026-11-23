@@ -48,7 +48,7 @@ def datos_de_la_generacion(generation, agents, world, tick):
     SimulationConfig, donde main.py pisa --generaciones; el modo y los switches de las ayudas, igual.
     Las ayudas van en su renglón, solo si hay alguna prendida: con el modo no entran (spec
     PUZZLE_APRENDIBLE, decisión 11). Las fortalezas móviles, en otro, solo si están prendidas: con las
-    ayudas no entran. La brújula por el camino, igual."""
+    ayudas no entran. La brújula por el camino y el fitness sin tope, igual."""
     segundos = tick // 60
     vivos = len([agent for agent in agents if agent.alive])
     ayudas = nombre_de_las_ayudas(SimulationConfig.RECOMPENSA_ACERCARSE, SimulationConfig.CURRICULO,
@@ -59,6 +59,7 @@ def datos_de_la_generacion(generation, agents, world, tick):
         *([("Ayudas", ayudas)] if ayudas else []),
         *([("Fortalezas", "móviles")] if SimulationConfig.FORTALEZAS_MOVILES else []),
         *([("Brújula", "por el camino")] if SimulationConfig.BRUJULA_CAMINO else []),
+        *([("Fitness", "sin tope")] if SimulationConfig.FITNESS_SIN_TOPE else []),
         ("Tiempo", f"{segundos // 60:02d}:{segundos % 60:02d}"),
         ("Vivos", str(vivos)),
         ("Muertos", str(len(agents) - vivos)),

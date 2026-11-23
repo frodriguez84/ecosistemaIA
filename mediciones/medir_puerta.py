@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [acercarse-camino] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [acercarse-camino] [fitness-sin-tope] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -63,6 +63,11 @@ argumento, siguen la recta y los tres CSV son los de antes.
 acercarse-camino (va con acercarse) le pasa --acercarse-camino a main.py (la recompensa por acercarse medida por el
 camino, spec PUZZLE_SOLOS), suma camino_ al nombre después de acercarse_ y la columna acercarse_camino a agentes_*.csv y a
 geometria_*.csv. f_acercarse sale del estado del agente: no cambia. Sin el argumento, los tres CSV son los de antes.
+fitness-sin-tope le pasa --fitness-sin-tope a main.py (la selección ordena por la suma de los términos, sin el tope de
+100, spec PUZZLE_SOLOS), suma sin_tope_ al nombre después de brujula_camino_ y la columna fitness_sin_tope a
+agentes_*.csv y a geometria_*.csv, y a agentes_*.csv la columna fitness_con_tope (el de 0 a 100, el que leen la mutación
+adaptativa y la guía). El control de los términos compara su suma con piso en 0 con el fitness, y la cuenta con los
+topes con fitness_con_tope. No va con evaluaciones=K. Sin el argumento, los tres CSV son los de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -117,6 +122,7 @@ brujula = "brujula-camino" in sys.argv[6:]
 acercarse_camino = "acercarse-camino" in sys.argv[6:]
 if acercarse_camino and not acercarse:
     sys.exit("acercarse-camino va con acercarse: sin la recompensa por acercarse no hace nada")
+sin_tope = "fitness-sin-tope" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -132,6 +138,8 @@ if evaluaciones < 1 or (reloj is not None and reloj < 2):
     sys.exit("evaluaciones=K va con K de 1 en adelante, y reloj=R con R de 2 en adelante")
 if evaluaciones > 1 and (tipo != "evolucion" or congelar is not None or reloj is not None):
     sys.exit("evaluaciones=K (K > 1) va con evolucion, sin congelar ni reloj")  # sin evolución no hay selección
+if evaluaciones > 1 and sin_tope:
+    sys.exit("evaluaciones=K (K > 1) va sin fitness-sin-tope")  # el promedio con tope de la mutación no se lleva
 if reloj is not None and congelar is not None:
     sys.exit("reloj=R va sin congelar")
 TOPE_RELOJ = 30  # con reloj=R: la última generación de la tanda con evaluaciones=R que controla
@@ -222,7 +230,10 @@ def terminos_fitness(a):
              f_agua=-min(a.fitness_env_penalty, c.WATER_PENALTY_MAX))
     total = sum(t.values())
     tope = 50.0 + 50.0 * min(1.0, float(a.age) / float(c.BASE_TICKS))
-    if abs(min(max(0, min(100, total)), tope) - a.fitness) > 1e-6:
+    if sin_tope:  # la selección ve la suma con piso en 0; la mutación y la guía, la de 0 a 100
+        if abs(max(0, total) - a.fitness) > 1e-6 or abs(min(max(0, min(100, total)), tope) - a.fitness_con_tope) > 1e-6:
+            INCONS[0] += 1  # los términos no suman el fitness del agente
+    elif abs(min(max(0, min(100, total)), tope) - a.fitness) > 1e-6:
         INCONS[0] += 1  # los términos no suman el fitness del agente
     if laboratorio and (any(t[k] != 0 for k in SIN_PAGA) or a.cut_rewards != 0):
         INCONS[0] += 1  # en el laboratorio paga algo más que acercarse y el puzzle
@@ -607,6 +618,8 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
                  elite=int(lugar <= SimulationConfig.ELITISM), golpes_puerta=a.golpes_puerta.get('door', (0, 0))[0],
                  abrio=int(a.etapa >= 2 and a.etapa_inicial < 2), aporte='')
         f['origen'], f['padre1'], f['padre2'] = ORIGEN.get(a, ('', '', ''))
+        if sin_tope:  # el de 0 a 100, el que leen la mutación adaptativa y la guía; sin el argumento, no está
+            f['fitness_con_tope'] = round(float(a.fitness_con_tope), 4)
         f.update({k2: round(v, 4) for k2, v in terminos_fitness(a).items()})
         f.update({k2: ('' if v is None else (round(v, 3) if isinstance(v, float) else v)) for k2, v in m.items()})
         if hierro and m['h_golpes'] != a.golpes_puerta.get('door_iron', (0, 0))[0]:
@@ -732,6 +745,7 @@ def fitness_promedio(self):
     cerebro en los K episodios de la generación. Llama al original antes, por si algo depende de eso."""
     _calc(self)
     self.fitness = PROMEDIO[self.brain]
+    self.fitness_con_tope = self.fitness  # la mutación adaptativa lo lee; sin fitness-sin-tope son el mismo
     return self.fitness
 
 
@@ -860,7 +874,7 @@ if PESOS:
 etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, v in PESOS.items()) + "_" if PESOS else ""
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'camino_' if acercarse_camino else ''}"
           f"{'deslizar_' if deslizar else ''}"
-          f"{'moviles_' if moviles else ''}{'brujula_camino_' if brujula else ''}"
+          f"{'moviles_' if moviles else ''}{'brujula_camino_' if brujula else ''}{'sin_tope_' if sin_tope else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'curriculo{curriculo}_' if curriculo is not None else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
@@ -879,6 +893,8 @@ if brujula:
     argv.append("--brujula-camino")
 if acercarse_camino:
     argv.append("--acercarse-camino")
+if sin_tope:
+    argv.append("--fitness-sin-tope")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
@@ -901,6 +917,8 @@ for f in FILAS:
         f["brujula_camino"] = 1
     if acercarse_camino:  # igual
         f["acercarse_camino"] = 1
+    if sin_tope:  # igual
+        f["fitness_sin_tope"] = 1
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
@@ -909,6 +927,8 @@ for g in GEOM:
         g["brujula_camino"] = 1
     if acercarse_camino:
         g["acercarse_camino"] = 1
+    if sin_tope:
+        g["fitness_sin_tope"] = 1
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()

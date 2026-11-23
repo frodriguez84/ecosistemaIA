@@ -317,6 +317,9 @@ def test_el_resumen_dice_las_ayudas_prendidas(tmp_path):
     assert "**Ayudas prendidas:** recompensa por acercarse." in texto
     texto = experimento.resumen_markdown([corrida], [], "", acercarse_camino=True)  # viene del flag
     assert "**Ayudas prendidas:** recompensa por acercarse, por el camino." in texto
+    assert "**Fitness:**" not in texto
+    texto = experimento.resumen_markdown([corrida], [], "", sin_tope=True)  # viene del flag
+    assert "**Fitness:** sin el tope de 100: la selección ordena por la suma de los términos." in texto
 
     # El currículo se ve en etapa_inicial: alguna generación nació con la llave roja
     ruta = _escribir_corrida(tmp_path, semilla=2, evolucion=True, fitness=[10] * 10,

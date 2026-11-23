@@ -264,9 +264,10 @@ EcosistemaEvolutivo/
   * Acercarse, solo con la recompensa prendida (`RECOMPENSA_ACERCARSE`, `--acercarse`): 10 × (pasos que dio + avance en el paso actual, de 0 a 1) (`FITNESS_ACERCARSE`). Ver Ayudas para aprender el puzzle
   * Agua: se resta la penalización acumulada, con tope de 10 (`WATER_PENALTY_MAX`)
   * Tope por tiempo vivido: de 50 al nacer a 100 desde los 960 ticks (`BASE_TICKS`)
+  * Con el fitness sin tope (`FITNESS_SIN_TOPE`), la selección ordena por la suma, sin los dos topes (ver más abajo)
 * **Selección**: Meeting pool (60% superior por ranking) + élite de 1
 * **Cruce**: Uniforme (95% tasa)
-* **Mutación**: Gaussiana (30% tasa)
+* **Mutación**: Gaussiana (30% tasa; 50% en una generación cuyo fitness tiene un desvío de menos de 0,15 de su promedio, con el fitness de 0 a 100)
 * **Inmigración**: 3 agentes nuevos al azar cada 6 generaciones
 
 ### Clustering (Análisis No Supervisado)
@@ -331,6 +332,8 @@ Tres switches en `config.py`, apagados por defecto e independientes, que valen p
 **Fortalezas móviles** (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`, apagado por defecto, en los dos modos). No es una ayuda: desde la generación 2, las dos fortalezas van a un lugar al azar en cada generación, con sus puertas, la llave dorada y el cofre, así la puerta se encuentra con la brújula y no con una ruta aprendida de memoria. La generación 1 queda como siempre. Cada fortaleza queda lejos del borde con el frente de su puerta, y las dos separadas; el estanque y el resto del mapa se generan después y las esquivan. No es una columna del CSV: va en el nombre del archivo (`_fortalezas_moviles`), y el panel lo dice en su renglón
 
 **Brújula por el camino** (`BRUJULA_CAMINO`, `--brujula-camino`, apagado por defecto, en los dos modos). Los sensores 9 y 11 siguen el camino libre más corto al próximo paso, no la recta, que desde la llave dorada cruza las paredes de la fortaleza chica. Por etapa, una grilla de celdas de 5 px con lo que deja pasar el choque de esa etapa (las puertas que no abrió son pared) y la distancia por el camino, euclídea alrededor de las paredes; el sensor 9 apunta contra su gradiente y el 11 es esa distancia. En el objetivo y sin camino, la recta. La grilla se arma al empezar cada generación: un árbol talado después no la cambia. La recompensa por acercarse sigue midiendo la recta, salvo con acercarse por el camino. No es una columna del CSV: va en el nombre del archivo (`_brujula_camino`), y el panel lo dice en su renglón
+
+**Fitness sin tope** (`FITNESS_SIN_TOPE`, `--fitness-sin-tope`, apagado por defecto, en los dos modos). La selección ordena por la suma de los términos del fitness con piso en 0, sin el tope de 100 ni el tope por tiempo vivido: así distingue al que abre el cofre del que solo abre la puerta de madera, y al que come del que no. La mutación adaptativa y la guía del modo guiado siguen leyendo el fitness de 0 a 100, así el switch cambia solo el orden de la selección. El CSV, la consola, el panel y el boletín muestran la suma. No es una columna del CSV: va en el nombre del archivo (`_sin_tope`), y el panel lo dice en su renglón
 
 ---
 
@@ -507,7 +510,8 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--fortalezas-moviles` | Desde la generación 2, las fortalezas cambian de lugar en cada generación. Pisa `FORTALEZAS_MOVILES`. |
 | `--brujula-camino` | La brújula sigue el camino libre más corto al próximo paso, no la recta. Pisa `BRUJULA_CAMINO`. |
 | `--acercarse-camino` | La recompensa por acercarse mide la distancia por el camino libre, no la recta. Va con `--acercarse`. Pisa `ACERCARSE_CAMINO`. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]_<evolucion\|sin_evolucion>.csv`. |
+| `--fitness-sin-tope` | La selección ordena por la suma de los términos del fitness, sin el tope de 100. Pisa `FITNESS_SIN_TOPE`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino][_sin_tope]_<evolucion\|sin_evolucion>.csv`. |
 
 Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, si la
 recompensa por acercarse estaba prendida, la etapa con la que nació la generación, fitness,
@@ -530,7 +534,7 @@ grupo (modo × evolución): fitness y manzanas por agente en las primeras y las 
 generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
 comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
 guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
-minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino` y `--acercarse-camino` pasan a todas las
+minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino`, `--acercarse-camino` y `--fitness-sin-tope` pasan a todas las
 corridas; el resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
 1.000 px de recorrido, y en el autónomo aplica el criterio del ítem 5 del BACKLOG (¿aprende a pasar
 la puerta de madera?).

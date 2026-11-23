@@ -107,8 +107,9 @@ class GeneticAlgorithm:
             # Mutación adaptativa (más agresiva si diversidad baja)
             mutation_rate = self.mutation_rate
             if len(agents) > 1:
-                # Calcular diversidad actual
-                fitnesses = [agent.fitness for agent in agents]
+                # Calcular diversidad actual, con el fitness de 0 a 100 también con FITNESS_SIN_TOPE: el
+                # switch cambia solo el orden (spec PUZZLE_SOLOS, "El fitness sin tope")
+                fitnesses = [agent.fitness_con_tope for agent in agents]
                 diversity = np.std(fitnesses) / (np.mean(fitnesses) + 1e-6)
                 if diversity < 0.15:  # Baja diversidad (AUMENTADO umbral)
                     mutation_rate = min(0.5, self.mutation_rate * 2.5)  # Más agresivo contra convergencia

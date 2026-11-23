@@ -10,7 +10,7 @@ currículo, la puerta de madera y el criterio del ítem 5: spec PUZZLE_APRENDIBL
 
 Uso: python experimento.py [--semillas 1 2 3 4 5] [--generaciones 20] [--modos guiado autonomo]
                            [--acercarse] [--curriculo] [--deslizar] [--fortalezas-moviles]
-                           [--brujula-camino] [--acercarse-camino] [--paralelo K]
+                           [--brujula-camino] [--acercarse-camino] [--fitness-sin-tope] [--paralelo K]
 
 El resumen usa solo la librería estándar (decisión 18).
 """
@@ -255,11 +255,12 @@ def _comparaciones(corridas):
 
 
 def resumen_markdown(corridas, fallidas, comando, deslizar=False, moviles=False, brujula=False,
-                     acercarse_camino=False):
+                     acercarse_camino=False, sin_tope=False):
     """Arma el resumen en Markdown: por grupo (modo × evolución), las comparaciones pareadas, por
     corrida, las que tienen generaciones del currículo en las últimas 5 y las que fallaron. deslizar,
-    moviles (las fortalezas móviles), brujula (la brújula por el camino) y acercarse_camino (la
-    recompensa por acercarse, por el camino) vienen de los flags: no son columnas del CSV."""
+    moviles (las fortalezas móviles), brujula (la brújula por el camino), acercarse_camino (la
+    recompensa por acercarse, por el camino) y sin_tope (el fitness sin tope) vienen de los flags: no
+    son columnas del CSV."""
     acercarse = "recompensa por acercarse" + (", por el camino" if acercarse_camino else "")
     ayudas = [nombre for nombre, clave in ((acercarse, "acercarse"), ("currículo", "curriculo"))
               if any(corrida[clave] for corrida in corridas)]
@@ -270,6 +271,8 @@ def resumen_markdown(corridas, fallidas, comando, deslizar=False, moviles=False,
                 if moviles else []),
               *([f"**Brújula:** por el camino libre más corto al próximo paso, no la recta.", ""]
                 if brujula else []),
+              *(["**Fitness:** sin el tope de 100: la selección ordena por la suma de los términos.", ""]
+                if sin_tope else []),
               "**Por grupo** (promedio ± desvío muestral entre semillas):", "",
               _fila_md(["Modo", "Evolución", "Corridas", "Fitness prom., gens 1-5",
                         "Fitness prom., últimas 5", "Diferencia", "Manzanas por agente, gens 1-5",
@@ -361,6 +364,9 @@ def _leer_argumentos(argv):
     parser.add_argument("--acercarse-camino", action="store_true",
                         help="Corre todas con la recompensa por acercarse medida por el camino libre, no "
                              "la recta (--acercarse-camino de main.py). Va con --acercarse.")
+    parser.add_argument("--fitness-sin-tope", action="store_true",
+                        help="Corre todas con el fitness sin tope: la selección ordena por la suma de los "
+                             "términos, sin el tope de 100 (--fitness-sin-tope de main.py).")
     parser.add_argument("--paralelo", type=int, default=max(1, (os.cpu_count() or 2) - 1), metavar="K",
                         help="Corridas a la vez. Por defecto, los núcleos menos uno.")
     args = parser.parse_args(argv)
@@ -379,13 +385,14 @@ def _leer_argumentos(argv):
 
 
 def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, curriculo=False,
-            deslizar=False, moviles=False, brujula=False, acercarse_camino=False):
+            deslizar=False, moviles=False, brujula=False, acercarse_camino=False, sin_tope=False):
     """Corre main.py sin ventana, con la salida a un log, y devuelve cómo terminó. El CSV y el log se
     llaman como la ruta por defecto de main.py."""
     nombre = (f"corrida_s{semilla}_{modo}{'_acercarse' if acercarse else ''}"
               f"{'_camino' if acercarse and acercarse_camino else ''}"
               f"{'_curriculo' if curriculo else ''}{'_deslizar' if deslizar else ''}"
-              f"{'_fortalezas_moviles' if moviles else ''}{'_brujula_camino' if brujula else ''}_"
+              f"{'_fortalezas_moviles' if moviles else ''}{'_brujula_camino' if brujula else ''}"
+              f"{'_sin_tope' if sin_tope else ''}_"
               f"{'evolucion' if evolucion else 'sin_evolucion'}")
     ruta_csv, ruta_log = carpeta / f"{nombre}.csv", carpeta / f"{nombre}.log"
     # -u: el log se escribe a medida que corre, y una corrida cortada no pierde la cola
@@ -405,6 +412,8 @@ def _correr(semilla, modo, evolucion, generaciones, carpeta, acercarse=False, cu
         comando.append("--brujula-camino")
     if acercarse_camino:
         comando.append("--acercarse-camino")
+    if sin_tope:
+        comando.append("--fitness-sin-tope")
     inicio = time.monotonic()
     # cwd en la raíz: main.py carga los sprites con una ruta relativa
     with open(ruta_log, "wb") as log:
@@ -430,7 +439,7 @@ def main(argv=None):
     with ThreadPoolExecutor(max_workers=args.paralelo) as pool:
         futuros = [pool.submit(_correr, semilla, modo, evolucion, args.generaciones, carpeta, args.acercarse,
                                args.curriculo, args.deslizar, args.fortalezas_moviles, args.brujula_camino,
-                               args.acercarse_camino)
+                               args.acercarse_camino, args.fitness_sin_tope)
                    for semilla, modo, evolucion in tareas]
         for futuro in as_completed(futuros):
             resultado = futuro.result()
@@ -448,11 +457,12 @@ def main(argv=None):
                f"{' --deslizar' if args.deslizar else ''}"
                f"{' --fortalezas-moviles' if args.fortalezas_moviles else ''}"
                f"{' --brujula-camino' if args.brujula_camino else ''}"
-               f"{' --acercarse-camino' if args.acercarse_camino else ''}")
+               f"{' --acercarse-camino' if args.acercarse_camino else ''}"
+               f"{' --fitness-sin-tope' if args.fitness_sin_tope else ''}")
     texto = (f"# Experimento: modos guiado y autónomo, con evolución y sin ella\n\n"
              f"{datetime.now():%Y-%m-%d} · carpeta `{_ruta_md(carpeta)}`\n\n"
              + resumen_markdown(corridas, fallidas, comando, args.deslizar, args.fortalezas_moviles,
-                                args.brujula_camino, args.acercarse_camino))
+                                args.brujula_camino, args.acercarse_camino, args.fitness_sin_tope))
     (carpeta / "resumen.md").write_text(texto, encoding="utf-8")
     print()
     print(texto)

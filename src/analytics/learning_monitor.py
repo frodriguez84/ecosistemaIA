@@ -3,6 +3,7 @@ Sistema de monitoreo detallado para verificar aprendizaje.
 """
 
 import numpy as np
+from config import SimulationConfig
 from .clustering import BehaviorClusterer
 
 
@@ -155,10 +156,11 @@ class LearningMonitor:
         print(f"\n🔬 ANÁLISIS DETALLADO - GENERACIÓN {gen_data['generation']}")
         print("=" * 60)
         # Formato estandarizado igual que los logs básicos
+        de_100 = "" if SimulationConfig.FITNESS_SIN_TOPE else "/100"  # sin tope, pasa de 100
         print(f"   📊 FITNESS:")
-        print(f"      - Promedio: {gen_data['avg_fitness']:.1f}/100")
-        print(f"      - Máximo: {gen_data['max_fitness']:.1f}/100")
-        print(f"      - Mínimo: {gen_data['min_fitness']:.1f}/100")
+        print(f"      - Promedio: {gen_data['avg_fitness']:.1f}{de_100}")
+        print(f"      - Máximo: {gen_data['max_fitness']:.1f}{de_100}")
+        print(f"      - Mínimo: {gen_data['min_fitness']:.1f}{de_100}")
         print(f"      - Desviación: {gen_data['std_fitness']:.1f}")
         print(f"   🍎 COMIDA:")
         print(f"      - Promedio: {gen_data['avg_food']:.1f}")

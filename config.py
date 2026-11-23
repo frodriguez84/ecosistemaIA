@@ -61,6 +61,10 @@ class SimulationConfig:
     # Recompensa por acercarse medida por el camino libre, la distancia de la brújula por el camino, no la
     # recta (--acercarse-camino la prende). Sin RECOMPENSA_ACERCARSE no hace nada
     ACERCARSE_CAMINO = False
+    # Fitness sin tope, en los dos modos (--fitness-sin-tope lo prende): la selección ordena por la suma de
+    # los términos con piso en 0, sin el recorte a 100 ni el tope por tiempo vivido. La mutación
+    # adaptativa y la guía del modo guiado siguen leyendo el de 0 a 100 (fitness_con_tope)
+    FITNESS_SIN_TOPE = False
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)

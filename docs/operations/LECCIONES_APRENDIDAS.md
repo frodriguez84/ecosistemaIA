@@ -5,6 +5,31 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-030 — 2026-11-23 — La lista de lo que lee una escala dejó afuera a quien lee su desvío
+
+**Qué pasó.** El prompt de la Sesión 9 (el fitness sin tope) listaba lo que lee el fitness como si fuera de 0 a 100: el
+color, el panel, el boletín, el monitor, el registro, el resumen y la guía. Faltaba la mutación adaptativa de `evolve`, que
+sube la tasa de 0,3 a 0,5 cuando el desvío del fitness sobre su promedio baja de 0,15. No compara contra 100, así que no
+aparecía buscando "100": aparecía buscando cada lectura de `.fitness`. En NA se disparaba en el 22% de las generaciones
+121-150, justamente porque el tope aprieta a todos en 100; sacar el tope la hubiera apagado, y el switch habría cambiado dos
+cosas. Se vio al diseñar, antes del código, y Fer decidió que la mutación siga leyendo el de 0 a 100.
+
+**Regla.** Antes de cambiar la escala de una variable (un tope, un peso que la estira), se buscan todas sus lecturas, no
+solo las que la comparan con un número: también las que usan su promedio, su desvío o su orden. De cada una se anota qué
+hace con la escala, y se mide en la referencia cuánto actúa. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
+
+## LEC-029 — 2026-11-23 — Un control de "prendido cambia solo esto" que no lo ve cambiar no controla nada
+
+**Qué pasó.** En la Sesión 9, el control del fitness sin tope comparaba c7 y la corrida corta de la línea base, con el
+switch y sin él: "en la gen 1 cambia solo el fitness" y "sin evolución cambian solo las columnas del fitness". Las dos
+comparaciones dieron casi todo igual: en 6 generaciones con la llave dada casi nadie pasa de 100 (un agente, en c7), y en la
+línea base nadie llega al tope. El control "pasaba" sin haber ejercitado el cambio. Se forzó el caso con
+`FITNESS_SURVIVAL:1` (todos pasan de 100), y ahí sí se vio qué cambia y qué no.
+
+**Regla.** Un control de que un switch prendido cambia solo ciertas columnas tiene que mostrar esas columnas cambiando, y
+se anota en cuántas filas. Si no cambian, la corrida no ejercita el switch: se fuerza el caso (con `pesos=` u otra
+configuración) y se repite. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Medir.
+
 ## LEC-028 — 2026-11-23 — El tope del fitness esconde lo que pasa por arriba, y pesa más cuanto mejor aprenden
 
 **Qué pasó.** En la sesión de comer sobre la referencia nueva (NA), la sensibilidad a la comida no pasó, y dentro de cada

@@ -5839,3 +5839,341 @@ de los términos a [0, 100], y a 50 + 50 × la parte vivida de `BASE_TICKS`. La 
 contra NA. Lo diseña e implementa la próxima sesión, con sus controles, y la tanda va en la siguiente ([el
 spec](../specs/active/PUZZLE_SOLOS.md)). Para el diseño (sin criterio, después de decidir): en NA, en las 31-150, el tope
 por tiempo vivido recorta el 0,1% de las filas (39 de 36.000) y el piso en 0, 19.
+
+<a id="sin-tope"></a>
+## El fitness sin tope: comer y los pasos 2 a 6, contra la línea base de la referencia (2026-11-23)
+
+**La pregunta** (sesión 9 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): SOLOS-01 con su
+decisión 6, y SOLOS-02 a 06 como guardas): si la selección ordena por la suma de los términos del fitness, sin el tope de
+100 (`FITNESS_SIN_TOPE`, decidido por Fer en [comer en la referencia nueva](#comer-na)), ¿comer pasa? ¿Y los pasos 2 a 6
+siguen pasando?
+
+**El cambio.** La sección [El fitness sin tope](../specs/active/PUZZLE_SOLOS.md#el-fitness-sin-tope) del spec. Con el
+switch, `fitness` es la suma de los términos con piso en 0, sin el recorte a 100 y sin el tope por tiempo vivido (que vale
+100 como mucho). La mutación adaptativa de `evolve` y la guía del modo guiado siguen leyendo el de 0 a 100
+(`fitness_con_tope`, nuevo): **cambia solo el orden de la selección** (Fer, Sesión 9). Sin eso hubieran sido dos cambios:
+en NA, el tope dispara la mutación adaptativa (la tasa, de 0,3 a 0,5) en 33 de las 150 generaciones de las 121-150 (62 de
+600 en las 31-150; en N, casi nunca), y sin tope el desvío crece y casi seguro dejaría de dispararse.
+
+**Cómo se probó el switch, antes de la tanda.**
+- **Apagado no cambia nada.** Las 6 corridas cortas (c1, c2, c3 y c5 de la Sesión 5, c6 de la 6 y c7, la configuración de
+  NA), con el código de 7923e09 antes de tocarlo y otra vez con el código final, dan los mismos SHA-256 en sus 18 CSV, con
+  `inconsistencias=0`; los `corrida_*.csv` de c5 y c6 dan `3db0df62…` y `2e484f8f…`, los de la Sesión 6.
+- **Los tests** (`tests/test_fitness_sin_tope.py`, 11; dos líneas en `tests/test_resumen.py`): prendido, la suma pasa de
+  100 y el tope por tiempo no corre, y el piso es 0; no consume azar; con 60 agentes en 100, la élite es el de más puzzle y
+  la mutación se dispara igual que apagado; la guía lee el de 0 a 100; en la gen 1 de `main._simular` cambian solo las
+  columnas del fitness, en los dos modos, y sin evolución, en todas las generaciones; el reporte por consola no dice "/100";
+  y los flags, la ruta, el panel, el boletín y el experimento lo nombran. Dos tests que fijaban `fitness` a mano para
+  activar la guía (`test_reglas.py` y `test_puzzle.py`) fijan ahora también `fitness_con_tope`. La suite completa pasa.
+- **Prendido, las corridas cortas casi no cambian:** en 6 generaciones con la llave dada nadie llega lejos. En c7 con el
+  switch, un agente pasa de 100 (en la gen 4) sin cambiar el orden, y la configuración de NCB0 da los mismos CSV con el
+  switch y sin él (en NCB0 nadie llega al tope: 0% en todas las ventanas de las 150 generaciones). Como control no dicen
+  nada, así que se forzó el tope.
+- **Forzado** (c8 y b8: c7 y la corta de NCB0 con `FITNESS_SURVIVAL:1,FITNESS_SURVIVAL_MAX:2000`, así todos pasan de 100;
+  el fitness de la gen 1 va de 950 a 993), sin el switch y con él:
+  - con evolución, en la gen 1 cambian solo las columnas del fitness del `corrida_*.csv` y, en `agentes_*.csv` alineadas
+    por `id`, `fitness`, `lugar`, `en_pool`, `elite` y `aporte`. Desde la gen 2 cambia todo: la selección es otra. El de 0
+    a 100 de la gen 1 con el switch es el fitness sin el switch, en los 60;
+  - sin evolución, en las 6 generaciones cambian solo `fitness`, `lugar`, `en_pool` y `elite`, y las columnas del fitness
+    del `corrida_*.csv`: lo que hacen es lo mismo. **La línea base sigue siendo NCB0,** y no se corre otra vez;
+  - `inconsistencias=0` con el switch: los términos suman `fitness` (la suma con piso en 0), y la cuenta con los topes da
+    `fitness_con_tope`.
+
+**Diseño.** Un solo cambio contra la referencia vigente, NA (decisión 4): el orden de la selección. 5 corridas, a la vez:
+- **NT,** la referencia con el fitness sin tope: `medir_puerta.py . results/medicion_sin_tope_20261123 S evolucion 150
+  acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino
+  acercarse-camino fitness-sin-tope`.
+- **NCB0 no se corre** (el control de arriba); NA tampoco: es la referencia. NA en
+  `results/medicion_acercarse_camino_20261122/` y NCB0 en `results/medicion_brujula_camino_20261122/`, con sus SHA-256
+  publicados.
+
+`hierro`, `sens-etapa0` y `sens-golpe` solo miden: no cambian la corrida.
+
+**Criterio, fijado antes de lanzar** (gens 146-150; por semilla, NT contra NCB0 de la misma semilla):
+1. **Comer** (la decisión 6, con las cuentas de [comer en la referencia nueva](#comer-na)):
+   - **a. giran hacia la comida:** la sensibilidad a la comida antes de abrir la puerta ((`sens_comida` + `sens_comida0`) /
+     (`sens_ticks` + `sens_ticks0`), promedio de las filas de la ventana) ≥ 0,02 rad/tick y mayor que la de NCB0, en 4 de
+     5 semillas. NCB0: +0,0018 · −0,0003 · +0,0017 · +0,0007 · −0,0022;
+   - **b. los que giran comen más que los de su generación** (la medida independiente, LEC-018): el Spearman entre la
+     sensibilidad y las manzanas de cada agente dentro de cada generación con 10 agentes medidos o más, mediana de las
+     121-150 con las 5 semillas, mayor que la de NCB0 (+0,049).
+   - **Comer está aprendido si cumple las dos.** Con una sola no, y se anota cuál.
+2. **Las guardas, los pasos 2 a 6** (la decisión 5, con las cuentas de [acercarse por el camino](#acercarse-camino)): cada
+   paso, en 4 de 5 semillas, al menos 1 agente por generación que lo da y más que NCB0 (un empate no cuenta). Si alguno deja
+   de pasar, sacar el tope cuesta lo aprendido, y se anota así. Se leen con las medidas independientes de esa sección, sin
+   criterio nuevo: por 1.000 px (pasos 2, 4 y 6, contra NCB0), la parte de los que tienen la llave roja que llega a la
+   puerta de madera (contra NCB0, 7%) y la de los que tienen la llave dorada que llega a la de hierro (contra NA, 43%).
+- **Qué diría cada resultado:**
+  - **comer pasa y las guardas también:** NT cumple los seis pasos en la misma tanda, sin nada dado al nacer en la ventana.
+    Es la candidata a la corrida final (paso 7); si queda en la referencia, lo decide Fer (decisión 9);
+  - **comer pasa y alguna guarda cae:** que la selección vea la comida cuesta la cadena. Lo decide Fer;
+  - **comer no pasa y la selección ahora ve la comida** (el Spearman de la sensibilidad con el fitness, mediana de las
+    121-150, mayor que 0; en NA, −0,075): sacar el tope no alcanza, y comer compite con la llave y la puerta. El próximo
+    cambio sería `FITNESS_FOOD`, contra la referencia sin tope (lo decide Fer);
+  - **comer no pasa y la selección sigue sin verla** (0 o menos): el tope no era lo que la escondía, o no lo único. Se mira
+    por ventana dónde se pierde.
+- **Se informan, sin criterio:** NT contra NA en comer y en cada paso (por semilla y por ventana); lo que ve la selección
+  (el Spearman de la sensibilidad con el fitness, por tramo); la sensibilidad por etapa y por semilla; las manzanas por
+  1.000 px y la comida comida de la disponible (LEC-022); el control positivo (la sensibilidad a la brújula); el embudo y
+  dónde se traba la puerta de hierro; la mutación adaptativa (con el de 0 a 100, la misma cuenta en NT y NA: en NA, 62 de
+  600 en las 31-150); la parte con el de 0 a 100 en el tope (NA, 74% en las 146-150) y el fitness que ordena por la etapa
+  en que terminan.
+
+**Antes de leer el criterio,** con `conteo`: las filas de la ventana con ticks medidos y su mediana de ticks, en NT (en NA,
+1.500 de 1.500 y 688; si se aprende más cadena, se mide menos vida por agente).
+
+**Controles en la tanda.**
+- Las 5 corridas terminan con `MEDICION inconsistencias=0 filas=9000` (las 5 líneas contadas, LEC-017).
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`; la columna `pesos` termina en
+  `HIT_ENERGY_COST:0`, y `brujula_camino`, `acercarse_camino` y `fitness_sin_tope` son 1 en todas las filas de
+  `agentes_*.csv` y `geometria_*.csv`.
+- **El costo fue 0** (LEC-010): `ENERGIA_GOLPE` da 0 por tick golpeando y sin golpear.
+- **La gen 1 de NT es la de NA salvo el fitness:** en el `corrida_*.csv`, las columnas del fitness; en `agentes_*.csv`,
+  alineadas por `id`, `fitness`, `lugar`, `en_pool`, `elite` y `aporte`; y el de 0 a 100 de NT es el fitness de NA.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150; los `agentes_*` del `corrida_*.csv` son la suma de `abrio` y los
+  agentes con su `etapa`; las manzanas de cada agente son enteras y suman `manzanas_prom` × 60 (LEC-023); desde la 31,
+  todas las filas tienen ticks en la etapa 0.
+- NA y NCB0 dan su SHA-256 publicado.
+
+**El script.** Uno nuevo, `mediciones/analizar_sin_tope.py`, con las cuentas de `analizar_comer_na.py` (comer) y de
+`analizar_acercarse_camino.py` (los pasos). Se probó antes de lanzar con NA en el lugar de NT (`python
+mediciones/analizar_sin_tope.py results/medicion_acercarse_camino_20261122 results/medicion_acercarse_camino_20261122
+results/medicion_brujula_camino_20261122`): da lo publicado en [comer en la referencia nueva](#comer-na) (la sensibilidad
+por semilla de NA y de NCB0, sus promedios, la 1 en 2 de 5 y el Spearman, +0,068 y +0,049), en [acercarse por el
+camino](#acercarse-camino) (el criterio de NA contra NCB0 en los cinco pasos, la puerta de madera, 27.556 · 21.414 y 671 ·
+47, y la de hierro de NA, 15.561 · 6.725 · 3.192) y el tope de NA (74%), que controla solo, con 0 errores. La mutación
+adaptativa contada desde las filas de `agentes_*.csv` da lo mismo que desde el `corrida_*.csv` (62 de 600).
+
+**Tiempo:** las 5 a la vez, ~1 h 40 (NA tardó 1 h 41 min).
+
+**Cómo se corrió.** Las 5 a la vez, del 2026-11-23 a las 15:07:32 a las 16:59:06 (1 h 51 min). **Cómo se calculó.** `python
+mediciones/analizar_sin_tope.py results/medicion_sin_tope_20261123 results/medicion_acercarse_camino_20261122
+results/medicion_brujula_camino_20261122`, primero con `conteo` y después completo. **Después de leer la tanda** se sumó
+una cuenta sin criterio: el Spearman de la sensibilidad con la etapa en que terminan (abajo). Con ella, el resto de la
+salida no cambia.
+
+**El conteo, antes de leer** (gens 146-150): en NT, 1.500 de 1.500 filas con ticks medidos, con una mediana de 634 ticks
+(244 en la etapa 0 y 330 en la 1), y abre la puerta de madera el 73%. NA: 1.500, 688 (268 · 329), 73%. NCB0: 1.500,
+1.001, 0%. Por semilla, la mediana de NT es 560 · 536 · 978 · 586 · 690 (NA: 906 · 578 · 572 · 657 · 776).
+
+**Controles, hechos** (0 errores en el script; los propios de NT no se habían podido probar antes de lanzar):
+- **Las 5 líneas `MEDICION inconsistencias=0 filas=9000`,** contadas.
+- Los logs dicen el currículo y los pesos; `pesos` termina en `HIT_ENERGY_COST:0`, y `brujula_camino`, `acercarse_camino` y
+  `fitness_sin_tope` son 1 en todas las filas de `agentes_*.csv` y `geometria_*.csv`.
+- **El costo fue 0:** `ENERGIA_GOLPE` da 0 por tick, golpeando y sin golpear.
+- **La gen 1 de NT es la de NA,** 5 de 5, también en el fitness: en la gen 1 nadie pasa el tope (nacen con la llave roja y
+  nadie llega lejos), y el de 0 a 100 de NT es el fitness de NA en los 60. **Este control no ve el switch** (LEC-029): lo
+  vio el control forzado de arriba. NT se separa de NA cuando alguien pasa el tope y eso cambia el orden. Contado a mano,
+  sin el script: el primer fitness distinto aparece en las gens 13 · 4 · 8 · 11 · 4, y las otras columnas cambian desde la
+  15 · 14 · 25 · 24 · 17.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150, y los `agentes_*` son la suma de `abrio` y los agentes con su
+  `etapa`: 0 diferencias.
+- NA y NCB0 dan su SHA-256 publicado.
+
+<details><summary>SHA-256 de la tanda (se regenera con medir_puerta.py ... hierro brujula-camino acercarse-camino fitness-sin-tope desde el commit de esta sesión)</summary>
+
+| Semilla | NT, `corrida_*.csv` | NT, `agentes_*.csv` | NT, `geometria_*.csv` |
+|---|---|---|---|
+| 1 | `62ac2baff3ca34e138c69bf609506f9d7576a4a3734d0eb5bd8e62357908f739` | `0716d70de1a45f788c4121eb9949a4f833a6067bfb82ffcc4a92ceb41f5ca940` | `daa36f8075ae40f3285e7bfe5dbc1f1fefc703297c03faf98e48fbfd588abb11` |
+| 2 | `d21f2a2fa8d57a56bdfd9cace88ab85b4f8295e09fc23fa8f1eb59519c929db3` | `d605e421f65a6b1b8dfd4e248e9eb89440a97d648614cc0016c32317899fcd79` | `09f90893f4061f03bba64f30d9f03f75f7d5abc943151c644ba1d2419c67bda7` |
+| 3 | `9d612d4a7837137c1d0322235b77e49b68807392c38f8cd04ea24a3a4fa562e1` | `2d588a78598c2462711a73f3af828f49b2d5e0a65f7ad0d13ab40040ad761ca2` | `8725d3ddc740f1e4517b8d221b27f2654f2ede8182898137a28e89f5f9a86215` |
+| 4 | `9c605e8f4caac9f45c5ff0ef97615e18b51ff79cff72e95004986619eca4ee8c` | `e1c74fa6ea28bee5e30b6eb3484da1832f16b43b27f1a7ac2a486cc697515369` | `9b9fe674ece7037e790afca4dca6f1b3e477548143db019272275378bf6cab2e` |
+| 5 | `6c39f421ada646aa686ed75fa83395a9c944210eea9a06db7749b2388c9b019d` | `d4d61b645246e80b7ef46a17f994552b7e2616eda18c99341650017f4d87075a` | `9e82d228474624257cb4b6a92c9c0d53a6a8db4d1034caf31bc92c4ea1acd194` |
+
+Los de NA, en [la recompensa por acercarse, por el camino](#acercarse-camino); los de NCB0, en [la brújula por el
+camino](#brujula-camino).
+
+</details>
+
+**El criterio, 1: comer** (gens 146-150; la sensibilidad a la comida en rad/tick; en negrita, donde NT cumple):
+
+| Semilla | NT | NCB0 | NA (sin criterio) |
+|---|---|---|---|
+| 1 | −0,0288 | +0,0018 | +0,0245 |
+| 2 | −0,0073 | −0,0003 | −0,0082 |
+| 3 | **+0,0311** | +0,0017 | +0,0211 |
+| 4 | −0,0179 | +0,0007 | +0,0072 |
+| 5 | −0,0131 | −0,0022 | −0,0126 |
+| **Promedio** | −0,0072 | +0,0003 | +0,0064 |
+
+- **a. Giran hacia la comida: 1 de 5** (la 3; pide 4). **No cumple.** NA, con la misma cuenta, 2 de 5.
+- **b. Los que giran comen más que los de su generación:** el Spearman con las manzanas, mediana de las 121-150, da +0,097
+  (150 generaciones) contra +0,049 de NCB0. **Cumple,** y por semilla en las 5 (+0,050 · +0,145 · +0,078 · +0,118 ·
+  +0,152, contra +0,036 · +0,061 · −0,009 · +0,107 · +0,071). NA, +0,068, por semilla en 3 de 5.
+
+**Comer no está aprendido con el fitness sin tope: cumple la b y no la a,** como NA.
+
+**El criterio, 2: las guardas** (gens 146-150; agentes por generación que dan el paso, NT · NCB0; en negrita, donde NT
+cumple):
+
+| Semilla | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| 1 | **55,8** · 1,6 | **49,6** · 0 | **47,8** · 0 | **19,4** · 0 | **13,4** · 0 |
+| 2 | **57,6** · 1,0 | **46,8** · 0 | **45,8** · 0 | **25,0** · 0 | **22,6** · 0 |
+| 3 | **54,4** · 0,6 | **30,4** · 0 | **27,0** · 0 | **4,4** · 0 | **3,8** · 0 |
+| 4 | **53,6** · 1,2 | **48,2** · 0 | **48,2** · 0 | **10,8** · 0 | **6,6** · 0 |
+| 5 | **53,6** · 1,8 | **44,4** · 0 | **43,4** · 0 | **5,8** · 0 | **1,8** · 0 |
+| **Promedio** | 55,00 · 1,24 | 43,88 · 0 | 42,44 · 0 | 13,08 · 0 | 9,64 · 0 |
+| NA, la referencia (sin criterio) | 54,80 | 43,76 | 40,96 | 7,92 | 4,80 |
+| NT más que NA, por semilla (sin criterio) | 2 de 5 | 4 de 5 | 4 de 5 | 4 de 5 | 4 de 5 |
+| **El criterio** (pide 4 de 5) | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** | **5 de 5: pasa** |
+
+**Las guardas pasan las cinco:** sacar el tope no cuesta lo aprendido. **NT no cumple los seis pasos en la misma tanda:**
+falta comer. De la puerta de madera al cofre, la semilla en que NT queda abajo de NA es siempre la 3.
+
+**Las medidas independientes** (las de [acercarse por el camino](#acercarse-camino)):
+
+| Paso | Medida | NT | Contra | Acompaña |
+|---|---|---|---|---|
+| 2, llave roja | por 1.000 px, gens 146-150 | 26,2 (las 5 arriba) | NCB0, 3,5 | sí |
+| 3, puerta de madera | de los que tienen la llave roja, llegan a 25 px, gens 31-150 | 77% (20.360 de 26.342) | NCB0, 7% (47 de 671) | sí |
+| 4, llave dorada | por 1.000 px | 20,2 | NCB0, 0 | no agrega: NCB0 da 0 |
+| 5, puerta de hierro | de los que tienen la llave dorada, llegan a 25 px, gens 31-150 | 51% (8.450 de 16.728) | NA, 43% (6.725 de 15.561) | sí; por semilla, 4 de 5 |
+| 6, cofre | por 1.000 px | 4,6 | NCB0, 0 | no agrega: NCB0 da 0 |
+
+La llegada a la puerta de hierro por semilla: NT 53% · 66% · 17% · 49% · 25%, NA 42% · 48% · 58% · 43% · 23%.
+
+**Dentro de cada generación** (Spearman con la sensibilidad a la comida, mediana de las generaciones del tramo de las 5
+semillas y, entre paréntesis, la parte con r > 0; la fila de la etapa, sumada después de leer):
+
+| Gens | 1-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|
+| NT, con las manzanas | +0,088 (74%) | +0,099 (75%) | +0,104 (75%) | +0,122 (81%) | +0,097 (76%) |
+| NT, con el fitness | +0,098 (72%) | +0,137 (75%) | +0,039 (57%) | +0,021 (55%) | **+0,049** (61%) |
+| NT, con la etapa en que terminan | +0,030 (59%) | +0,106 (67%) | +0,019 (54%) | −0,015 (46%) | +0,024 (54%) |
+| NA, con las manzanas | +0,086 (74%) | +0,117 (80%) | +0,087 (71%) | +0,082 (73%) | +0,068 (65%) |
+| NA, con el fitness | +0,114 (73%) | +0,155 (73%) | +0,013 (52%) | +0,018 (55%) | **−0,075** (38%) |
+| NA, con la etapa en que terminan | +0,072 (66%) | +0,123 (68%) | −0,011 (48%) | +0,002 (51%) | −0,085 (37%) |
+| NCB0, con las manzanas | +0,035 (63%) | +0,021 (55%) | +0,018 (53%) | +0,047 (66%) | +0,049 (64%) |
+| NCB0, con el fitness | +0,021 (57%) | −0,007 (47%) | −0,002 (48%) | +0,016 (54%) | +0,008 (53%) |
+| NCB0, con la etapa en que terminan | −0,079 (35%) | +0,011 (52%) | +0,011 (53%) | +0,038 (55%) | −0,011 (49%) |
+
+- **La selección ahora ve la comida, poco:** con el fitness, +0,049 en las 121-150, con r > 0 en el 61% de las
+  generaciones (NA, −0,075 y 38%).
+- **Dentro de la generación, girar hacia la comida ya no cuesta cadena:** con la etapa en que terminan, NT da +0,024 en las
+  121-150 y NA, −0,085. En NA, el que giraba hacia la comida llegaba menos lejos, y eso era lo que la selección castigaba.
+
+**Por ventana** (promedio de las 5 semillas: la sensibilidad a la comida · las manzanas por 1.000 px · la comida comida de
+la disponible):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| NT | +0,016 · 0,75 · 90% | +0,020 · 0,70 · 92% | +0,019 · 0,55 · 88% | +0,017 · 0,50 · 78% | **+0,021** · 0,48 · 75% | −0,007 · 0,47 · 73% |
+| NA | +0,015 · 0,76 · 91% | +0,016 · 0,76 · 93% | +0,025 · 0,63 · 84% | +0,012 · 0,54 · 73% | +0,002 · 0,52 · 69% | +0,006 · 0,48 · 77% |
+| NCB0 | +0,001 · 0,97 · 29% | +0,001 · 1,04 · 31% | +0,002 · 1,06 · 30% | −0,001 · 0,94 · 29% | +0,001 · 0,98 · 28% | 0,000 · 1,12 · 33% |
+
+- **Con NT la sensibilidad no cae mientras se aprende la cadena,** como caía con NA: en las 116-120 da +0,021, con tres
+  semillas arriba de 0,02 (NA, +0,002). **Y en las 146-150 cae:** la 1 pasa de +0,028 a −0,029 y la 2, de +0,033 a −0,007.
+- **Por semilla** (NT, de 26-30 a 146-150): solo la 3 la mantiene en toda la corrida (+0,037 · +0,043 · +0,058 · +0,070 ·
+  +0,064 · +0,031); la 4 la tiene hasta las 86-90 (de +0,020 a +0,028) y la pierde; la 1, la 2 y la 5 suben y bajan
+  (de −0,029 a +0,033).
+- **Por etapa** (gens 146-150): NT, +0,0019 en la etapa 0 y −0,0135 en la 1; NA, +0,0115 y +0,0033.
+
+**Se informan, sin criterio** (gens 146-150; NT · NA · NCB0): las manzanas por 1.000 px, 0,473 · 0,481 · 1,119; la comida
+comida de la disponible, el 73% · 77% · 33%; las manzanas por agente, 0,990 · 0,988 · 0,389; la distancia, 2.101 · 2.049 ·
+348 px; el término de la comida, 7,14 · 6,98 · 2,31; **la sensibilidad a la brújula** (el control positivo, en las mismas
+filas), +0,1221 · +0,1189 · −0,0006; la edad, 1.042 · 1.046 · 1.030 ticks.
+
+**Los pasos por ventana** (agentes por generación, promedio de las 5 semillas; sin criterio):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Puerta de madera, NT | 11,40 | 7,40 | 23,60 | 31,64 | 37,56 | 43,88 |
+| Puerta de madera, NA | 9,16 | 7,32 | 15,00 | 30,04 | 39,56 | 43,76 |
+| Llave dorada, NT | 9,80 | 7,00 | 20,12 | 30,00 | 35,92 | 42,44 |
+| Llave dorada, NA | 6,40 | 6,80 | 12,68 | 27,84 | 36,28 | 40,96 |
+| Puerta de hierro, NT | 0,32 | 0 | 1,08 | 10,64 | 10,00 | 13,08 |
+| Puerta de hierro, NA | 0,04 | 0,32 | 0,56 | 3,96 | 7,08 | 7,92 |
+| Cofre, NT | 0,04 | 0 | 0,48 | 5,44 | 7,56 | 9,64 |
+| Cofre, NA | 0,04 | 0,12 | 0,40 | 2,72 | 5,04 | 4,80 |
+
+La llave roja, NT 24,96 por generación en las 31-35 (NA, 20,12) y 55,00 en las 146-150 (NA, 54,80).
+
+**El embudo** (sin criterio; sumados en las 5 semillas; entre paréntesis, la parte de los del paso anterior):
+
+| | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| NT, gens 31-150 | 26.342 | 17.639 (67%) | 16.737 (95%) | 4.275 (26%) | 2.886 (68%) |
+| NA, gens 31-150 | 27.556 | 17.009 (62%) | 15.568 (92%) | 3.192 (21%) | 2.174 (68%) |
+| NT, gens 146-150 | 1.375 | 1.097 (80%) | 1.061 (97%) | 327 (31%) | 241 (74%) |
+| NA, gens 146-150 | 1.370 | 1.094 (80%) | 1.024 (94%) | 198 (19%) | 120 (61%) |
+| NCB0, gens 31-150 | 671 | 14 (2%) | 5 (36%) | 0 | 0 |
+
+**Dónde se traba la puerta de hierro** (gens 31-150; la cuenta de [dónde se traba](#medicion-puerta-hierro)):
+
+| | NT | NA |
+|---|---|---|
+| Con la llave dorada | 16.728 | 15.561 |
+| La abren | 4.275 (26%) | 3.192 (21%) |
+| No llegan a 25 px | 8.278 (49%; el 66% de los que no la abren) | 8.836 (57%; el 71%) |
+| Llegan sin tiempo | 3.229 (19%; el 26%) | 2.835 (18%; el 23%) |
+| Llegan y no golpean ahí | 144 (1%) | 59 (0,4%) |
+| No completan | 801 (5%) | 639 (4%) |
+
+**Lo que ve la selección** (sin criterio). La parte de los agentes con el de 0 a 100 en 100, que en NT no ordena:
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| NT | 16% | 13% | 40% | 54% | 64% | 74% |
+| NA | 11% | 13% | 27% | 52% | 67% | 74% |
+
+El fitness que ordena, por la etapa en que terminan (gens 146-150; mediana, y entre paréntesis los agentes):
+
+| Etapa | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| NT (la suma) | 42 (125) | 79 (278) | 120 (36) | 198 (734) | 274 (86) | 342 (241) |
+| NA (con el tope) | 43 (130) | 79 (276) | 100 (70) | 100 (826) | 100 (78) | 100 (120) |
+
+**Con NT, la selección distingue la cadena entera:** el que abre el cofre vale 342 y el que solo abre la puerta de madera,
+120 (con NA, 100 los dos). El fitness promedio, 188,7 (NA, 91,1). Cada paso suma de 37 a 78 puntos (las diferencias entre
+medianas). Una manzana suma 10, y la segunda, 4 más (`FITNESS_FOOD` × √manzanas).
+
+**La mutación adaptativa** (generaciones en que el desvío del de 0 a 100 sobre su promedio baja de 0,15, de las 150 del
+tramo con las 5 semillas): NT 0 · 2 · 13 · 22 · 42 (1-30 a 121-150; 79 de 600 en las 31-150); NA 0 · 2 · 5 · 22 · 33 (62
+de 600); NCB0, 0. **NT la dispara más, y no es el switch:** la regla lee el de 0 a 100, como en NA, pero la población que
+lee es otra. Llega más lejos, y más agentes quedan en 100 con esa cuenta (en las 56-60, el 40% contra el 27%).
+
+**Lectura.**
+1. **Comer no está aprendido con el fitness sin tope:** cumple la b (+0,097 contra +0,049; por semilla, 5 de 5) y no la a
+   (1 de 5, la 3; −0,007 en promedio). Contra NA, peor en la a (2 de 5) y mejor en la b (+0,068). La medida ve un giro
+   aprendido en las mismas filas: la sensibilidad a la brújula da +0,122.
+2. **Las guardas pasan:** los pasos 2 a 6, 5 de 5 cada uno. Sacar el tope no cuesta nada de la cadena.
+3. **La selección ahora ve la comida, poco:** +0,049 con el fitness en las 121-150 (NA, −0,075). Es la rama fijada antes de
+   lanzar, "comer no pasa y la selección ahora ve la comida", que sugería `FITNESS_FOOD` contra la referencia sin tope.
+4. **Pero no es que compita con la cadena,** como decía esa rama: dentro de la generación, con NT, girar hacia la comida no
+   lleva a terminar en una etapa más baja (+0,024; con NA, −0,085). Lo que queda es que **la comida pesa poco:** una
+   manzana suma 10 y un paso de la cadena, de 37 a 78. La sensibilidad se ve en las manzanas (+0,097), y las manzanas son
+   una parte chica del fitness (el término de la comida, 7,1 de 188,7 en promedio). Si al subir su peso compite, lo dice la
+   medición: en la Sesión 3, con el tope, la comida al doble costó la llave roja.
+5. **La sensibilidad no cae mientras se aprende la cadena,** como caía con NA (+0,021 en las 116-120, tres semillas arriba de
+   0,02), **pero no se sostiene:** en las 146-150 la 1 y la 2 la pierden. Con una selección que la ve tan poco, sube y baja.
+   Solo la 3 la mantiene en toda la corrida, y es la semilla con menos cadena (30,4 puertas de madera por generación, 4,4 de
+   hierro) y la que más ticks pasa antes de abrir la puerta (978 de mediana). Una explicación posible, sin medir y con una
+   sola semilla: en la 3, comer sí le quita tiempo a la llave y la puerta.
+6. **Sin criterio, la cadena mejora al final:** la puerta de hierro pasa de 7,92 a 13,08 por generación y el cofre, de 4,80 a
+   9,64, con NT más alta en 4 de 5 semillas en cada uno (la 3, no), y el promedio también es más alto en las 86-90 y las
+   116-120. La medida
+   independiente acompaña: llega a la puerta de hierro el 51% de los que tienen la llave dorada (NA, el 43%), y la abre el
+   26% (el 21%). Es lo que se esperaba: con el tope, el que abre el cofre valía lo mismo que el que solo abre la puerta de
+   madera. Es NT contra NA, sin criterio: 4 de 5 sale por azar el 19% de las veces (LEC-018). El margen del cofre en la
+   semilla 5 sigue chico (1,8 por generación).
+7. **El freno de la puerta de hierro sigue siendo llegar** (el 66% de los que no la abren), y crece "llegan sin tiempo"
+   (el 26%).
+
+**Qué sugiere** (lo decide Fer, decisión 9):
+- **NT, a la referencia.** Pasa los pasos 2 a 6 en 5 de 5, con más margen al final de la cadena (la puerta de hierro, 4,4
+  por generación la semilla más baja, contra 2,4; el cofre, 1,8 contra 1,2), y la selección ve la cadena entera. Contra NA
+  no tiene criterio, pero va en el mismo sentido en tres ventanas y con la medida independiente. La línea base sigue siendo
+  NCB0 (el control de sin evolución). Prender `FITNESS_SIN_TOPE` por defecto en `config.py` es otra decisión.
+- **Para comer, `FITNESS_FOOD` en 20, contra NT,** con `pesos=` (sin código, decisión 7). Es el valor de la Sesión 3: con el
+  tope, comer pasaba (4 de 5, +0,045) y costaba la llave roja y la puerta. Sin el tope, la manzana pasaría de 10 a 20, y un
+  paso de la cadena vale de 37 a 78: la pregunta es si sigue costando la cadena. Mismo criterio que esta tanda (comer y las
+  guardas, contra NCB0). Sin evolución, el fitness no cambia lo que hacen: NCB0 sigue sirviendo. 5 corridas, ~1 h 50.
+- **Si con 20 tampoco pasa,** que comer haga falta para vivir: comida que rebrota, el ítem 7 del
+  [BACKLOG](../product/BACKLOG.md). Es una mecánica nueva, para después de este spec, salvo que Fer decida otra cosa.
+
+**Decidido por Fer (2026-11-23):** NT pasa a la referencia del spec, con NCB0 de línea base (NT en
+`results/medicion_sin_tope_20261123/`, sus SHA-256 arriba; NCB0 en `results/medicion_brujula_camino_20261122/`, en [la
+brújula por el camino](#brujula-camino)). El valor por defecto de `config.py` no cambia. Para comer se prueba `FITNESS_FOOD`
+en 20, contra NT, con `pesos=` ([el spec](../specs/active/PUZZLE_SOLOS.md)).
