@@ -66,6 +66,9 @@ class World:
         self.chest = None
         self.small_fortress_pos = None
         self.large_fortress_pos = None
+        # La brújula por el camino (BRUJULA_CAMINO): las grillas de la generación, que arma
+        # src/world/camino.py la primera vez que se piden
+        self.campos_camino = None
         
         # Generar obstáculos automáticamente
         self._generate_obstacles()
@@ -383,6 +386,8 @@ class World:
         """Prepara el mundo de la generación `generacion`: regenera obstáculos y comida, preservando
         los objetos manuales, y reinicia el puzzle (decisión 10)."""
         self.food_items = []
+        # La brújula por el camino: las grillas son del mapa de la generación anterior
+        self.campos_camino = None
         
         # Preservar objetos manuales
         manual_obstacles_backup = self.manual_obstacles.copy()

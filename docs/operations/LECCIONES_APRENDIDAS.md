@@ -5,6 +5,35 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-027 — 2026-11-22 — `Path.write_text` en Windows pasa a CRLF un archivo LF entero
+
+**Qué pasó.** En la sesión de la brújula por el camino edité una docena de archivos con scripts de Python que leían con
+`read_text` y escribían con `write_text`, en lugar de leer y escribir bytes como pide LEC-005. En Windows, `write_text`
+abre en modo texto y traduce cada `
+` a `
+`: los archivos LF (`experimento.py`, `boletin.py`, `CLAUDE.md`, los docs,
+`medir_puerta.py`) quedaron enteros en CRLF. `git diff` no lo mostró, porque `core.autocrlf` compara sin los CR. Lo vi al
+final, en un `od -c` del spec, y mi control del principio de la sesión (con `grep`) había dicho que todo era LF, aunque los
+CRLF eran media docena (LEC-003). Se devolvieron a LF leyendo y escribiendo bytes, y el `git diff --stat` quedó igual.
+
+**Regla.** Un script que edita un archivo lee y escribe bytes (`read_bytes` y `write_bytes`), y conserva el final de línea
+que tenía el archivo. Después, contar `
+` contra `
+` en los bytes de cada archivo tocado, contra la lista de archivos
+CRLF del spec. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Editar archivos.
+
+## LEC-026 — 2026-11-22 — Una ruta de más de 260 caracteres en Windows falla como si no existiera
+
+**Qué pasó.** Para el control de la brújula por el camino corrí `medir_puerta.py` con la salida en una carpeta del
+scratchpad, como las corridas cortas de antes. Con `brujula-camino`, el nombre del archivo suma `brujula_camino_`, y la
+ruta más larga pasó a 269 caracteres (sin el argumento, 252). `main.py` se cayó al abrir el CSV con `FileNotFoundError`,
+aunque `os.makedirs` había creado la carpeta. La primera vez creí que faltaba la carpeta de arriba, la creé y la lancé de
+nuevo: el error era el mismo. En `results/`, la misma ruta tiene 218.
+
+**Regla.** La salida de `medir_puerta.py` va a `results/` (ruta corta, fuera del repo), no al scratchpad. Si una corrida se
+cae al abrir un archivo con `FileNotFoundError` y la carpeta existe, contar los caracteres de la ruta. Aplicada en
+[`OPERACIONES.md`](OPERACIONES.md) § Correr.
+
 ## LEC-025 — 2026-11-22 — Un sensor que guía se prueba con su seguidor perfecto en cada paso que guía
 
 **Qué pasó.** La brújula (sensores 9 y 11) apunta en línea recta al próximo paso del puzzle, en todos los pasos. Su

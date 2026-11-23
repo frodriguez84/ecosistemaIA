@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -56,6 +56,10 @@ hierro: h_puerta_x y h_puerta_y, h_dmin_libre y h_area_libre_25 (la cuenta de la
 perfecto que arranca en la llave dorada, con la puerta de madera abierta y la de hierro cerrada, H_PASOS pasos, como hoy y
 deslizando (h_seguidor_dmin y h_seguidor_t25, h_desliza_dmin y h_desliza_t25: la distancia mínima y el primer paso a menos
 de 25 px; vacío si no llega). Sin el argumento, los tres CSV son los de antes.
+brujula-camino le pasa --brujula-camino a main.py (la brújula por el camino, spec PUZZLE_SOLOS) y suma la columna
+brujula_camino a agentes_*.csv y a geometria_*.csv; los dos seguidores (el de la puerta de madera y, con hierro, el de la
+de hierro) siguen el rumbo de src/world/camino.py, la misma función que el sensor 9, con la etapa 1 y la 3. Sin el
+argumento, siguen la recta y los tres CSV son los de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -106,6 +110,7 @@ laboratorio = "laboratorio" in sys.argv[6:]
 sens_etapa0 = "sens-etapa0" in sys.argv[6:]
 sens_golpe = "sens-golpe" in sys.argv[6:]
 hierro = "hierro" in sys.argv[6:]
+brujula = "brujula-camino" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -133,6 +138,7 @@ import main  # noqa: E402
 from config import SimulationConfig  # noqa: E402
 from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork  # noqa: E402
 from src.evolution.genetic_algorithm import GeneticAlgorithm  # noqa: E402
+from src.world import camino  # noqa: E402
 
 RADIO_GOLPE = 25  # el de world.process_door_hit
 H_PASOS = 1000    # con hierro: los pasos del seguidor desde la llave dorada (3 px por paso; el mapa es de 1200 px)
@@ -310,7 +316,10 @@ def act(self, decisions, world, other_agents, tick):
             m['golpea_pegado' + suf] += int(np.tanh(zp) > 0.5)
             m['golpea_lejos' + suf] += int(np.tanh(zl) > 0.5)
             paso = self._proximo_paso(world)
-            if abs(p[10] - min(math.hypot(paso[0] - float(self.x), paso[1] - float(self.y)) / self.vision_range, 1.0)) > 1e-5:
+            # Con brujula-camino, el sensor 11 es la distancia por el camino (camino.rumbo); si no, la recta
+            distancia = (float(camino.rumbo(world, self.etapa, self.x, self.y)[1]) if brujula
+                         else math.hypot(paso[0] - float(self.x), paso[1] - float(self.y)))
+            if abs(p[10] - min(distancia / self.vision_range, 1.0)) > 1e-5:
                 INCONS[0] += 1  # el sensor 11 no es la distancia al próximo paso
             if p[10] == 1.0 and (np.tanh(zl) > 0.5) != (decisions['hit'] > 0.5):
                 INCONS[0] += 1  # lejos de verdad, la decisión no es la que tomó: no es la salida 'hit'
@@ -514,10 +523,11 @@ def colisiones(world, puerta):
     return choca
 
 
-def seguir(world, puerta, choca, x0, y0, pasos):
+def seguir(world, puerta, choca, x0, y0, pasos, etapa):
     """Desde cada arranque, avanza 3 px por tick derecho al centro de la puerta, con las colisiones de act(), como hoy (si
-    el paso choca, queda trabado) y deslizando. Devuelve, en los dos, la distancia mínima de cada arranque y el primer paso
-    a menos de 25 px (−1 si no llega). Solo numpy, sin azar."""
+    el paso choca, queda trabado) y deslizando. Con brujula-camino, con el rumbo de camino.rumbo para un agente de esa
+    etapa, en lugar de derecho. Devuelve, en los dos, la distancia mínima de cada arranque y el primer paso a menos de 25
+    px (−1 si no llega). Solo numpy, sin azar."""
     cx, cy = centro_puerta(world, puerta)
     r = SimulationConfig.AGENT_RADIUS
     resultados = []
@@ -526,7 +536,7 @@ def seguir(world, puerta, choca, x0, y0, pasos):
         dmin = np.hypot(x - cx, y - cy)
         t25 = np.where(dmin < RADIO_GOLPE, 0, -1)
         for paso in range(1, pasos + 1):
-            ang = np.arctan2(cy - y, cx - x)
+            ang = np.asarray(camino.rumbo(world, etapa, x, y)[0]) if brujula else np.arctan2(cy - y, cx - x)
             nx = np.clip(x + np.cos(ang) * SimulationConfig.AGENT_SPEED, r, world.screen_width - r)
             ny = np.clip(y + np.sin(ang) * SimulationConfig.AGENT_SPEED, r, world.screen_height - r)
             libre = ~choca(nx, ny)
@@ -555,7 +565,7 @@ def seguidor(world):
     adentro = np.array([world._is_inside_fortress(a, b) for a, b in zip(x0, y0)])
     ok = ~adentro & ~choca(x0, y0)
     x0, y0 = x0[ok], y0[ok]
-    return [dmin for dmin, _ in seguir(world, world.door, choca, x0, y0, 450)]
+    return [dmin for dmin, _ in seguir(world, world.door, choca, x0, y0, 450, 1)]
 
 
 def seguidor_hierro(world):
@@ -565,7 +575,7 @@ def seguidor_hierro(world):
     x0 = np.array([float(world.gold_key.x)])
     y0 = np.array([float(world.gold_key.y)])
     return [(float(dmin[0]), int(t25[0])) for dmin, t25 in
-            seguir(world, world.door_iron, colisiones(world, world.door_iron), x0, y0, H_PASOS)]
+            seguir(world, world.door_iron, colisiones(world, world.door_iron), x0, y0, H_PASOS, 3)]
 
 
 _fila = main._fila_csv
@@ -843,7 +853,7 @@ if PESOS:
     print(f"PESOS {PESOS}")
 etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, v in PESOS.items()) + "_" if PESOS else ""
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'deslizar_' if deslizar else ''}"
-          f"{'moviles_' if moviles else ''}"
+          f"{'moviles_' if moviles else ''}{'brujula_camino_' if brujula else ''}"
           f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'curriculo{curriculo}_' if curriculo is not None else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
@@ -858,6 +868,8 @@ if deslizar:
     argv.append("--deslizar")
 if moviles:
     argv.append("--fortalezas-moviles")
+if brujula:
+    argv.append("--brujula-camino")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
@@ -876,10 +888,14 @@ for f in FILAS:
         f["evaluaciones"] = evaluaciones
     if reloj:
         f["reloj"] = reloj
+    if brujula:  # sin el argumento, la columna no está: el CSV es el de antes
+        f["brujula_camino"] = 1
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
     g["laboratorio"] = int(laboratorio)
+    if brujula:
+        g["brujula_camino"] = 1
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()

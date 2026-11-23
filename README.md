@@ -74,7 +74,8 @@ EcosistemaEvolutivo/
 │   │
 │   ├── world/              # Mundo y entorno
 │   │   ├── world.py       # Clase World (generación procedural, fortalezas, puzzle)
-│   │   └── obstacles.py   # Obstáculos (árboles, muros, agua, huts, etc.)
+│   │   ├── obstacles.py   # Obstáculos (árboles, muros, agua, huts, etc.)
+│   │   └── camino.py      # La brújula por el camino (BRUJULA_CAMINO)
 │   │
 │   ├── evolution/          # Algoritmo genético
 │   │   └── genetic_algorithm.py  # Selección, cruce, mutación, evolución
@@ -129,6 +130,7 @@ EcosistemaEvolutivo/
   * **Sistema de puzzle**: Llave roja, puerta de madera, llave dorada, puerta de hierro y cofre; el avance es de cada agente y se reinicia en cada generación
   * **Recursos**: Comida (manzanas), árboles que pueden cortarse, huts destructibles
   * **Estanque móvil**: Estanque que se regenera dinámicamente
+* **`camino.py`**: la brújula por el camino (`BRUJULA_CAMINO`): por etapa del puzzle, una grilla con la distancia por el camino libre al próximo paso y su rumbo
 * **`obstacles.py`**:
 
   * Tipos de obstáculos: `tree`, `wall`, `water`, `hut`
@@ -306,7 +308,7 @@ Cada agente hace su propio puzzle, en cinco pasos, y todo vuelve a cero en cada 
 1. **Etapa del agente**, de 0 a 5: llave roja → puerta de madera → llave dorada → puerta de hierro → cofre. Cada paso pide el anterior.
 2. **Una puerta es pared para cada agente hasta que él la abre**: abrirla no la abre para los demás. Con ventana, se dibuja abierta si algún agente de la generación la abrió.
 3. **Golpear** es la quinta salida de la red (> 0,5). Cuesta 0,05 de energía por tick (`HIT_ENERGY_COST`), golpee algo o no.
-4. **Brújula**: los sensores 9 y 11 apuntan al próximo paso del agente; con el cofre abierto dan 0 y 1.
+4. **Brújula**: los sensores 9 y 11 apuntan al próximo paso del agente, en línea recta (con la brújula por el camino, por el camino libre más corto); con el cofre abierto dan 0 y 1.
 5. **Reinicio**: cada generación arranca con todos los agentes en la etapa 0 (con el currículo, en la 1 hasta la generación 15) y sin hacha, las puertas y el cofre cerrados, y la llave roja y el hacha en lugares nuevos (las fortalezas, solo con las fortalezas móviles).
 6. **Abrir el cofre no termina la corrida**: la consola, el panel, la pantalla final y el CSV dicen cuántos agentes llegaron a cada paso.
 
@@ -326,6 +328,8 @@ Tres switches en `config.py`, apagados por defecto e independientes, que valen p
 * **Lo dado al nacer no es un logro**: los avisos de hito, la primera vez del boletín y los pasos de la recompensa cuentan solo los pasos que el agente dio. Las columnas `agentes_*` del CSV cuentan quién llegó al menos a cada paso, también con la llave dada; la columna `etapa_inicial` dice con qué etapa nació la generación
 
 **Fortalezas móviles** (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`, apagado por defecto, en los dos modos). No es una ayuda: desde la generación 2, las dos fortalezas van a un lugar al azar en cada generación, con sus puertas, la llave dorada y el cofre, así la puerta se encuentra con la brújula y no con una ruta aprendida de memoria. La generación 1 queda como siempre. Cada fortaleza queda lejos del borde con el frente de su puerta, y las dos separadas; el estanque y el resto del mapa se generan después y las esquivan. No es una columna del CSV: va en el nombre del archivo (`_fortalezas_moviles`), y el panel lo dice en su renglón
+
+**Brújula por el camino** (`BRUJULA_CAMINO`, `--brujula-camino`, apagado por defecto, en los dos modos). Los sensores 9 y 11 siguen el camino libre más corto al próximo paso, no la recta, que desde la llave dorada cruza las paredes de la fortaleza chica. Por etapa, una grilla de celdas de 5 px con lo que deja pasar el choque de esa etapa (las puertas que no abrió son pared) y la distancia por el camino, euclídea alrededor de las paredes; el sensor 9 apunta contra su gradiente y el 11 es esa distancia. En el objetivo y sin camino, la recta. La grilla se arma al empezar cada generación: un árbol talado después no la cambia. La recompensa por acercarse sigue midiendo la recta. No es una columna del CSV: va en el nombre del archivo (`_brujula_camino`), y el panel lo dice en su renglón
 
 ---
 
@@ -500,7 +504,8 @@ Los flags pisan los valores de `config.py` (`python main.py --help` los lista):
 | `--curriculo` | Prende el currículo: las primeras generaciones nacen con la llave roja. Pisa `CURRICULO`. |
 | `--deslizar` | Si el paso choca, el agente se mueve por el eje libre. Pisa `DESLIZAR`. |
 | `--fortalezas-moviles` | Desde la generación 2, las fortalezas cambian de lugar en cada generación. Pisa `FORTALEZAS_MOVILES`. |
-| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar][_fortalezas_moviles]_<evolucion\|sin_evolucion>.csv`. |
+| `--brujula-camino` | La brújula sigue el camino libre más corto al próximo paso, no la recta. Pisa `BRUJULA_CAMINO`. |
+| `--csv RUTA` | Dónde escribir el CSV. Por defecto, `results/corrida_s<semilla>_<modo>[_acercarse][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]_<evolucion\|sin_evolucion>.csv`. |
 
 Toda corrida, con ventana o sin ella, deja un CSV con una fila por generación: modo, si la
 recompensa por acercarse estaba prendida, la etapa con la que nació la generación, fitness,
@@ -523,7 +528,7 @@ grupo (modo × evolución): fitness y manzanas por agente en las primeras y las 
 generaciones, supervivencia, agentes con llave roja, etapa máxima del puzzle y cofre. Y tres
 comparaciones pareadas por semilla: en cada modo, si la evolución supera a la línea base; y si el
 guiado tiene más que el autónomo. Con 5 semillas y 30 generaciones (20 corridas) tardó 16,5
-minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar` y `--fortalezas-moviles` pasan a todas las
+minutos en una máquina de 12 núcleos. `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles` y `--brujula-camino` pasan a todas las
 corridas; el resumen dice cuáles estaban prendidas, suma por corrida la puerta de madera y la llave roja por
 1.000 px de recorrido, y en el autónomo aplica el criterio del ítem 5 del BACKLOG (¿aprende a pasar
 la puerta de madera?).

@@ -13,6 +13,7 @@ from collections import deque
 # Agregar el directorio raíz al path para importar config
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from config import SimulationConfig
+from src.world import camino
 
 # Los cinco pasos del puzzle, en orden: el agente en la etapa k dio los pasos 1 a k (decisión 7)
 PASOS_DEL_PUZZLE = ["Llave roja", "Puerta madera", "Llave dorada", "Puerta hierro", "Cofre"]
@@ -170,9 +171,19 @@ class AdvancedAgent:
         # 8. Etapa del puzzle del agente (0 a 5), normalizada
         perceptions.append(self.etapa / 5.0)
         
-        # 9. Dirección al próximo paso del puzzle (la brújula, decisión 13), como el sensor 3
+        # 9. Dirección al próximo paso del puzzle (la brújula, decisión 13), como el sensor 3. Con
+        # BRUJULA_CAMINO, por el camino libre más corto, y el 11 es la distancia por ese camino
         proximo_paso = self._proximo_paso(world)
-        if proximo_paso:
+        if proximo_paso and SimulationConfig.BRUJULA_CAMINO:
+            rumbo, distancia = camino.rumbo(world, self.etapa, self.x, self.y)
+            angle_diff = float(rumbo) - self.angle
+            while angle_diff > np.pi:
+                angle_diff -= 2 * np.pi
+            while angle_diff < -np.pi:
+                angle_diff += 2 * np.pi
+            perceptions.append(angle_diff / np.pi)
+            distancia_al_paso = float(distancia)
+        elif proximo_paso:
             dx = proximo_paso[0] - float(self.x)
             dy = proximo_paso[1] - float(self.y)
             angle_diff = float(np.arctan2(dy, dx)) - self.angle
@@ -201,15 +212,9 @@ class AdvancedAgent:
         """Dónde está el próximo paso del puzzle del agente (decisión 13): la llave roja (etapa 0), la
         puerta de madera (1), la llave dorada (2), la puerta de hierro (3) o el cofre (4). Las puertas
         y el cofre, por su centro, que es desde donde se mide el golpe. None con etapa 5, o si el paso
-        no está en el mapa."""
-        if self.etapa == 0 and world.red_key:
-            return (world.red_key.x, world.red_key.y)
-        if self.etapa == 2 and world.gold_key:
-            return (world.gold_key.x, world.gold_key.y)
-        objeto = {1: world.door, 3: world.door_iron, 4: world.chest}.get(self.etapa)
-        if objeto:
-            return (objeto.x + objeto.width // 2, objeto.y + objeto.height // 2)
-        return None
+        no está en el mapa. La cuenta está en src/world/camino.py, que la comparte con la brújula por el
+        camino."""
+        return camino.punto_del_paso(world, self.etapa)
 
     def _medir_acercamiento(self, world):
         """Recompensa por acercarse (spec PUZZLE_APRENDIBLE, decisiones 4, 6 y 7): en el primer tick de

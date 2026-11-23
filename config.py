@@ -55,6 +55,9 @@ class SimulationConfig:
     # Si el paso choca, el agente se mueve por el eje libre: primero solo en x y, si no, solo en y,
     # en los dos modos (--deslizar lo prende). Apagado, se queda donde está
     DESLIZAR = False
+    # Brújula por el camino, en los dos modos (--brujula-camino la prende): los sensores 9 y 11 siguen
+    # el camino libre más corto al próximo paso, no la recta. Apagada, la recta de siempre
+    BRUJULA_CAMINO = False
     
     # === MUNDO ===
     # Dimensiones iniciales (se ajustarán dinámicamente)

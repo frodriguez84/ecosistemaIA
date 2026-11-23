@@ -158,6 +158,25 @@ golpear siempre, y con ninguno de los tres valores medidos (0,05, 0,01 y 0) la r
   (`act()`, `advanced_agent.py`) antes de que `main.py` pruebe qué golpea (los `_try_*`), así que el cobro tendría que
   moverse después de esas pruebas.
 
+## Aparecido con la brújula por el camino — 2026-11-22
+
+Con la [brújula por el camino](../qa/AnalisisQA.md#brujula-camino), al probar su seguidor perfecto.
+
+- [ ] **Que nada tape la puerta de madera** (DIAG-35): `_clear_area_around_doors` despeja desde 32 px debajo de la fila de
+  la puerta, y la puerta mide 20. Un árbol o una casita con el centro en el medio queda pegado a la puerta y la tapa: en 2
+  de 60 mapas de prueba, la fortaleza chica no tenía salida sin talar. Arreglo: despejar desde el borde de abajo de la
+  puerta (`door.y + door.height`). Cambia el CSV de las corridas donde pasa: medirlo con las corridas de referencia,
+  contando en cuántas cambia. La puerta de hierro (despeje hacia arriba) no se miró.
+- [ ] **La brújula por el camino sin deslizar:** el seguidor que no desliza se traba en las esquinas que el camino roza (en
+  la corrida corta de la semilla 5, llega a la puerta de hierro en 3 de 6 mapas; deslizando, en 6). Con `DESLIZAR` apagado,
+  la brújula nueva ayuda menos. Si alguna vez se la quiere sin deslizar, el camino tendría que alejarse de las paredes (un
+  costo por estar cerca de ellas).
+- [ ] **Una brújula por el camino más rápida:** `camino.rumbo` es una sola función con numpy para un punto o para muchos
+  (el sensor y el seguidor de `medir_puerta.py` usan la misma). Para un punto cuesta ~78 µs con la máquina cargada, y
+  duplica `perceive` (de 76 a 154 µs). Un camino de cálculo aparte para un punto, en Python puro, lo bajaría, pero tendría
+  que dar lo mismo que el de arrays bit a bit (`math.atan2` y `np.arctan2` pueden diferir en el último bit), con un test
+  que lo compare.
+
 ## El hacha y los árboles, después del cofre — 2026-11-21
 
 Decidido con Fer al armar el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): talar va después del

@@ -7,13 +7,16 @@ lección: la historia, en [LECCIONES_APRENDIDAS.md](LECCIONES_APRENDIDAS.md).
 
 - **Para correr sin ventana, flags, no `config.py`:** `python main.py --sin-ventana --generaciones N
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
-  sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento y
-  `--fortalezas-moviles`, las fortalezas móviles). El
+  sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento,
+  `--fortalezas-moviles` las fortalezas móviles y `--brujula-camino`, la brújula por el camino). El
   experimento con los dos modos, con evolución y sin ella, en varias semillas es `python experimento.py`
-  (`--modos` elige los modos; `--acercarse`, `--curriculo`, `--deslizar` y `--fortalezas-moviles` pasan a
-  todas las corridas).
+  (`--modos` elige los modos; `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles` y
+  `--brujula-camino` pasan a todas las corridas).
 - **`mediciones/`:** scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control
   byte a byte).
+- **La salida de `medir_puerta.py` va a `results/`, no al scratchpad:** sus nombres llevan cada argumento (pasan los 140
+  caracteres), y con la carpeta del scratchpad la ruta pasa los 260 de Windows. `main.py` se cae al abrir el CSV con
+  `FileNotFoundError`, aunque la carpeta exista (LEC-026).
 - **Una corrida sin ventana tarda ~6 s por generación de 960 ticks** con 60 agentes (máquina de 12
   núcleos), más unos 3 s de arranque; las generaciones se alargan 180 ticks cada 4 (con `--deslizar`,
   ~1,5 veces: caminan más ticks). Redirigida a
@@ -62,7 +65,12 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   de línea, el `grep` de Git Bash quita los CR salvo con `-U`: contar bytes con Python (LEC-003);
   y `git show HEAD:archivo` da el blob en LF (`core.autocrlf`): para comparar contra HEAD, sin los
   CR de los dos lados (LEC-009).
-  En un archivo CRLF, nunca `sed -i`: lo deja entero en LF y `git diff` no lo muestra (LEC-005).
+  En un archivo CRLF, nunca `sed -i`: lo deja entero en LF y `git diff` no lo muestra (LEC-005). Y en un script de
+  Python, nunca `read_text`/`write_text`: en Windows, `write_text` deja en CRLF un archivo LF entero. Se leen y escriben
+  bytes, conservando el final de línea de cada archivo, y después se cuentan (LEC-027). Son CRLF `main.py`,
+  `config.py`, `advanced_agent.py`, `world.py`, `obstacles.py`, `stats.py`, `renderer.py`, `README.md` y otros de
+  `src/` viejos; los docs, `mediciones/`, los tests, `CLAUDE.md`, `experimento.py`, `boletin.py` y los archivos nuevos,
+  LF.
   Un script de edición escrito con Write pierde los espacios de sus líneas en blanco: que compare
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
 

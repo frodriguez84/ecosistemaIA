@@ -35,7 +35,7 @@ Antes de tocar el aprendizaje se mide (orden de trabajo en
 - **Dónde está cada cosa:** `main.py` (flags, semilla, CSV, loop), `config.py` (`SimulationConfig`),
   `experimento.py` (modos × evolución × semillas → `resumen.md`), `mediciones/` (miden una corrida
   sin cambiarla), `src/agents/advanced_agent.py` (sensores, decisión, acciones, fitness y la red),
-  `src/evolution/genetic_algorithm.py`, `src/world/` (mundo, puzzle, obstáculos), `src/analytics/`
+  `src/evolution/genetic_algorithm.py`, `src/world/` (mundo, puzzle, obstáculos, la brújula por el camino), `src/analytics/`
   (registro, boletín, monitor, clustering), `src/ui/`, `tests/` y `results/` (en `.gitignore`). El
   árbol completo, en el README.
 
@@ -50,15 +50,17 @@ El detalle de cada punto, con sus números, está en el README.
   hasta que él la abre; las llaves y el hacha se agarran por contacto y quedan en el mapa; puertas,
   cofre y árboles piden golpear (quinta salida, cuesta `HIT_ENERGY_COST`). Todo vuelve a 0 en cada
   generación (a 1 con el currículo), y abrir el cofre no termina la corrida.
-- **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso.
-- **Cuatro switches en `config.py`, apagados por defecto y comunes a los dos modos.** Apagados, la
+- **La red tiene 11 entradas y 5 salidas.** Los sensores 9 y 11 son la brújula al próximo paso: en línea recta o, con
+  `BRUJULA_CAMINO`, por el camino libre más corto.
+- **Cinco switches en `config.py`, apagados por defecto y comunes a los dos modos.** Apagados, la
   corrida es la de antes:
   - la recompensa por acercarse (`RECOMPENSA_ACERCARSE`, `--acercarse`) y el currículo (`CURRICULO`,
     `--curriculo`: hasta la generación 15 nacen con la llave roja, sin su premio). Lo dado al nacer
     no es un logro: cuenta solo lo hecho (`etapa_inicial`) ([spec](docs/specs/done/PUZZLE_APRENDIBLE.md));
-  - deslizar contra lo que choca (`DESLIZAR`, `--deslizar`) y las fortalezas móviles
-    (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`). No son columnas del CSV: van en el nombre del
-    archivo, el panel, el boletín y el resumen del experimento.
+  - deslizar contra lo que choca (`DESLIZAR`, `--deslizar`), las fortalezas móviles
+    (`FORTALEZAS_MOVILES`, `--fortalezas-moviles`) y la brújula por el camino (`BRUJULA_CAMINO`,
+    `--brujula-camino`, [spec](docs/specs/active/PUZZLE_SOLOS.md)). No son columnas del CSV: van en el
+    nombre del archivo, el panel, el boletín y el resumen del experimento.
 
 ## Convenciones de código
 
