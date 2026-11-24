@@ -6495,3 +6495,138 @@ menos agentes quedan en 100 con esa cuenta.
 **Decidido por Fer (2026-11-23):** para comer se prueba comida que rebrota, con un switch apagado por defecto, contra la
 referencia NT ([el spec](../specs/active/PUZZLE_SOLOS.md)). NF no va a la referencia, que sigue siendo NT. Medir comer
 después de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).
+
+---
+
+<a id="rebrota"></a>
+## La comida que rebrota: comer y los pasos 2 a 6, contra su línea base (2026-11-23)
+
+**La pregunta** (sesión 11 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): SOLOS-01 con su
+decisión 6, y SOLOS-02 a 06 como guardas): con la comida que rebrota contra la referencia NT (decidida por Fer en [la
+comida al doble, sin tope](#comida20-sin-tope); dónde, cuándo y R, por Fer en la Sesión 11), ¿comer pasa? ¿Y los pasos 2 a
+6 siguen pasando?
+
+**El cambio.** La sección [La comida que rebrota](../specs/active/PUZZLE_SOLOS.md#la-comida-que-rebrota) del spec. Con el
+switch `COMIDA_REBROTA` (apagado por defecto), cada manzana comida vuelve 250 ticks después (`COMIDA_REBROTA_TICKS`), la
+misma manzana, en un lugar al azar con las reglas del arranque y a 35 px o más de cada agente vivo. Consume azar solo
+cuando vuelve una. En NT se comen ~60 de las 70 manzanas en una vida de ~1.040 ticks, y no vuelven; con R = 250, lo comido
+al principio vuelve antes de abrir la puerta de madera (en NT, una mediana de 634 ticks medidos antes de abrirla).
+
+**Antes de tocar el código** (con el código de 745a101): las 8 corridas cortas (c1, c2, c3 y c5 de la Sesión 5, c6 de la
+6, c7 de la 8, c9 con la configuración de NT y b9 con la de NCB0, 3 a 6 generaciones), en `results/sesion11_antes/`, con 0
+inconsistencias; los 18 CSV de c1 a c7 son iguales a los de `results/sesion9_final/`. Sus SHA-256 son el "antes" del
+control de apagado:
+
+<details><summary>SHA-256 de las 8 corridas cortas (se regeneran con los comandos de la bitácora del spec, Sesión 10, desde 745a101)</summary>
+
+| Corrida | `corrida_*.csv` | `agentes_*.csv` | `geometria_*.csv` |
+|---|---|---|---|
+| c1 | `ead177360a74f4be67cf0c42a084c5afc5a868cb97bc46481358fb2a6524c90c` | `faeb85897c41e780b6fb937776de862aef2eed3874b901e5f81c382f0c5f6296` | `94a69526ea0b33634609651ef46007b7aecb7de883fbfaaff7505fc059b0fd43` |
+| c2 | `d983932d858c8b9b36288d67f4504c082308bab1b3a24ab819966a6dec3ab29d` | `ed54ac2f4c206424d63ccc7111ce2b532368a843cb7e725c40e9e891d433d528` | `109849d92012fd254baef00ca1e6343f16d58db70e483006957f62eb3bc2e4e2` |
+| c3 | `8c4b17116e390052218da38f28e62c9f70763216453fb7eac420689606890f42` | `75ae4d2ade76f18fdcb1e91db1d000d4f220d94d4005b961440e8a406f2b8d06` | `fc390ec13c2ecec89f12ead779e38ad15fe16ee9c460acbedf0fcab632f2a2d2` |
+| c5 | `3db0df62a5f335e77e9106f0c72ea354b2e161f11b5d797dc17ffab2147d581f` | `a35be56201b6f3ba604dc46ec0107900fc83030cca0f34dbff77682937dc4d09` | `96ce867c1cd2b5c55b63fdc3c7ecb5fa630cb47083861a5671b5881da77ed732` |
+| c6 | `2e484f8f5a290977a1e5eb3fc350c4484e5cc06d523460347c6df5b986b470cd` | `4e0050b353ecfb94d10937a8b221ada8d558070c1259dd3d6f352361371b8767` | `0a66ade78a5641217471c4d5c72d447aaddf0043f074f1e792064515c9e46b71` |
+| c7 | `5cb47a292c1afea402a7dee8a1a183c194f09ba38197af9b72f71863d3448601` | `3966fdb74ce8813bab9025f00f05904b6c8d10af92632cc372408b948dddc5f8` | `be89fdcecab28e7da44735b1e82aa70588a37eaa27de5f10358b9efa8f63784e` |
+| c9 | `845c5d6b8817828dc95e537b9bd33d0810a72bc79eb4fc977e25f1f281cd3889` | `bd59c3a6dae7f4985deab3bf953518ceaf8727e9feb48560bd4d1fff4c01e2df` | `bf098949328ba490a38ff92e58a8df83f447dca5c8eaf2ef6f56500a85d40d05` |
+| b9 | `cd8e1b0f3f42d304a21344cfbb29d91044d380bab18a790f7eedcb8d12d156cd` | `5045493553b9b21aafaf0f4f9ed6eb1ddd2027426196d874b66a6deff44da7bd` | `f75e458816ce3d0468747900ce841b4c0c4a2e26262b5e59d0d18b468b5dda46` |
+
+</details>
+
+**Apagado no cambia nada:** con el código final, las 8 cortas (`results/sesion11_final/`) dan los mismos 24 CSV byte a
+byte, con 0 inconsistencias. La suite pasa (231 tests; 11 nuevos en `tests/test_comida_rebrota.py`). Prendido y sin
+ninguna vuelta (generaciones de 60 ticks, R = 250), el CSV de `main._simular` es el de apagado: no consume azar hasta que
+vuelve una manzana (un test).
+
+**Prendido, el switch se ve** (LEC-029; c9 y b9 con `comida-rebrota`, en `results/sesion11_prendido/`, 6 generaciones, con
+0 inconsistencias): la gen 1 nace igual que sin el switch (los mismos agentes, y la misma geometría al final de la gen 1),
+y en ella vuelven 18 de las 21 manzanas comidas. En todas las generaciones vuelve alguna, y nunca más que las comidas (c9r:
+18 · 24 · 21 · 48 · 58 · 64 de 21 · 32 · 34 · 59 · 62 · 81). Desde la gen 2 el mapa es otro: el rebrote consumió azar, y
+cambia todo lo que viene después (es parte del cambio). `comida_rebrota` es 1 en todas las filas de `agentes_*.csv` y
+`geometria_*.csv`, y `rebrotes` está en `geometria_*.csv`.
+
+**Diseño.** Un solo cambio contra la referencia vigente, NT (decisión 4). **La línea base cambia:** sin evolución, la comida
+que rebrota cambia lo que hacen (comen más y viven más), así que NCB0 deja de ser la línea base y la tanda lleva la suya. 10
+corridas, a la vez, en `results/medicion_rebrota_20261123/`:
+- **NR,** NT con la comida que rebrota: `medir_puerta.py . results/medicion_rebrota_20261123 S evolucion 150 acercarse
+  deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino
+  acercarse-camino fitness-sin-tope comida-rebrota`;
+- **NRB0,** NCB0 con la comida que rebrota: `medir_puerta.py . results/medicion_rebrota_20261123 S sin_evolucion 150
+  acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino
+  comida-rebrota`.
+- NT y NCB0 no se corren: van sin criterio, NT en `results/medicion_sin_tope_20261123/` y NCB0 en
+  `results/medicion_brujula_camino_20261122/`, con sus SHA-256 publicados.
+
+`hierro`, `sens-etapa0` y `sens-golpe` solo miden: no cambian la corrida. La ruta más larga queda en 235 caracteres (< 260,
+LEC-026).
+
+**Criterio, fijado antes de lanzar** (gens 146-150; por semilla, NR contra NRB0 de la misma semilla; el de [la comida al
+doble, sin tope](#comida20-sin-tope), con NR en el lugar de NF y NRB0 en el de NCB0):
+1. **Comer** (la decisión 6):
+   - **a. giran hacia la comida:** la sensibilidad a la comida antes de abrir la puerta ((`sens_comida` + `sens_comida0`) /
+     (`sens_ticks` + `sens_ticks0`), promedio de las filas de la ventana) ≥ 0,02 rad/tick y mayor que la de NRB0, en 4 de
+     5 semillas;
+   - **b. los que giran comen más que los de su generación** (la medida independiente, LEC-018): el Spearman entre la
+     sensibilidad y las manzanas de cada agente dentro de cada generación con 10 agentes medidos o más, mediana de las
+     121-150 con las 5 semillas, mayor que la de NRB0. No depende de cuánta comida queda (LEC-022): compara agentes de la
+     misma generación, con la misma comida.
+   - **Comer está aprendido si cumple las dos.** Con una sola no, y se anota cuál.
+2. **Las guardas, los pasos 2 a 6** (la decisión 5): cada paso, en 4 de 5 semillas, al menos 1 agente por generación que lo
+   da y más que NRB0 (un empate no cuenta). Si alguno deja de pasar, la comida que rebrota le cuesta la cadena, y se anota
+   así. Se leen con las medidas independientes de [el fitness sin tope](#sin-tope), sin criterio nuevo: por 1.000 px
+   (contra NRB0), la parte de los que tienen la llave roja que llega a la puerta de madera (contra NRB0) y la de los que
+   tienen la llave dorada que llega a la de hierro (contra NT, 51%).
+- **Qué diría cada resultado:**
+  - **comer pasa y las guardas también:** NR cumple los seis pasos en la misma tanda, sin nada dado al nacer en la ventana.
+    Es la candidata a la corrida final (paso 7); si queda en la referencia, lo decide Fer (decisión 9), y prender
+    `COMIDA_REBROTA` por defecto es otra decisión;
+  - **comer pasa y alguna guarda cae:** comer, con comida en toda la generación, compite con la cadena. Lo decide Fer: otro
+    R, o la cadena sin comer;
+  - **comer no pasa,** ni con comida en toda la generación: se mira por ventana dónde se pierde, y si la selección la ve
+    más que en NT (el Spearman de la sensibilidad con el fitness, mediana de las 121-150; NT, +0,049). Lo que queda, lo
+    decide Fer: medir comer también después de la puerta ([mejoras futuras](../product/mejoras_futuras.md)), otro R, o
+    cerrar el paso 1 como no aprendido (cambia el DoD del spec);
+  - **si NRB0 da más pasos que NCB0** (viven más), las guardas piden más que con NT: se informa, y se lee con NR contra NT.
+- **Se informan, sin criterio:** NR contra NT en comer y en cada paso (por semilla y por ventana), y NRB0 contra NCB0;
+  cuánto viven y cuánto duran las generaciones (ticks, edad, vivos al final), las manzanas por agente, las que volvieron,
+  la comida comida de la disponible (contando las que volvieron) y los árboles talados; lo que ve la selección (el Spearman
+  de la sensibilidad con el fitness, por tramo) y con la etapa en que terminan; la sensibilidad por ventana, por semilla, de
+  a 5 generaciones en las 121-150 y por etapa; la puerta de madera por semilla y por ventana; el control positivo (la
+  sensibilidad a la brújula); el embudo y dónde se traba la puerta de hierro; la mutación adaptativa (NT, 79 de 600 en las
+  31-150); la parte con el de 0 a 100 en el tope y el fitness que ordena por la etapa en que terminan; el tiempo de cada
+  corrida.
+
+**Antes de leer el criterio,** con `conteo`: las filas de la ventana con ticks medidos y su mediana de ticks, en NR y NRB0
+(NT: 1.500 de 1.500 y 634; NCB0: 1.500 de 1.500 y 1.001).
+
+**Controles en la tanda** (en el script):
+- Las 10 corridas terminan con `MEDICION inconsistencias=0 filas=9000` (las 10 líneas contadas, LEC-017).
+- Los logs dicen `CURRICULO_HASTA_GENERACION=30` y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`, y `CROSSOVER_RATE=0.2` solo los
+  de NR; la columna `pesos` termina en `HIT_ENERGY_COST:0`; `brujula_camino`, `acercarse_camino` y `fitness_sin_tope` son 1
+  en todas las filas de NR, y `brujula_camino` en las de NRB0, en `agentes_*.csv` y `geometria_*.csv`.
+- **El costo fue 0** (LEC-010): `ENERGIA_GOLPE` da 0 por tick golpeando y sin golpear.
+- **El switch se ve** (LEC-029): `comida_rebrota` es 1 en todas las filas; `rebrotes` es mayor que 0 en la gen 1 y en el
+  total de cada corrida, y en ninguna generación vuelven más manzanas que las comidas.
+- **La gen 1 nace como la de NT** (NR) **y la de NCB0** (NRB0): los mismos agentes y, si en ninguna de las dos se taló, la
+  misma geometría al final de la gen 1. Desde cuándo se separan, el mapa y la corrida, se informa.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150; los `agentes_*` del `corrida_*.csv` son la suma de `abrio` y los
+  agentes con su `etapa`; las manzanas de cada agente son enteras y suman `manzanas_prom` × 60; desde la 31, todas las
+  filas tienen ticks en la etapa 0, y ninguna fila de la ventana queda sin medir.
+- NT y NCB0 dan su SHA-256 publicado.
+
+**El script.** Uno nuevo, `mediciones/analizar_rebrota.py`, con las cuentas de `analizar_comida20_sin_tope.py` (NR en el
+lugar de NF y NRB0 en el de NCB0), NT y NCB0 sin criterio, y la comida comida de la disponible con las que volvieron
+(`rebrotes`). **La prueba, antes de lanzar,** con NT y NCB0 en el lugar de NR y NRB0 (`python mediciones/analizar_rebrota.py
+results/medicion_sin_tope_20261123 results/medicion_sin_tope_20261123 results/medicion_brujula_camino_20261122`): da lo
+publicado en [el fitness sin tope](#sin-tope) (la sensibilidad por semilla de NT y NCB0 y su promedio, la 1a en 1 de 5, el
+Spearman, +0,097 y +0,049, las guardas de NT contra NCB0, la puerta de madera, la de hierro, el tope, lo de adentro de la
+generación y la mutación adaptativa), con 0 errores. Los controles propios de NR y NRB0 corren también en la prueba, con lo
+que se espera sin el switch (sin las columnas `comida_rebrota` ni `rebrotes`).
+
+**Tiempo, estimado antes de lanzar:** NT tardó 1 h 51 (5 a la vez) y NCB0, 1 h 35 (10 a la vez, con NC). El tiempo va con
+los agentes × tick. Con R = 250, el tope por energía (si comieran todo lo que vuelve) da como mucho ~2,6 veces los de NT;
+si la población sostiene a los que comen bien, ~2 veces. Y 10 a la vez van más lentas (en la Sesión 6, NC tardó 2 h 18;
+con 5 a la vez, ~1 h 45), hasta que terminan las de NRB0, que sin evolución comen poco y tardan poco más que NCB0: NR, de
+~4 h a ~5 h 30. No hubo una corrida aparte para medirlo (ver la bitácora del spec): lo dicen las primeras generaciones de
+la tanda.

@@ -166,10 +166,14 @@ def _leer_argumentos(argv):
     parser.add_argument("--fitness-sin-tope", action="store_true",
                         help="La selección ordena por la suma de los términos del fitness, sin el tope de 100, "
                              "en los dos modos. Pisa FITNESS_SIN_TOPE de config.py.")
+    parser.add_argument("--comida-rebrota", action="store_true",
+                        help="Cada manzana comida vuelve a los COMIDA_REBROTA_TICKS ticks, en otro lugar al "
+                             "azar y lejos de los agentes vivos, en los dos modos. Pisa COMIDA_REBROTA de "
+                             "config.py.")
     parser.add_argument("--csv", metavar="RUTA",
                         help="Dónde escribir el CSV. Por defecto, results/corrida_s<semilla>_<modo>"
                              "[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles][_brujula_camino]"
-                             "[_sin_tope]_<evolucion|sin_evolucion>.csv.")
+                             "[_sin_tope][_rebrota]_<evolucion|sin_evolucion>.csv.")
     args = parser.parse_args(argv)
     if args.modo is None and SimulationConfig.MODO not in MODOS:
         parser.error(f"MODO en config.py tiene que ser guiado o autonomo, no {SimulationConfig.MODO!r}")
@@ -220,9 +224,10 @@ def _fila_csv(semilla, evolucion, generacion, ticks, agents, world, learning_mon
 
 def _ruta_csv_por_defecto(semilla, evolucion):
     """results/corrida_s<semilla>_<modo>[_acercarse[_camino]][_curriculo][_deslizar][_fortalezas_moviles]
-    [_brujula_camino][_sin_tope]_<evolucion|sin_evolucion>.csv, con el modo y los switches de SimulationConfig
-    (spec PUZZLE_APRENDIBLE, decisión 11). Acercarse por el camino, deslizar, las fortalezas móviles, la
-    brújula por el camino y el fitness sin tope no son columnas del CSV: van solo en el nombre."""
+    [_brujula_camino][_sin_tope][_rebrota]_<evolucion|sin_evolucion>.csv, con el modo y los switches de
+    SimulationConfig (spec PUZZLE_APRENDIBLE, decisión 11). Acercarse por el camino, deslizar, las fortalezas
+    móviles, la brújula por el camino, el fitness sin tope y la comida que rebrota no son columnas del CSV: van
+    solo en el nombre."""
     acercarse = "_acercarse" if SimulationConfig.RECOMPENSA_ACERCARSE else ""
     if acercarse and SimulationConfig.ACERCARSE_CAMINO:
         acercarse = "_acercarse_camino"
@@ -231,8 +236,9 @@ def _ruta_csv_por_defecto(semilla, evolucion):
     moviles = "_fortalezas_moviles" if SimulationConfig.FORTALEZAS_MOVILES else ""
     brujula = "_brujula_camino" if SimulationConfig.BRUJULA_CAMINO else ""
     sin_tope = "_sin_tope" if SimulationConfig.FITNESS_SIN_TOPE else ""
+    rebrota = "_rebrota" if SimulationConfig.COMIDA_REBROTA else ""
     return os.path.join("results", f"corrida_s{semilla}_{SimulationConfig.MODO}{acercarse}{curriculo}"
-                                   f"{deslizar}{moviles}{brujula}{sin_tope}"
+                                   f"{deslizar}{moviles}{brujula}{sin_tope}{rebrota}"
                                    f"_{'evolucion' if evolucion else 'sin_evolucion'}.csv")
 
 
@@ -324,6 +330,8 @@ def main(argv=None):
         SimulationConfig.ACERCARSE_CAMINO = True
     if args.fitness_sin_tope:
         SimulationConfig.FITNESS_SIN_TOPE = True
+    if args.comida_rebrota:
+        SimulationConfig.COMIDA_REBROTA = True
     modo = SimulationConfig.MODO
 
     # Sin --semilla se sortea una, se imprime y queda en el CSV: cualquier corrida se puede repetir
@@ -538,6 +546,10 @@ def _simular(semilla, evolucion, escribir_fila):
         # Actualizar mundo (solo si no está pausado)
         if not paused:
             world.update()
+            # La comida que rebrota (COMIDA_REBROTA): lejos de los vivos al final del tick. Apagada, no
+            # consume azar
+            if config.COMIDA_REBROTA:
+                world.rebrotar_comida([a for a in agents if a.alive], RADIO_LIBRE)
             tick += 1
             registro.contar_posiciones(agents)  # Mapa de calor: los vivos al final del tick
         

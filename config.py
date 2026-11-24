@@ -84,6 +84,10 @@ class SimulationConfig:
     BASE_SPRITE_SIZE = 16        # Tamaño base de sprites en píxeles
     
     FOOD_COUNT = 70             # Cantidad de comida inicial (aumentado para generaciones largas)
+    # Comida que rebrota, en los dos modos (--comida-rebrota la prende): cada manzana comida vuelve a los
+    # COMIDA_REBROTA_TICKS ticks, en otro lugar al azar y lejos de los agentes vivos. Apagada, no vuelve
+    COMIDA_REBROTA = False
+    COMIDA_REBROTA_TICKS = 250
     
     # === SISTEMA DE CORTE DE ÁRBOLES ===
     TREE_CUTTING_ENABLED = True   # Habilitar sistema de corte

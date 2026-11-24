@@ -9,11 +9,12 @@ lección: la historia, en [LECCIONES_APRENDIDAS.md](LECCIONES_APRENDIDAS.md).
   --semilla S` (`--help` los lista; `--sin-evolucion` es la línea base, `--modo autonomo` el modo
   sin guía, `--acercarse` y `--curriculo` prenden las ayudas, `--deslizar` el deslizamiento,
   `--fortalezas-moviles` las fortalezas móviles, `--brujula-camino` la brújula por el camino,
-  `--acercarse-camino`, con `--acercarse`, la recompensa medida por el camino y `--fitness-sin-tope` la
-  selección por la suma del fitness, sin el tope de 100). El experimento con los dos modos, con
-  evolución y sin ella, en varias semillas es `python experimento.py` (`--modos` elige los modos;
-  `--acercarse`, `--curriculo`, `--deslizar`, `--fortalezas-moviles`, `--brujula-camino`,
-  `--acercarse-camino` y `--fitness-sin-tope` pasan a todas las corridas).
+  `--acercarse-camino`, con `--acercarse`, la recompensa medida por el camino, `--fitness-sin-tope` la
+  selección por la suma del fitness, sin el tope de 100, y `--comida-rebrota` la comida que rebrota).
+  El experimento con los dos modos, con evolución y sin ella, en varias semillas es `python
+  experimento.py` (`--modos` elige los modos; `--acercarse`, `--curriculo`, `--deslizar`,
+  `--fortalezas-moviles`, `--brujula-camino`, `--acercarse-camino`, `--fitness-sin-tope` y
+  `--comida-rebrota` pasan a todas las corridas).
 - **`mediciones/`:** scripts que miden una corrida sin cambiarla (envuelven sin consumir azar; control
   byte a byte).
 - **La salida de `medir_puerta.py` va a `results/`, no al scratchpad:** sus nombres llevan cada argumento (pasan los 140
@@ -85,6 +86,7 @@ La regla de base, que una mejora del aprendizaje se demuestra contra la línea b
   LF.
   Un script de edición escrito con Write pierde los espacios de sus líneas en blanco: que compare
   contra el archivo con los espacios finales recortados y devuelva las líneas que no cambió (LEC-007).
+  El texto de un Edit no termina en un espacio: lo pierde, y la línea cambia sin que nadie lo quiera (LEC-031).
 
 ## El editor
 

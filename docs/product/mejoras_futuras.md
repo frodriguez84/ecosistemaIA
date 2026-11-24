@@ -177,6 +177,14 @@ Con la [brújula por el camino](../qa/AnalisisQA.md#brujula-camino), al probar s
   que dar lo mismo que el de arrays bit a bit (`math.atan2` y `np.arctan2` pueden diferir en el último bit), con un test
   que lo compare.
 
+## Aparecido con la comida que rebrota — 2026-11-23
+
+Al diseñar [la comida que rebrota](../specs/active/PUZZLE_SOLOS.md#la-comida-que-rebrota) (`COMIDA_REBROTA`):
+
+- [ ] **La tala, con la comida que rebrota:** los árboles se pueden talar con 30 manzanas sin comer o menos
+  (`TREE_CUTTING_THRESHOLD`; las casitas, 20). Con rebrote puede que no se llegue nunca. Cuando se retomen el hacha y los
+  árboles (después del cofre), con el switch prendido hay que mirar ese umbral antes de medir talar.
+
 ## Aparecido con la comida al doble, sin tope — 2026-11-23
 
 Con la [medición](../qa/AnalisisQA.md#comida20-sin-tope): girar hacia la comida se aprende y, en cada semilla, se pierde

@@ -1,6 +1,6 @@
 # Spec: Que aprendan el puzzle solos
 
-**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`), la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`) y el fitness sin tope (`FITNESS_SIN_TOPE`), los tres apagados por defecto: la puerta de hierro, 13,08 por generación, y el cofre, 9,64, con poco margen en la semilla 5 (1,8). Esa corrida (NT, Sesión 9) es la referencia desde el 2026-11-23 (Fer). Falta el paso 1 (comer), que no pasa ni en NA (Sesión 8), ni en NT (Sesión 9), ni con `FITNESS_FOOD` en 20 contra NT (Sesión 10, NF), que además cuesta la cadena (la puerta de hierro y el cofre, 2 de 5); Fer decidió probar comida que rebrota, con un switch apagado por defecto, contra NT. Y falta el 7 (todo junto). Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22, y con la recompensa por acercarse por el camino y el fitness sin tope desde el 2026-11-23)
+**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`), la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`) y el fitness sin tope (`FITNESS_SIN_TOPE`), los tres apagados por defecto: la puerta de hierro, 13,08 por generación, y el cofre, 9,64, con poco margen en la semilla 5 (1,8). Esa corrida (NT, Sesión 9) es la referencia desde el 2026-11-23 (Fer). Falta el paso 1 (comer), que no pasa ni en NA (Sesión 8), ni en NT (Sesión 9), ni con `FITNESS_FOOD` en 20 contra NT (Sesión 10, NF), que además cuesta la cadena (la puerta de hierro y el cofre, 2 de 5); Fer decidió probar comida que rebrota, contra NT: implementada en la Sesión 11 (`COMIDA_REBROTA`, apagado por defecto; cada manzana comida vuelve a los 250 ticks, al azar y lejos de los vivos), con su tanda (NR y su línea base, NRB0) lanzada el 2026-11-23. Y falta el 7 (todo junto). Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22, y con la recompensa por acercarse por el camino y el fitness sin tope desde el 2026-11-23)
 **Prioridad:** Alta — es el rumbo del modo autónomo, pedido por Fer el 2026-11-21
 **Gate:** Ninguno
 **Bloquea:** el ítem 6 del [BACKLOG](../../product/BACKLOG.md) (mecánicas nuevas) y el hacha y los árboles: entran cuando el puzzle esté aprendido
@@ -172,11 +172,72 @@ fitness, sin el recorte a 100. Va con el switch `FITNESS_SIN_TOPE`, apagado por 
   el fitness: con el switch cambian solo las columnas del fitness, y NCB0 sigue siendo la línea base. Un test lo controla.
 - **Sin azar:** la cuenta no consume `random` ni `np.random`.
 
+## La comida que rebrota
+
+El cambio del paso 1 (Sesión 11, decidido por Fer en la Sesión 10; dónde, cuándo y R, por Fer en la Sesión 11): cada
+manzana comida vuelve a los R ticks, en otro lugar al azar. Va con el switch `COMIDA_REBROTA`, apagado por defecto.
+
+- **Por qué:** en NT se comen ~60 de las 70 manzanas en una vida de ~1.040 ticks, y no vuelven: a medida que avanza la
+  generación hay menos comida y más lejos, y girar hacia ella paga cada vez menos. La sensibilidad se mide antes de abrir
+  la puerta de madera (en NT, una mediana de ~630 ticks). Con R = 250, lo comido al principio vuelve antes de la puerta:
+  hay comida en toda la etapa que se mide, y comer alarga la vida, que da tiempo para la cadena.
+- **Qué cambia: solo la comida del mundo.** Cada manzana comida vuelve `COMIDA_REBROTA_TICKS` (250) ticks después de
+  comida (Fer: cada una a su tiempo, no un ritmo fijo). Es la misma manzana, en otro lugar: la lista no crece, y nunca
+  hay más sin comer que al empezar la generación, más las de la tala. Las de la tala y las casitas también rebrotan: una
+  sola regla. No cambian la energía de comer (`AGENT_ENERGY_GAIN_FOOD`), `FITNESS_FOOD` ni el radio de comer.
+- **Cuándo:** con el reloj del mundo (`world.tick`, que `update()` avanza y `main.py` pone en 0 en cada generación).
+  Después de `world.update()`, una manzana comida en ese tick recibe su vuelta (`vuelve`, el tick del mundo más R); la que
+  ya la cumplió, vuelve. La comida en el tick t de `main.py` falta en los ticks t + 1 a t + R y está en el t + R + 1.
+- **Dónde (Fer):** al azar, con las reglas de `_generate_food`: x e y con `random.randint` entre 20 y el borde menos 20,
+  fuera de las fortalezas, sin chocar los obstáculos con radio 20, fuera del estanque, y a 40 px o más de las otras
+  manzanas sin comer (`_check_collision_with_objects` con radio 25: 25 + 15, que mira también el perímetro y el estanque);
+  y además **a 35 px o más de cada agente vivo** (`RADIO_LIBRE` de `main.py`, con la que hoy nacen lejos de las manzanas):
+  sin eso, con ~45 vivos, ~1 de cada 10 caería a menos de 20 px de uno, que la come sin buscarla. Las reglas de
+  `_generate_food` pasan a una función que usan las dos, sin cambiar el orden del azar (el control byte a byte lo cubre).
+  Las manzanas comidas no cuentan para los 40 px: no están en el mapa.
+- **Si no hay lugar:** hasta 20 intentos por manzana (los de `_generate_food`, 20 por manzana); si ninguno sirve, sigue
+  comida y prueba en el tick siguiente.
+- **El azar:** apagado, no se llama: no consume `random` (byte a byte). Prendido, consume `random` (el global, como
+  `_generate_food` y la tala) **solo cuando vuelve una manzana**: hasta la primera vuelta de la generación 1, la corrida es
+  la de apagado tick por tick; desde ahí cambia todo lo que viene después, también lo que sortea `evolve`. Es parte del
+  cambio. Las manzanas vuelven en el orden de la lista: la misma semilla da el mismo CSV.
+- **Dónde vive:** `World.rebrotar_comida(vivos, distancia)` en `world.py`, que `main.py` llama después de
+  `world.update()` solo con el switch, con los vivos al final del tick y `RADIO_LIBRE`.
+- **Todo lo que lee la cantidad de comida** (LEC-030), y qué hace con el switch:
+  - el sensor 10, `food_ratio` (las sin comer sobre `FOOD_COUNT`, con tope 1): no cambia la cuenta; con rebrote marca
+    más. Los sensores 2 y 3 (la manzana más cercana): con rebrote, más cerca;
+  - la tala y las casitas: se habilitan con 30 y 20 manzanas sin comer o menos (`TREE_CUTTING_THRESHOLD`,
+    `HUT_CUTTING_THRESHOLD`). Con rebrote puede que no se llegue nunca: en NT se talan 0,6 árboles por generación, y
+    `arboles_cortados` se informa sin criterio;
+  - la guía del modo guiado (va a talar con `food_ratio` < 0,6 y hacha): con rebrote, tala menos. El switch es común a los
+    dos modos y en el guiado cambia también eso; no se mide en este spec;
+  - `comidas()` de las mediciones (las comidas sobre 70 + 20 por árbol): con rebrote pasaría de 1. Con el argumento,
+    `medir_puerta.py` cuenta las que volvieron (`rebrotes` en `geometria_*.csv`, por generación), y la cuenta pasa a ser
+    sobre 70 + 20 por árbol + las que volvieron;
+  - el panel (`Comida`, las sin comer) y lo que se dibuja: las sin comer, en su lugar nuevo. Sin cambios;
+  - `_lugar_libre` (nacen a 35 px de las manzanas): al empezar la generación, sin cambios;
+  - el fitness: `f_comida` = `FITNESS_FOOD` × √manzanas, así que comer más suma más, y con el fitness sin tope se ve. La
+    supervivencia tiene tope a los 1.000 ticks (`FITNESS_SURVIVAL_MAX`): vivir más no suma por sí solo.
+- **El tiempo:** una generación dura hasta que mueren todos, con el tope de `_ticks_de_generacion` (7.440 en la 146). En
+  NT el tiempo va con los agentes × tick (~0,7 ms cada uno, 5 corridas a la vez; ~63.000 por generación, 1 h 53 la
+  tanda). Con R = 250, el tope por energía (si comieran todo lo que vuelve) da como mucho ~2,6 veces (~5 h); si la
+  población sostiene a los que comen bien (70 / 250 × 80 ticks por manzana ≈ 22 agentes), ~2 veces (~3 h 30). Antes de
+  la tanda se mide con una corrida (ver la bitácora).
+- **La línea base cambia:** sin evolución, la comida que rebrota cambia lo que hacen (comen más y viven más): NCB0 deja de
+  ser la línea base, y la tanda lleva la suya (NRB0).
+- **Los nombres:** `COMIDA_REBROTA = False` y `COMIDA_REBROTA_TICKS = 250` en `config.py`, `--comida-rebrota` en
+  `main.py` y `experimento.py`, y `comida-rebrota` en `medir_puerta.py`. Como los otros switches, no es una columna del
+  CSV de `main.py`. En el nombre del archivo, `_rebrota` después de `_sin_tope`; en `medir_puerta.py`, `rebrota_` después
+  de `sin_tope_`, y la columna `comida_rebrota` en `agentes_*.csv` y `geometria_*.csv`, y `rebrotes` en
+  `geometria_*.csv`, solo con el argumento. En el panel, un renglón "Manzanas: rebrotan"; en el subtítulo del boletín,
+  "comida que rebrota"; en el resumen del experimento, "**Comida:** cada manzana comida vuelve a los
+  `COMIDA_REBROTA_TICKS` ticks (`config.py`), en otro lugar al azar" (`experimento.py` no lee `config.py`).
+
 ## Estado por paso
 
 | # | Paso | Estado | Dónde |
 |---|------|--------|-------|
-| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). **Con `FITNESS_FOOD` en 20 se aprende** (4 de 5, +0,045), **pero cuesta la llave roja** (28,9 por generación contra 44,5) **y la puerta** (0 de 5): no va a la referencia. Comer compite con la llave en el fitness. Se retoma después de la cadena, con la referencia nueva (Fer, 2026-11-22). **No aprendido en NA** (2026-11-23, Sesión 8): la sensibilidad, 2 de 5 (+0,006); la medida de adentro de la generación cumple por poco (+0,068 contra +0,049 de NCB0). Sube hasta la 60 y se pierde mientras se aprende la cadena; al final la selección la castiga (−0,075 con el fitness). **El tope del fitness la esconde:** el 74% de los agentes tiene el fitness en 100 (desde que abren la puerta de madera, el 99-100%; en N, el 2%), y a ellos comer no les cambia nada. Fer decidió sacar el tope, con un switch apagado por defecto. **No aprendido con el fitness sin tope** (2026-11-23, Sesión 9, NT): la sensibilidad, 1 de 5 (−0,007); la medida de adentro de la generación cumple (+0,097 contra +0,049, en las 5 semillas). La selección ahora la ve, poco (+0,049 con el fitness), y dentro de la generación girar hacia la comida ya no cuesta cadena (+0,024 con la etapa en que terminan; NA, −0,085). **Pesa poco:** una manzana suma 10 y un paso de la cadena, de 37 a 78. No cae mientras se aprende la cadena (+0,021 en las 116-120), pero en las 146-150 la pierden dos semillas. Fer decidió probar `FITNESS_FOOD` en 20, contra NT. **No aprendido con la comida al doble contra NT** (2026-11-23, Sesión 10, NF): la sensibilidad, 1 de 5 (+0,004); la medida de adentro de la generación cumple (+0,133, en 4 de 5 semillas). Se aprende y se pierde: 4 semillas arriba de 0,02 en varias ventanas hasta la 140, y en cada semilla se pierde cuando aprende la puerta (la que no la abre la conserva). **Y cuesta la cadena:** la puerta de hierro y el cofre, 2 de 5; la cadena se aprende de 30 a 60 generaciones más tarde, y una semilla no abre la puerta de madera. NF no va a la referencia. **Lo próximo** (Fer, 2026-11-23): comida que rebrota, con un switch apagado por defecto, contra NT | [comer](../../qa/AnalisisQA.md#comer), [la comida al doble](../../qa/AnalisisQA.md#costo-chico-comida20), [comer en NA](../../qa/AnalisisQA.md#comer-na), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope), [la comida al doble, sin tope](../../qa/AnalisisQA.md#comida20-sin-tope) |
+| 1 | Comer | 🔄 No aprendido en la referencia (2026-11-22): la sensibilidad a la comida, 3 de 5 (+0,014). Giraban hacia la comida hasta la 60 (+0,047) y lo pierden: desde ahí la selección casi no lo ve, aunque los que giran comen más que los de su generación. La larga sí gira (+0,046). **Con `FITNESS_FOOD` en 20 se aprende** (4 de 5, +0,045), **pero cuesta la llave roja** (28,9 por generación contra 44,5) **y la puerta** (0 de 5): no va a la referencia. Comer compite con la llave en el fitness. Se retoma después de la cadena, con la referencia nueva (Fer, 2026-11-22). **No aprendido en NA** (2026-11-23, Sesión 8): la sensibilidad, 2 de 5 (+0,006); la medida de adentro de la generación cumple por poco (+0,068 contra +0,049 de NCB0). Sube hasta la 60 y se pierde mientras se aprende la cadena; al final la selección la castiga (−0,075 con el fitness). **El tope del fitness la esconde:** el 74% de los agentes tiene el fitness en 100 (desde que abren la puerta de madera, el 99-100%; en N, el 2%), y a ellos comer no les cambia nada. Fer decidió sacar el tope, con un switch apagado por defecto. **No aprendido con el fitness sin tope** (2026-11-23, Sesión 9, NT): la sensibilidad, 1 de 5 (−0,007); la medida de adentro de la generación cumple (+0,097 contra +0,049, en las 5 semillas). La selección ahora la ve, poco (+0,049 con el fitness), y dentro de la generación girar hacia la comida ya no cuesta cadena (+0,024 con la etapa en que terminan; NA, −0,085). **Pesa poco:** una manzana suma 10 y un paso de la cadena, de 37 a 78. No cae mientras se aprende la cadena (+0,021 en las 116-120), pero en las 146-150 la pierden dos semillas. Fer decidió probar `FITNESS_FOOD` en 20, contra NT. **No aprendido con la comida al doble contra NT** (2026-11-23, Sesión 10, NF): la sensibilidad, 1 de 5 (+0,004); la medida de adentro de la generación cumple (+0,133, en 4 de 5 semillas). Se aprende y se pierde: 4 semillas arriba de 0,02 en varias ventanas hasta la 140, y en cada semilla se pierde cuando aprende la puerta (la que no la abre la conserva). **Y cuesta la cadena:** la puerta de hierro y el cofre, 2 de 5; la cadena se aprende de 30 a 60 generaciones más tarde, y una semilla no abre la puerta de madera. NF no va a la referencia. **Lo próximo** (Fer, 2026-11-23): comida que rebrota, con un switch apagado por defecto, contra NT. **La comida que rebrota** (Sesión 11): implementada (`COMIDA_REBROTA`; cada manzana comida vuelve a los 250 ticks, al azar y a 35 px o más de los vivos), con su línea base propia (NRB0: sin evolución también comen más y viven más) y el criterio escrito antes de lanzar; la tanda (NR y NRB0) se lee en la Sesión 12 | [comer](../../qa/AnalisisQA.md#comer), [la comida al doble](../../qa/AnalisisQA.md#costo-chico-comida20), [comer en NA](../../qa/AnalisisQA.md#comer-na), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope), [la comida al doble, sin tope](../../qa/AnalisisQA.md#comida20-sin-tope), [la comida que rebrota](../../qa/AnalisisQA.md#rebrota) |
 | 2 | Llave roja | ✅ En la referencia (2026-11-20): 44,5 de 60 por generación, 5 de 5 semillas, 38 veces la línea base y 9,8 veces por 1.000 px. Con la referencia sin costo sigue pasando (2026-11-22, sin criterio): 42,5 contra 1,24 de su línea base, 5 de 5. Con la brújula por el camino (2026-11-22, Sesión 6, sin cambiar la referencia): 52,2 contra 1,24 de su línea base, 5 de 5. Con la recompensa por acercarse por el camino (Sesión 7, NA): 54,8 contra 1,24, 5 de 5. Con el fitness sin tope (Sesión 9, NT, la referencia desde el 2026-11-23): 55,0 contra 1,24, 5 de 5 | [sin la llave dada](../../qa/AnalisisQA.md#sin-la-llave-dada), [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
 | 3 | Puerta de madera | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 7,6 por generación contra 0,04, 5 de 5. **Lo aprendido es llegar con la llave y golpear siempre, no golpear en la puerta:** de los que tienen la llave llega el 29% (al azar, el 3%), y la red golpea casi el doble que al azar, pegada y lejos por igual (P lejos 0,61). Con ninguno de los costos medidos (0,05, 0,01 y 0) se condiciona el golpe. La medida independiente fijada no acompañó por un solo agente de la línea base (LEC-024): ✅ decidido por Fer. Con la brújula por el camino (Sesión 6): 33,0 por generación contra 0, 5 de 5, 4,3 veces N0; llega a la puerta el 74% de los que tienen la llave (N0, 34%). Con la recompensa por acercarse por el camino (Sesión 7, NA): 43,8 contra 0, 5 de 5; llega el 78%. Con el fitness sin tope (Sesión 9, NT, la referencia): 43,9 contra 0, 5 de 5; llega el 77% | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [golpear en la puerta](../../qa/AnalisisQA.md#sens-golpe), [el costo](../../qa/AnalisisQA.md#costo-golpe), [el costo en 0,01](../../qa/AnalisisQA.md#costo-chico-comida20), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
 | 4 | Llave dorada | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 4,0 por generación contra 0, 5 de 5. Viene con la puerta: la agarra el 53% de los que la abren, en toda la corrida. Con la brújula por el camino (Sesión 6): 27,0 contra 0, 5 de 5, 6,7 veces N0. Con la recompensa por acercarse por el camino (Sesión 7, NA): 41,0 contra 0, 5 de 5. Con el fitness sin tope (Sesión 9, NT, la referencia): 42,4 contra 0, 5 de 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
@@ -958,3 +1019,69 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
       `f_comida` (10 × √manzanas): con el fitness sin tope, comer pesa más solo por comer más;
     - la decisión 6 mide antes de abrir la puerta. Si comer después de la puerta pasa a importar, es la idea de mejoras
       futuras, y se decide antes de medir.
+
+### Sesión 11 — 2026-11-23 — Paso 1, comer: la comida que rebrota (el switch y el criterio)
+- **Hecho:**
+  - el commit de la Sesión 10, que faltaba (la bitácora lo daba por hecho): `745a101`, confirmado por Fer;
+  - los datos: los 15 CSV de NT y los 15 de NCB0 dan el SHA-256 publicado (30 de 30), y los 10 logs terminan con
+    `MEDICION inconsistencias=0 filas=9000`;
+  - las 8 cortas "antes", con el código de `745a101`, en `results/sesion11_antes/`, con 0 inconsistencias; los 18 CSV de c1
+    a c7 son iguales a los de `results/sesion9_final/`, y c5 y c6 dan `3db0df62…` y `2e484f8f…`. Sus 24 SHA-256, en
+    AnalisisQA;
+  - el diseño, en la sección "La comida que rebrota", con las preguntas de Fer hechas antes del código;
+  - el switch `COMIDA_REBROTA`, apagado por defecto, con `COMIDA_REBROTA_TICKS = 250` (`--comida-rebrota` en `main.py` y
+    `experimento.py`, `comida-rebrota` en `medir_puerta.py`, que cuenta las que vuelven en `rebrotes` de
+    `geometria_*.csv`). `World.rebrotar_comida`, que `main.py` llama después de `world.update()`; las reglas de
+    `_generate_food` pasan a `_lugar_para_manzana`, que usan las dos. Va en el nombre del archivo, el panel, el boletín y
+    el resumen, y lo dicen el README, `CLAUDE.md` y OPERACIONES;
+  - 11 tests en `tests/test_comida_rebrota.py`; la suite completa (231) pasa;
+  - apagado no cambia nada: las 8 cortas con el código final (`results/sesion11_final/`) dan los mismos 24 CSV byte a byte;
+  - prendido se ve: c9 y b9 con el switch (`results/sesion11_prendido/`) nacen en la gen 1 como sin él (los mismos agentes
+    y la misma geometría), vuelven 18 de las 21 manzanas comidas en la gen 1, y desde la gen 2 el mapa es otro;
+  - el criterio, escrito en AnalisisQA antes de lanzar ([la comida que rebrota](../../qa/AnalisisQA.md#rebrota));
+  - un script nuevo, `mediciones/analizar_rebrota.py`, probado antes de lanzar con NT y NCB0 en el lugar de NR y NRB0: da
+    lo publicado en [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope), con 0 errores;
+  - una lección, LEC-031 (el Edit pierde el espacio con que termina el texto nuevo), con su regla en OPERACIONES;
+  - la tanda (NR y NRB0, las 10 a la vez), lanzada después del commit de esta sesión.
+
+  Commit: el de esta sesión, confirmado por Fer.
+- **Estados:** el paso 1 sigue 🔄 hasta leer la tanda. Los pasos 2 a 6 siguen ✅ en NT, que sigue siendo la referencia. El
+  paso 7 sigue ⏳.
+- **Decidido por Fer (2026-11-23):**
+  - dónde vuelve una manzana: al azar, con las reglas del arranque y a 35 px o más de cada agente vivo (`RADIO_LIBRE`). Las
+    otras opciones eran al azar sin mirar a los agentes (~1 de cada 10 caería al lado de uno) y en el mismo lugar;
+  - cuándo: cada una, a los R ticks de comida (la otra, una cada R ticks hasta 70);
+  - R = 250, con el tiempo a la vista: la tanda, como mucho ~2,6 veces la de NT (500 y 1.000 cambiaban poco antes de la
+    puerta);
+  - el commit de la Sesión 10, aparte; y la tanda, en esta sesión.
+- **Desvíos del spec:**
+  - **sin corrida aparte para medir el tiempo:** la "Próxima sesión" la pedía antes de la tanda, para elegir R. Fer eligió R
+    con el tope por energía a la vista; lo miden las primeras generaciones de la tanda;
+  - **la columna `rebrotes`** en `geometria_*.csv` de `medir_puerta.py`: no estaba en la "Próxima sesión"; sin ella, la
+    comida comida de la disponible pasaría de 1 (anotada en el diseño);
+  - **el resumen del experimento** nombra `COMIDA_REBROTA_TICKS` y no el 250: `experimento.py` no lee `config.py`;
+  - el commit de la Sesión 10 no estaba hecho: se hizo al empezar, aparte.
+- **A medias o bloqueado:** la tanda corre. Si esta sesión se cierra antes de que termine, las corridas pueden cortarse.
+- **Para verificar en producción:** N/A.
+- **Próxima sesión:** leer la tanda de la comida que rebrota (NR contra NRB0), con el criterio de AnalisisQA #rebrota. No
+  toca la simulación.
+  - **Primer paso: que la tanda esté entera.** `git status -sb`. En `results/medicion_rebrota_20261123/`, contar las 10
+    líneas `MEDICION inconsistencias=0 filas=9000` (`log_s1_evolucion.txt` a `log_s5_evolucion.txt` y
+    `log_s1_sin_evolucion.txt` a `log_s5_sin_evolucion.txt`; LEC-017); `inicio.txt` y `fin.txt` tienen la hora de largada
+    y la de fin. **Si falta alguna** (la sesión que la lanzó se cerró, o se cayó), se relanzan las que falten desde el
+    commit de esta sesión, con los comandos de AnalisisQA #rebrota y la salida a `log_s{S}_{evolucion|sin_evolucion}.txt`
+    en la misma carpeta, después de borrar sus archivos a medias; y se anota el corte.
+  - **Antes de leer:** `python mediciones/analizar_rebrota.py results/medicion_rebrota_20261123
+    results/medicion_sin_tope_20261123 results/medicion_brujula_camino_20261122 conteo`. Se anotan en AnalisisQA las filas
+    medidas de la ventana y su mediana de ticks (NR y NRB0), y los controles tienen que dar 0 errores.
+  - **Después,** el script completo; en AnalisisQA, "Cómo se corrió" (las horas de `inicio.txt` y `fin.txt`, y el tiempo de
+    cada corrida, que el script imprime, contra la estimación de ~4 h a ~5 h 30), los resultados con el criterio, la
+    lectura, "Qué sugiere" y los SHA-256 de los 30 CSV de la tanda; el estado del paso 1 en este spec; la línea del BACKLOG;
+    y lo que decide Fer (decisión 9: si NR va a la referencia, y si la candidata a la corrida final).
+  - **Trampas:**
+    - **la línea base es NRB0, no NCB0:** las guardas y comer se miden contra NRB0. NCB0 y NT van sin criterio;
+    - **la comida comida de la disponible cuenta las que volvieron** (`rebrotes`): la de `analizar_comida.comidas` no las
+      cuenta, y con NR pasaría de 1;
+    - **las generaciones pueden llegar al tope de ticks** (7.440 en la 146) con vivos al final: el script imprime ticks,
+      edad y vivos por ventana. Más ticks también es más tiempo para la cadena, en NR y en NRB0;
+    - con la tanda de 10 a la vez, la máquina queda ocupada unas 5 h: nada más en paralelo (no más de 10, LEC-017).

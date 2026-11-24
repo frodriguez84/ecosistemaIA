@@ -131,36 +131,27 @@ class World:
             food_x = random.randint(20, self.screen_width - 20)
             food_y = random.randint(20, self.screen_height - 20)
             
-            # Verificar que no esté dentro de fortalezas
-            if self._is_inside_fortress(food_x, food_y):
-                attempts += 1
-                continue
-            
-            # Verificar que no esté sobre obstáculos
-            valid_position = True
-            for obstacle in self.obstacles:
-                if obstacle.collides_with(food_x, food_y, 20):  # Radio más grande
-                    valid_position = False
-                    break
-            
-            # Verificar que no esté en el estanque
-            if valid_position:
-                for pond_obj in self.pond_obstacles:
-                    if pond_obj.collides_with(food_x, food_y, 20, 20):
-                        valid_position = False
-                        break
-            
-            # Verificar que no se superponga con otra comida
-            if valid_position:
-                if not self._check_collision_with_objects(food_x, food_y, 25, self.food_items):
-                    food = {
-                        'x': food_x,
-                        'y': food_y,
-                        'eaten': False
-                    }
-                    self.food_items.append(food)
+            if self._lugar_para_manzana(food_x, food_y, self.food_items):
+                food = {
+                    'x': food_x,
+                    'y': food_y,
+                    'eaten': False
+                }
+                self.food_items.append(food)
             
             attempts += 1
+    
+    def _lugar_para_manzana(self, x, y, manzanas):
+        """Si una manzana puede ir en (x, y), con las reglas de _generate_food: fuera de las fortalezas, sin
+        chocar los obstáculos con radio 20, fuera del estanque y a 40 px o más de `manzanas` (radio 25 más
+        15), lejos del perímetro y del estanque. La usa también rebrotar_comida. No usa el azar."""
+        if self._is_inside_fortress(x, y):
+            return False
+        if any(obstacle.collides_with(x, y, 20) for obstacle in self.obstacles):  # Radio más grande
+            return False
+        if any(pond_obj.collides_with(x, y, 20, 20) for pond_obj in self.pond_obstacles):
+            return False
+        return not self._check_collision_with_objects(x, y, 25, manzanas)
     
     def _generate_obstacles_with_manual(self, manual_obstacles):
         """Genera obstáculos automáticos respetando los obstáculos manuales."""
@@ -380,7 +371,33 @@ class World:
     def update(self):
         """Actualiza el mundo."""
         self.tick += 1
-        # NO regenerar comida - solo la inicial por generación
+        # NO regenerar comida - solo la inicial por generación (con COMIDA_REBROTA, rebrotar_comida)
+    
+    def rebrotar_comida(self, vivos, distancia):
+        """La comida que rebrota (COMIDA_REBROTA; spec PUZZLE_SOLOS, "La comida que rebrota"). main.py la
+        llama después de update(), con los agentes vivos. Una manzana comida desde la llamada anterior
+        recibe su vuelta, el tick del mundo más COMIDA_REBROTA_TICKS; la que ya la cumplió vuelve, la misma
+        manzana, en un lugar al azar con las reglas de _generate_food y a `distancia` o más de cada vivo.
+        Si en 20 intentos no hay lugar, prueba en el tick siguiente. Consume azar solo cuando vuelve una."""
+        from config import SimulationConfig
+        for food in self.food_items:
+            if not food['eaten']:
+                continue
+            if 'vuelve' not in food:
+                food['vuelve'] = self.tick + SimulationConfig.COMIDA_REBROTA_TICKS
+                continue
+            if self.tick < food['vuelve']:
+                continue
+            # Las comidas no están en el mapa: no cuentan para los 40 px
+            sin_comer = [f for f in self.food_items if not f['eaten']]
+            for _ in range(20):
+                x = random.randint(20, self.screen_width - 20)
+                y = random.randint(20, self.screen_height - 20)
+                if (self._lugar_para_manzana(x, y, sin_comer)
+                        and all(((x - a.x)**2 + (y - a.y)**2)**0.5 >= distancia for a in vivos)):
+                    food['x'], food['y'], food['eaten'] = x, y, False
+                    del food['vuelve']
+                    break
     
     def reset_food(self, generacion):
         """Prepara el mundo de la generación `generacion`: regenera obstáculos y comida, preservando

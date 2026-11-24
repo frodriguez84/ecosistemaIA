@@ -5,6 +5,18 @@ La regla, además, va donde se aplica (CLAUDE.md, el spec o el código).
 
 ---
 
+## LEC-031 — 2026-11-23 — El Edit pierde el espacio con que termina el texto nuevo
+
+**Qué pasó.** En la Sesión 11 (la comida que rebrota), para sumar una línea a `medir_puerta.py` el texto viejo y el nuevo
+del Edit terminaban en mitad de la línea siguiente, justo después de un espacio (`curriculo30 = `). El texto nuevo perdió
+ese espacio y quedó `curriculo30 ="curriculo30" in ...`: Python lo lee igual, así que corrió sin error y las corridas de
+control salieron bien, pero el diff mostraba una línea cambiada que nadie quiso tocar. Se vio al revisar `git diff` antes
+del commit (la práctica de LEC-002) y se devolvió.
+
+**Regla.** El texto de un Edit no termina en un espacio: se corta al final de una línea o en un carácter que no sea
+espacio. Y después de editar, `git diff` se lee buscando también líneas que cambian solo en espacios adentro de la línea.
+Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Editar archivos.
+
 ## LEC-030 — 2026-11-23 — La lista de lo que lee una escala dejó afuera a quien lee su desvío
 
 **Qué pasó.** El prompt de la Sesión 9 (el fitness sin tope) listaba lo que lee el fitness como si fuera de 0 a 100: el

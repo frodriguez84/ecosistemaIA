@@ -24,7 +24,7 @@ Envuelve, sin consumir azar:
   fitness; con reloj=R, el control de igual costo (docs/qa/AnalisisQA.md#varias-evaluaciones).
 
 Uso, desde la raíz del repo:
-    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [acercarse-camino] [fitness-sin-tope] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
+    python mediciones/medir_puerta.py . SALIDA SEMILLA {evolucion|sin_evolucion} GENERACIONES [acercarse] [deslizar] [fortalezas-moviles] [laboratorio] [curriculo30] [curriculo=N] [sens-etapa0] [sens-golpe] [hierro] [brujula-camino] [acercarse-camino] [fitness-sin-tope] [comida-rebrota] [cruce=X] [pesos=NOMBRE:VALOR,...] [congelar=G] [evaluaciones=K] [reloj=R]
 acercarse, deslizar y fortalezas-moviles le pasan --acercarse, --deslizar y --fortalezas-moviles a
 main.py (con las fortalezas móviles, la geometría y el seguidor miran la puerta de cada generación, y
 geometria_*.csv dice dónde está, puerta_x y puerta_y). laboratorio es el laboratorio de la
@@ -68,6 +68,10 @@ fitness-sin-tope le pasa --fitness-sin-tope a main.py (la selección ordena por 
 agentes_*.csv y a geometria_*.csv, y a agentes_*.csv la columna fitness_con_tope (el de 0 a 100, el que leen la mutación
 adaptativa y la guía). El control de los términos compara su suma con piso en 0 con el fitness, y la cuenta con los
 topes con fitness_con_tope. No va con evaluaciones=K. Sin el argumento, los tres CSV son los de antes.
+comida-rebrota le pasa --comida-rebrota a main.py (cada manzana comida vuelve a los COMIDA_REBROTA_TICKS ticks, en otro
+lugar al azar, spec PUZZLE_SOLOS), suma rebrota_ al nombre después de sin_tope_ y la columna comida_rebrota a
+agentes_*.csv y a geometria_*.csv, y a geometria_*.csv la columna rebrotes (las manzanas que volvieron en la generación;
+envuelve World.rebrotar_comida, sin consumir azar). Sin el argumento, los tres CSV son los de antes.
 cruce=X fija CROSSOVER_RATE en X (el resto de los
 hijos sale por copia de un padre; la mutación, igual). pesos= fija parámetros numéricos de config.py
 antes de main.main(), por ejemplo pesos=FITNESS_ACERCARSE:40,FITNESS_ANTI_CIRCLE:9 (el rebalance del
@@ -123,6 +127,7 @@ acercarse_camino = "acercarse-camino" in sys.argv[6:]
 if acercarse_camino and not acercarse:
     sys.exit("acercarse-camino va con acercarse: sin la recompensa por acercarse no hace nada")
 sin_tope = "fitness-sin-tope" in sys.argv[6:]
+rebrota = "comida-rebrota" in sys.argv[6:]
 curriculo30 = "curriculo30" in sys.argv[6:]
 curriculo = next((int(a[len("curriculo="):]) for a in sys.argv[6:] if a.startswith("curriculo=")), None)
 if curriculo is not None and (curriculo30 or curriculo < 1):
@@ -153,6 +158,7 @@ from config import SimulationConfig  # noqa: E402
 from src.agents.advanced_agent import AdvancedAgent, SimpleNeuralNetwork  # noqa: E402
 from src.evolution.genetic_algorithm import GeneticAlgorithm  # noqa: E402
 from src.world import camino  # noqa: E402
+from src.world.world import World  # noqa: E402
 
 RADIO_GOLPE = 25  # el de world.process_door_hit
 H_PASOS = 1000    # con hierro: los pasos del seguidor desde la llave dorada (3 px por paso; el mapa es de 1200 px)
@@ -180,6 +186,7 @@ PROMEDIO = {}     # cerebro -> su fitness promedio, después del episodio K (lo 
 DENTRO_AG = [False]  # adentro del evolve real
 LLAMADAS_DENTRO = [0]  # cruces, copias y mutaciones adentro del evolve real
 EVOLVE_EN = []    # los episodios después de los que corrió el evolve real
+REBROTES = [0]    # con comida-rebrota: las manzanas que volvieron en la generación en curso
 
 
 def hash_pesos(cerebro):
@@ -678,8 +685,21 @@ def fila_csv(semilla_, evolucion, generacion, ticks, agents, world, learning_mon
         GEOM[-1].update(h_puerta_x=hx, h_puerta_y=hy, h_dmin_libre=round(hd, 3), h_area_libre_25=round(harea, 1),
                         h_seguidor_dmin=round(sd, 1), h_seguidor_t25='' if st < 0 else st,
                         h_desliza_dmin=round(dd, 1), h_desliza_t25='' if dt < 0 else dt)
+    if rebrota:  # main.py llama a rebrotar_comida antes de cerrar la generación: están todas
+        GEOM[-1]['rebrotes'] = REBROTES[0]
+        REBROTES[0] = 0
     MED.clear()
     return fila
+
+
+_rebrotar = World.rebrotar_comida
+
+
+def rebrotar_comida(self, vivos, distancia):
+    """Cuenta las manzanas que vuelven: rebrotar_comida solo pasa manzanas de comidas a sin comer."""
+    comidas = sum(1 for f in self.food_items if f['eaten'])
+    _rebrotar(self, vivos, distancia)
+    REBROTES[0] += comidas - sum(1 for f in self.food_items if f['eaten'])
 
 
 _evolve = GeneticAlgorithm.evolve
@@ -808,6 +828,8 @@ main._fila_csv = fila_csv
 GeneticAlgorithm.evolve = evolve
 SimpleNeuralNetwork.crossover = crossover
 SimpleNeuralNetwork.copy_from = copy_from
+if rebrota:
+    World.rebrotar_comida = rebrotar_comida
 if congelar is not None:
     _ticks = main._ticks_de_generacion
     _etapa = main._fijar_etapa_inicial
@@ -875,7 +897,7 @@ etiqueta_pesos = "pesos-" + "-".join(f"{k.replace('FITNESS_', '')}{v:g}" for k, 
 nombre = (f"s{semilla}_{'acercarse_' if acercarse else ''}{'camino_' if acercarse_camino else ''}"
           f"{'deslizar_' if deslizar else ''}"
           f"{'moviles_' if moviles else ''}{'brujula_camino_' if brujula else ''}{'sin_tope_' if sin_tope else ''}"
-          f"{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
+          f"{'rebrota_' if rebrota else ''}{'laboratorio_' if laboratorio else ''}{'curriculo30_' if curriculo30 else ''}"
           f"{f'curriculo{curriculo}_' if curriculo is not None else ''}"
           f"{f'cruce{cruce}_' if cruce is not None else ''}{etiqueta_pesos}"
           f"{f'congelar{congelar}_' if congelar is not None else ''}"
@@ -895,6 +917,8 @@ if acercarse_camino:
     argv.append("--acercarse-camino")
 if sin_tope:
     argv.append("--fitness-sin-tope")
+if rebrota:
+    argv.append("--comida-rebrota")
 if tipo == "sin_evolucion":
     argv.append("--sin-evolucion")
 main.main(argv)
@@ -919,6 +943,8 @@ for f in FILAS:
         f["acercarse_camino"] = 1
     if sin_tope:  # igual
         f["fitness_sin_tope"] = 1
+    if rebrota:  # igual
+        f["comida_rebrota"] = 1
 for g in GEOM:
     g["deslizar"] = int(deslizar)
     g["fortalezas_moviles"] = int(moviles)
@@ -929,6 +955,8 @@ for g in GEOM:
         g["acercarse_camino"] = 1
     if sin_tope:
         g["fitness_sin_tope"] = 1
+    if rebrota:
+        g["comida_rebrota"] = 1
 with open(os.path.join(salida, f"agentes_{nombre}.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(FILAS[0].keys()))
     w.writeheader()
