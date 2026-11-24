@@ -177,6 +177,20 @@ Con la [brújula por el camino](../qa/AnalisisQA.md#brujula-camino), al probar s
   que dar lo mismo que el de arrays bit a bit (`math.atan2` y `np.arctan2` pueden diferir en el último bit), con un test
   que lo compare.
 
+## Aparecido con la comida al doble, sin tope — 2026-11-23
+
+Con la [medición](../qa/AnalisisQA.md#comida20-sin-tope): girar hacia la comida se aprende y, en cada semilla, se pierde
+cuando aprende la puerta. Fer eligió probar comida que rebrota; esto quedó afuera.
+
+- [ ] **Medir comer también después de abrir la puerta:** la sensibilidad a la comida de `medir_puerta.py` (la de la
+  decisión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)) se mide solo en las etapas 0 y 1,
+  donde la brújula apunta a la llave roja y a la puerta. Cuando se fijó, casi nadie abría la puerta y cubría la vida
+  entera; con la cadena aprendida, cubre lo que tardan en abrirla (en NT, una mediana de 634 ticks de ~1.040). Un argumento
+  nuevo que la mida en las etapas 2 a 5, sin cambiar la corrida, diría si comen después de la puerta. Si la decisión 6
+  pasara a medir ahí, se decide antes de ver la medición.
+- [ ] **Las manzanas bajo los árboles** (la otra mitad de la ecología del ítem 7 del [BACKLOG](BACKLOG.md)): con la comida
+  que rebrota, es un segundo cambio (la decisión 4 del spec: un cambio por vez), para después de medirla.
+
 ## El hacha y los árboles, después del cofre — 2026-11-21
 
 Decidido con Fer al armar el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): talar va después del
