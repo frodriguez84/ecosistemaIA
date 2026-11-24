@@ -6630,3 +6630,251 @@ si la población sostiene a los que comen bien, ~2 veces. Y 10 a la vez van más
 con 5 a la vez, ~1 h 45), hasta que terminan las de NRB0, que sin evolución comen poco y tardan poco más que NCB0: NR, de
 ~4 h a ~5 h 30. No hubo una corrida aparte para medirlo (ver la bitácora del spec): lo dicen las primeras generaciones de
 la tanda.
+
+**Cómo se corrió.** Las 10 a la vez con `python -u`, desde `a011ead`, del 2026-11-23 a las 22:28:19 al 2026-11-24 a la
+1:16:55 (2 h 49 min). La sesión que la lanzó se cerró a los pocos minutos y la tanda siguió: los procesos no dependen de
+ella. Cada corrida, en horas: NR 2,37 · 2,30 · 2,34 · 2,42 · 2,81, y NRB0 1,63 · 1,62 · 1,64 · 1,61 · 1,63 (NT, 5 a la
+vez, de 1,78 a 1,86; NCB0, 1,59). **Tardó la mitad de lo estimado** (NR, de ~4 h a ~5 h 30): en las 146-150, las
+generaciones de NR duran 1,7 veces las de NT en ticks (2.350 contra 1.360), pero la edad sube un 12% (1.170 contra 1.042).
+Las alargan unos pocos que viven mucho, y el tiempo va con los agentes × tick. **Cómo se calculó.** `python
+mediciones/analizar_rebrota.py results/medicion_rebrota_20261123 results/medicion_sin_tope_20261123
+results/medicion_brujula_camino_20261122`, primero con `conteo` y después completo. **Después de leer** se sumó una cuenta
+sin criterio, sin el script: por semilla y por ventana, los ticks, la edad, las manzanas por agente, la llave roja y la
+puerta de madera, de los `corrida_*.csv` de NR y NT (abajo).
+
+**El conteo, antes de leer** (gens 146-150): en NR, 1.500 de 1.500 filas con ticks medidos, con una mediana de 644 ticks
+(251 en la etapa 0 y 281 en la 1), y abre la puerta de madera el 67%; por semilla, la mediana es 506 · 468 · 533 · 800 ·
+1.353. En NRB0, 1.500 de 1.500 y 1.001, toda en la etapa 0 (no la abre ninguno). NT: 1.500, 634 (244 · 330), 73%; NCB0:
+1.500, 1.001.
+
+**Controles, hechos** (0 errores en el script):
+- **Las 10 líneas `MEDICION inconsistencias=0 filas=9000`,** contadas.
+- Los logs dicen el currículo y `PESOS {..., 'HIT_ENERGY_COST': 0.0}`, y el cruce solo los de NR; `pesos` termina en
+  `HIT_ENERGY_COST:0`; `brujula_camino`, `acercarse_camino` y `fitness_sin_tope` son 1 en todas las filas de NR, y
+  `brujula_camino` en las de NRB0, en `agentes_*.csv` y `geometria_*.csv`.
+- **El costo fue 0:** `ENERGIA_GOLPE` da 0 por tick, golpeando y sin golpear.
+- **El switch se ve:** `comida_rebrota` es 1 en todas las filas. En la gen 1 vuelven 19 · 21 · 10 · 10 · 18 manzanas (las
+  mismas en NR y en NRB0), y en toda la corrida, NR 15.342 · 10.048 · 12.738 · 16.046 · 50.891 y NRB0 3.727 · 3.461 · 3.622
+  · 3.457 · 3.647. No hay generación sin rebrotes, y en ninguna vuelven más manzanas que las comidas.
+- **La gen 1 nace como la de NT** (NR) **y la de NCB0** (NRB0), 5 de 5: los mismos agentes y la misma geometría al final de
+  la gen 1 (no se taló en ninguna). Se separan en la corrida desde la gen 1 (lo que vuelve dentro de la gen 1 cambia lo que
+  comen) y en el mapa desde la 2.
+- `etapa_inicial` es 1 en las gens 1-30 y 0 en las 31-150; los `agentes_*` son la suma de `abrio` y los agentes con su
+  `etapa`; las manzanas son enteras y suman `manzanas_prom` × 60; desde la 31, todas las filas tienen ticks en la etapa 0,
+  y ninguna fila de la ventana queda sin medir: 0 diferencias.
+- NT y NCB0 dan su SHA-256 publicado.
+
+<details><summary>SHA-256 de la tanda (se regenera con los comandos de arriba desde a011ead)</summary>
+
+| Corrida y semilla | `corrida_*.csv` | `agentes_*.csv` | `geometria_*.csv` |
+|---|---|---|---|
+| NR 1 | `bd93083d89aafafae2f2ff690d1e896d35ee522b8b3f3a7ee64b858ea04e8172` | `652234b38025d4072ba79af53aaba7bf7fc2e0be90df7da4c92cd46e8ad6b6c6` | `d677cc83c5aa96ca9b88d921107fcf2fa766d6b1d74e0d542cd8e7e8b9b0eaee` |
+| NR 2 | `04a03943971f7f7174d6b2c83067ee548a51211eaa3a069b5505c87c990aa7f7` | `c321e35c3633b12af6d55e9e0f578f60d22d1c5ef9b615a53f58ebf7f024b546` | `c89a3572655cd54d389422ff1a84d38c682317589602b913808d5ce405f17e47` |
+| NR 3 | `4386f6cb407ef419c703add708a1dce6af937ae9efaac048869cb1193147f38c` | `a6c141d978c79c65e8c145ecb556aac8f5c319dc6bc16f50cb3251cfe51c5d52` | `83275d8e920c20c2cabc27f4781b2416c314f7a38dada7915a12b86424cb99de` |
+| NR 4 | `5f1b9f4716921978c33136ed9494f6c37be87e5522ab7c3f0dfa93b84e5bca92` | `002cacf67fb26968ef8794efb03c20bcf196d121bd988cf4743024c77df75ebf` | `66722aed968a6fcbc9ec2fe362a88e018a05c399878bb851bc37ad03e6eeaefd` |
+| NR 5 | `f64abfd200c092eab5e635d09f7dfdb6c3d04d3c40d3bf8720776b3f57f820c6` | `7f8d47cf212321df499a296744d4bfbc8e542b2042be7d96585d1afb1d1ce959` | `f576a3a8f20bc12c27ba9078b00f2ea586c137566f6065cee9c95eaf62a3ef49` |
+| NRB0 1 | `f187f29664adb14ee473f4b14f70a46270bdc4b571262b5903c721feef4477f9` | `a85e3422c2bac158c275cff8fc8ba822096363f464c26c69addda3a3ee50a935` | `e96dc120140fbb8ccb95421473cc108869731d0933a4ccf38db48fab2cbc42de` |
+| NRB0 2 | `b4e15e2801782c6276c216ebf00ac85c3f949e4e48a6e3dafbd9b09aa04e493b` | `412c07236a2059c73a0562bc4ad977e1dfdfc7a9bcde72b3461a20c854234f70` | `c2d79895b22dbc72ed5c1f2bfd2fbddc8bd724c6c6383bb0f886bf738a63c267` |
+| NRB0 3 | `2f834ee38c2e1824d036626fdbe6990535e014c96d05f28fb692c74d5fd4d378` | `099c945f4022d8f8fbe108ef929858941aad5970576de492ea21aaae5e11903d` | `75fba6c7afd2bce381fbdef73a18aa84709a7fb8d490e3d82c2f673cc47e6157` |
+| NRB0 4 | `05fa644d7f2a252b152b20912357a9a3687e01ff3e2c9a240acb9dfbd0032c3b` | `0c37af58b6cafe6188e39d8127379bc6382a1dce76d20562c2b774be676eaf8c` | `d7206c744170916a626afc57ef3a8b236e27001cbe71cf5215bdd5ef90ae44a2` |
+| NRB0 5 | `4750d9eda7744e0be9d66033346bc04ef8065d54b537f9ba4d7cc77918e5f713` | `888a553f5e0553ba5a58fe1bc89afa19e75f220d551af98f3d4b632d79e550d2` | `21cc6ae7017c3680ebc3c0568436d676e3087a1636192289ba132788f2262f15` |
+
+Los de NT, en [el fitness sin tope](#sin-tope); los de NCB0, en [la brújula por el camino](#brujula-camino).
+
+</details>
+
+**El criterio, 1: comer** (gens 146-150; la sensibilidad a la comida en rad/tick; en negrita, donde NR cumple):
+
+| Semilla | NR | NRB0 | NT (sin criterio) |
+|---|---|---|---|
+| 1 | −0,0229 | +0,0022 | −0,0288 |
+| 2 | +0,0090 | +0,0017 | −0,0073 |
+| 3 | **+0,0416** | +0,0024 | +0,0311 |
+| 4 | **+0,0273** | −0,0015 | −0,0179 |
+| 5 | **+0,0589** | −0,0005 | −0,0131 |
+| **Promedio** | +0,0228 | +0,0009 | −0,0072 |
+
+- **a. Giran hacia la comida: 3 de 5** (la 3, la 4 y la 5; pide 4). **No cumple.** NT, con la misma cuenta contra NCB0, 1 de
+  5, y NF, 1 de 5. NR más que NT en 5 de 5.
+- **b. Los que giran comen más que los de su generación:** el Spearman con las manzanas, mediana de las 121-150, da +0,134
+  (150 generaciones) contra +0,031 de NRB0. **Cumple,** y por semilla en 5 de 5 (+0,072 · +0,078 · +0,154 · +0,137 · +0,308,
+  contra +0,051 · +0,014 · +0,031 · +0,077 · +0,012). NT, +0,097; NCB0, +0,049.
+
+**Comer no está aprendido con la comida que rebrota: cumple la b y no la a,** como NA, NT y NF. La a queda más cerca que
+en ellas (3 de 5; NA, 2 de 5; NT y NF, 1 de 5).
+
+**El criterio, 2: las guardas** (gens 146-150; agentes por generación que dan el paso, NR · NRB0; en negrita, donde NR
+cumple):
+
+| Semilla | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| 1 | **58,6** · 1,0 | **54,8** · 0 | **54,0** · 0 | **35,2** · 0 | **30,8** · 0 |
+| 2 | **57,6** · 0,8 | **55,0** · 0 | **54,0** · 0 | **35,8** · 0 | **31,0** · 0 |
+| 3 | **56,4** · 0,8 | **51,4** · 0 | **50,6** · 0 | **21,2** · 0 | **16,8** · 0 |
+| 4 | **57,4** · 1,8 | **38,6** · 0 | **29,0** · 0 | **1,6** · 0 | 0,8 · 0 |
+| 5 | **14,6** · 0,8 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
+| **Promedio** | 48,92 · 1,04 | 39,96 · 0 | 37,52 · 0 | 18,76 · 0 | 15,88 · 0 |
+| NT, la referencia (sin criterio) | 55,00 | 43,88 | 42,44 | 13,08 | 9,64 |
+| NR más que NT, por semilla (sin criterio) | 3 de 5 | 3 de 5 | 3 de 5 | 3 de 5 | 3 de 5 |
+| **El criterio** (pide 4 de 5) | **5 de 5: pasa** | **4 de 5: pasa** | **4 de 5: pasa** | **4 de 5: pasa** | **3 de 5: no pasa** |
+
+**Las guardas no pasan: el cofre cae,** 3 de 5 (la 4, 0,8 por generación; la 5, 0). La puerta de madera, la llave dorada
+y la puerta de hierro pasan en el mínimo, con la 5 en 0 y la 4 apenas (la puerta de hierro, 1,6). **Con el criterio, la
+comida que rebrota le cuesta la cadena.** No en todas las semillas: en la 1, la 2 y la 3 la cadena termina mejor que en
+NT (la puerta de hierro, 35,2 · 35,8 · 21,2 contra 19,4 · 25,0 · 4,4; el cofre, 30,8 · 31,0 · 16,8 contra 13,4 · 22,6 ·
+3,8), y en promedio la puerta de hierro y el cofre quedan arriba de NT. Lo que cae son dos semillas: la 4 aprende la
+puerta de madera recién en las 146-150, y la 5 no la aprende.
+
+**Las medidas independientes** (las de [el fitness sin tope](#sin-tope)):
+
+| Paso | Medida | NR | Contra | Acompaña |
+|---|---|---|---|---|
+| 2, llave roja | por 1.000 px, gens 146-150 | 22,4 (las 5 arriba) | NRB0, 2,8 | sí |
+| 3, puerta de madera | de los que tienen la llave roja, llegan a 25 px, gens 31-150 | 82% (21.408 de 26.229) | NRB0, 7% (53 de 773) | sí; NT, 77% |
+| 4, llave dorada | por 1.000 px | 17,6 | NRB0, 0 | no agrega: NRB0 da 0 |
+| 5, puerta de hierro | de los que tienen la llave dorada, llegan a 25 px, gens 31-150 | 63% (9.781 de 15.648) | NT, 51% (8.450 de 16.728) | sí en total; por semilla, arriba de NT en 3 de 5 |
+| 6, cofre | por 1.000 px | 7,6 | NRB0, 0 | no agrega: NRB0 da 0 |
+
+La llegada a la puerta de hierro por semilla: NR 70% · 75% · 44% · 18% · 0%, NT 53% · 66% · 17% · 49% · 25%.
+
+**Dentro de cada generación** (Spearman con la sensibilidad a la comida, mediana de las generaciones del tramo de las 5
+semillas y, entre paréntesis, la parte con r > 0):
+
+| Gens | 1-30 | 31-60 | 61-90 | 91-120 | 121-150 |
+|---|---|---|---|---|---|
+| NR, con las manzanas | +0,197 (89%) | +0,169 (85%) | +0,149 (81%) | +0,177 (82%) | **+0,134** (79%) |
+| NR, con el fitness | +0,109 (72%) | +0,004 (51%) | +0,021 (55%) | +0,118 (69%) | +0,123 (65%) |
+| NR, con la etapa en que terminan | −0,090 (33%) | −0,090 (40%) | −0,033 (45%) | +0,080 (62%) | +0,040 (53%) |
+| NRB0, con las manzanas | +0,036 (64%) | +0,051 (61%) | +0,018 (57%) | +0,041 (63%) | +0,031 (63%) |
+| NRB0, con el fitness | +0,012 (55%) | +0,020 (53%) | +0,003 (51%) | +0,006 (51%) | +0,001 (51%) |
+| NT, con las manzanas | +0,088 (74%) | +0,099 (75%) | +0,104 (75%) | +0,122 (81%) | +0,097 (76%) |
+| NT, con el fitness | +0,098 (72%) | +0,137 (75%) | +0,039 (57%) | +0,021 (55%) | +0,049 (61%) |
+| NT, con la etapa en que terminan | +0,030 (59%) | +0,106 (67%) | +0,019 (54%) | −0,015 (46%) | +0,024 (54%) |
+
+- **La selección ve la comida más que en NT en las 91-150:** +0,118 y +0,123 con el fitness (NT, +0,021 y +0,049; NF, en
+  las 121-150, +0,016). En las 31-90, casi no (+0,004 y +0,021).
+- Dentro de la generación, girar hacia la comida va con terminar más abajo en la cadena hasta la 90 (−0,090 · −0,090 ·
+  −0,033) y algo más arriba desde la 91 (+0,080 · +0,040).
+
+**Por ventana** (promedio de las 5 semillas: la sensibilidad a la comida · las manzanas por 1.000 px · la comida comida de
+la disponible, contando las que volvieron):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| NR | +0,026 · 1,24 · 63% | +0,028 · 1,20 · 64% | +0,011 · 0,90 · 58% | +0,019 · 1,05 · 60% | +0,025 · 0,97 · 58% | +0,023 · 0,95 · 55% |
+| NT | +0,016 · 0,75 · 90% | +0,020 · 0,70 · 92% | +0,019 · 0,55 · 88% | +0,017 · 0,50 · 78% | +0,021 · 0,48 · 75% | −0,007 · 0,47 · 73% |
+| NRB0 | +0,001 · 1,02 · 24% | +0,001 · 1,22 · 27% | +0,002 · 1,24 · 26% | +0,000 · 1,00 · 24% | +0,000 · 0,98 · 22% | +0,001 · 1,16 · 26% |
+
+**Por semilla: la sensibilidad a la comida · la puerta de madera por generación · las manzanas por agente** (las
+manzanas, sumadas después de leer, sin criterio):
+
+| Semilla | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| NR 1 | +0,061 · 15,4 · 4,51 | +0,054 · 8,4 · 4,12 | −0,008 · 43,4 · 1,66 | −0,001 · 49,8 · 1,04 | −0,016 · 54,2 · 0,99 | −0,023 · 54,8 · 0,84 |
+| NR 2 | +0,001 · 47,2 · 1,26 | +0,006 · 29,4 · 1,46 | −0,010 · 44,2 · 1,06 | −0,025 · 52,4 · 1,17 | −0,002 · 50,8 · 1,10 | +0,009 · 55,0 · 0,97 |
+| NR 3 | −0,010 · 36,4 · 0,89 | +0,004 · 15,6 · 1,13 | −0,005 · 30,8 · 1,32 | +0,017 · 43,6 · 1,47 | +0,035 · 46,8 · 1,71 | +0,042 · 51,4 · 1,50 |
+| NR 4 | +0,029 · 0 · 1,95 | +0,029 · 0 · 2,05 | +0,022 · 0 · 1,51 | +0,044 · 0 · 2,18 | +0,051 · 1,8 · 1,70 | +0,027 · 38,6 · 1,23 |
+| NR 5 | +0,051 · 1,8 · 3,64 | +0,049 · 0,4 · 3,78 | +0,055 · 0 · 4,84 | +0,058 · 0 · 7,67 | +0,057 · 0,2 · 6,16 | +0,059 · 0 · 8,77 |
+| NT 1 | +0,001 · 2,8 · 1,09 | +0,011 · 2,2 · 1,18 | +0,002 · 42,4 · 0,94 | +0,015 · 51,8 · 0,76 | +0,028 · 47,0 · 0,88 | −0,029 · 49,6 · 0,96 |
+| NT 2 | +0,012 · 41,2 · 1,15 | +0,009 · 28,4 · 1,19 | −0,015 · 39,4 · 0,91 | −0,008 · 39,0 · 0,99 | +0,033 · 46,6 · 0,85 | −0,007 · 46,8 · 0,97 |
+| NT 3 | +0,037 · 2,6 · 1,30 | +0,043 · 0,2 · 1,23 | +0,058 · 0 · 1,30 | +0,070 · 8,8 · 1,29 | +0,064 · 12,4 · 1,40 | +0,031 · 30,4 · 1,18 |
+| NT 4 | +0,028 · 10,0 · 1,18 | +0,025 · 5,8 · 1,42 | +0,028 · 35,6 · 1,29 | +0,020 · 36,0 · 1,18 | −0,004 · 40,8 · 1,06 | −0,018 · 48,2 · 0,94 |
+| NT 5 | +0,002 · 0,4 · 1,24 | +0,009 · 0,4 · 1,10 | +0,020 · 0,6 · 1,15 | −0,014 · 22,6 · 0,97 | −0,016 · 41,0 · 0,88 | −0,013 · 44,4 · 0,91 |
+
+- **Dos maneras de vivir, y cada semilla termina en una** (sin criterio): forrajear, comiendo lo que vuelve, o la cadena.
+  La 5 forrajea toda la corrida: de 3,6 a 8,8 manzanas por agente, viven de 1.236 a 1.627 ticks y sus generaciones duran de
+  2.112 a 5.326; agarran la llave roja de 7 a 15 veces por generación después del corte (las otras, ~55), y la puerta de
+  madera no la abren. La 4 forrajea hasta la 120 (~2 manzanas) y aprende la puerta en las 146-150, cuando sus manzanas
+  bajan a 1,23. La 1 empieza forrajeando (4,5 manzanas en las 26-30) y lo deja cuando aprende la puerta, en las 56-60. La
+  2 aprende la puerta en el currículo y no forrajea nunca.
+- **Las que hacen la cadena comen como en NT:** en las 146-150, la 1, 0,84 manzanas por agente, y la 2, 0,97 (NT, de 0,91
+  a 1,18), con la comida volviendo toda la generación. La 3 come algo más, 1,50.
+- **Girar hacia la comida sigue yendo con no hacer la cadena,** con una excepción: la 3 lo gana con la puerta ya aprendida
+  (de +0,017 en las 86-90 a +0,042, con la puerta de 43,6 a 51,4) y termina con las dos. En NT, la 3 también terminaba con
+  las dos (+0,031 y 30,4). La 1 lo pierde cuando aprende la puerta, y en la 4 baja cuando la aprende (de +0,051 a +0,027).
+- **Por etapa** (gens 146-150): NR, +0,0196 en la etapa 0 y +0,0184 en la 1; NT, +0,0019 y −0,0135; NRB0, +0,0009 y
+  +0,0128.
+
+**Se informan, sin criterio** (gens 146-150; NR · NT · NRB0 · NCB0): las manzanas por agente, 2,66 · 0,99 · 0,44 · 0,39;
+las que volvieron por generación, 160 · 0 · 26 · 0; la comida comida de la disponible (contando las que volvieron), 55% ·
+73% · 26% · 33%; los ticks de la generación, 2.350 · 1.360 · 1.770 · 1.600; la edad, 1.170 · 1.042 · 1.037 · 1.030 ticks;
+la distancia, 2.379 · 2.101 · 376 · 348 px; el término de la comida, 11,13 · 7,14 · 2,45 · 2,31; **la sensibilidad a la
+brújula** (el control positivo), +0,1024 · +0,1221 · −0,0004 · −0,0006; los árboles talados por generación, 0,32 · 0,60 ·
+0 · 0. **El tope de ticks:** en las 26-35 (un tope de 2.040 a 2.400 ticks), algunas generaciones de NR terminan por el tope
+con vivos (1,7 y 0,8 al final, en promedio); en las 146-150 (7.440), 0.
+
+**Los pasos por ventana** (agentes por generación, promedio de las 5 semillas; sin criterio):
+
+| Gens | 26-30 | 31-35 | 56-60 | 86-90 | 116-120 | 146-150 |
+|---|---|---|---|---|---|---|
+| Llave roja, NR | 60,00 | 32,48 | 43,32 | 44,32 | 46,32 | 48,92 |
+| Llave roja, NT | 60,00 | 24,96 | 36,56 | 48,20 | 52,12 | 55,00 |
+| Puerta de madera, NR | 20,16 | 10,76 | 23,68 | 29,16 | 30,76 | 39,96 |
+| Puerta de madera, NT | 11,40 | 7,40 | 23,60 | 31,64 | 37,56 | 43,88 |
+| Llave dorada, NR | 17,52 | 9,48 | 22,88 | 27,72 | 30,12 | 37,52 |
+| Llave dorada, NT | 9,80 | 7,00 | 20,12 | 30,00 | 35,92 | 42,44 |
+| Puerta de hierro, NR | 0,84 | 0,56 | 3,32 | 10,80 | 13,28 | 18,76 |
+| Puerta de hierro, NT | 0,32 | 0 | 1,08 | 10,64 | 10,00 | 13,08 |
+| Cofre, NR | 0,20 | 0,36 | 2,08 | 8,96 | 11,20 | 15,88 |
+| Cofre, NT | 0,04 | 0 | 0,48 | 5,44 | 7,56 | 9,64 |
+
+**El embudo** (sin criterio; sumados en las 5 semillas; entre paréntesis, la parte de los del paso anterior):
+
+| | Llave roja | Puerta de madera | Llave dorada | Puerta de hierro | Cofre |
+|---|---|---|---|---|---|
+| NR, gens 31-150 | 26.229 | 16.409 (63%) | 15.654 (95%) | 5.383 (34%) | 4.448 (83%) |
+| NT, gens 31-150 | 26.342 | 17.639 (67%) | 16.737 (95%) | 4.275 (26%) | 2.886 (68%) |
+| NR, gens 146-150 | 1.223 | 999 (82%) | 938 (94%) | 469 (50%) | 397 (85%) |
+| NT, gens 146-150 | 1.375 | 1.097 (80%) | 1.061 (97%) | 327 (31%) | 241 (74%) |
+
+**Dónde se traba la puerta de hierro** (gens 31-150): NR, con la llave dorada 15.648; la abren 5.383 (34%); no llegan a 25
+px 5.867 (37%; el 57% de los que no la abren); llegan sin tiempo 3.509 (22%; el 34%); llegan y no golpean ahí 110 (1%); no
+completan 779 (5%; el 8%). NT, en [el fitness sin tope](#sin-tope): 26%, 49% (el 66%), 19% (el 26%).
+
+**El tope y la mutación** (sin criterio). La parte con el de 0 a 100 en 100, NR 28% · 20% · 42% · 52% · 53% · 69% (de las
+26-30 a las 146-150; NT, 16% a 74%). El fitness que ordena, en las 146-150: NR 192,4 (NT, 188,7), y por la etapa en que
+terminan, 47 (277) · 88 (224) · 115 (61) · 197 (469) · 266 (72) · 342 (397) (NT: 42 (125) · 79 (278) · 120 (36) · 198
+(734) · 274 (86) · 342 (241)). La mutación adaptativa, NR 4 · 18 · 24 · 32 · 41 (de las 1-30 a las 121-150; 115 de 600 en
+las 31-150; NT, 79).
+
+**Lectura.**
+1. **Comer no está aprendido con la comida que rebrota:** cumple la b (+0,134; 5 de 5 por semilla) y no la a (3 de 5: la
+   3, la 4 y la 5; pide 4). Es lo más cerca que estuvo con la cadena aprendida: NA, 2 de 5; NT y NF, 1 de 5.
+2. **Las guardas no pasan: el cofre cae** (3 de 5), y la puerta de madera, la llave dorada y la de hierro pasan en el
+   mínimo. Con el criterio, la comida que rebrota le cuesta la cadena. No en promedio: la puerta de hierro y el cofre quedan
+   arriba de NT (18,76 y 15,88, contra 13,08 y 9,64), por tres semillas que terminan la cadena mejor que en NT; las otras
+   dos no la terminan.
+3. **Aparecen dos maneras de vivir, forrajear o la cadena, y cada semilla termina en una** (sin criterio). La 5 forrajea
+   toda la corrida: casi 9 manzanas por agente, viven ~1.600 ticks y no abren la puerta. La 4 forrajea hasta la 120 y la 1
+   al principio, y lo dejan cuando aprenden la puerta. Las que hacen la cadena comen ~1 manzana, como en NT, aunque la
+   comida vuelva toda la generación. **Con la comida que rebrota, comer no se suma a la cadena: la reemplaza.**
+4. **De las tres semillas que cumplen la a, dos son las que forrajean** (la 5, sin la puerta; la 4, que la aprende en la
+   última ventana). La 3 es la única que termina con las dos: gana el giro hacia la comida con la puerta ya aprendida. La 1
+   y la 2, que aprenden la puerta primero, terminan con el giro en 0 o negativo.
+5. **La selección ve la comida más que en NT** desde la 91 (+0,118 y +0,123 con el fitness; NT, +0,021 y +0,049), y
+   dentro de la generación girar hacia la comida va con terminar algo más arriba en la cadena (+0,080 y +0,040). Con eso,
+   la a no llega a 4 de 5.
+6. **La línea base casi no cambia con el rebrote:** NRB0 come 0,44 manzanas por agente (NCB0, 0,39) y da los mismos pasos
+   (la llave roja, 1,04 contra 1,24; la puerta, 0). Las guardas no piden más que con NT.
+7. **El tiempo, la mitad de lo estimado:** vivir más se concentra en pocos agentes (la edad sube un 12%; las generaciones,
+   un 73%).
+
+**Qué sugiere** (lo decide Fer, decisión 9):
+- **NR no va a la referencia:** no cumple comer y cuesta el cofre. La referencia sigue siendo NT, y `COMIDA_REBROTA` queda
+  apagado por defecto.
+- **Desde que la cadena se aprende (NA, NT, NF y NR), comer cumple la b y no la a,** y girar hacia la comida aparece sobre
+  todo donde la puerta no se aprende (la única vez que la a pasó, en la Sesión 3, la puerta estaba en 0 de 5). Con la
+  comida al doble, comer compitió con la cadena; con la comida que rebrota, la reemplaza.
+- **La sugerencia: cerrar el paso 1 como no aprendido** y hacer la corrida final (paso 7) con NT, los pasos 2 a 6. Cambia
+  el DoD del spec, y lo aprendido queda escrito: comer y la cadena compiten por el giro, y ningún cambio del peso o de la
+  comida los sumó.
+- **La alternativa, medir comer también después de la puerta** ([mejoras futuras](../product/mejoras_futuras.md)): no
+  cambia la corrida, pero pide un argumento nuevo de `medir_puerta.py` y otra tanda. Lo que se ve hoy no la favorece: con
+  la comida volviendo toda la generación, las semillas que hacen la cadena comen ~1 manzana en toda la vida, antes y
+  después de la puerta. Si la decisión 6 pasara a medir ahí, se decide antes de ver esa medición.
+- **Otro R no se sugiere:** con más comida, forrajear rinde más (la 5); con menos, se vuelve a NT.
+
+**Decidido por Fer (2026-11-24):** el paso 1 se cierra como no aprendido (la decisión 10 del
+[spec](../specs/active/PUZZLE_SOLOS.md)), y la corrida final (paso 7) es NT, con los pasos 2 a 6; comer se informa, sin
+criterio. NR no va a la referencia, que sigue siendo NT, y `COMIDA_REBROTA` sigue apagado por defecto. Medir comer después
+de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).

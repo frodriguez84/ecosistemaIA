@@ -27,6 +27,10 @@ lección: la historia, en [LECCIONES_APRENDIDAS.md](LECCIONES_APRENDIDAS.md).
   `python -u` (así lanza las corridas `experimento.py`). Más de 10 corridas a la vez se quedan sin
   memoria virtual y alguna se cae al arrancar; el `wait` de una tanda en segundo plano igual da 0: se
   cuentan las salidas de cada corrida (LEC-017).
+- **Una tanda lanzada en segundo plano sigue aunque se cierre la sesión que la lanzó:** visto el
+  2026-11-24 con un script de bash que larga las corridas con `&`, hace `wait` y escribe `fin.txt`
+  (la tanda de la comida que rebrota). La sesión que la lee sabe que terminó por ese archivo, y la
+  puede esperar en segundo plano hasta que aparezca.
 - **Un control con ventana que depende de una tecla se verifica en el log:** cada tecla de
   `main.py` deja su `print` (`🔍 Zoom IN`…); si no está, la tecla no llegó y el resultado no dice
   nada. Para hacerlo repetible, el evento se inyecta envolviendo `pygame.event.get` desde un script

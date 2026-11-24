@@ -195,7 +195,9 @@ cuando aprende la puerta. Fer eligió probar comida que rebrota; esto quedó afu
   donde la brújula apunta a la llave roja y a la puerta. Cuando se fijó, casi nadie abría la puerta y cubría la vida
   entera; con la cadena aprendida, cubre lo que tardan en abrirla (en NT, una mediana de 634 ticks de ~1.040). Un argumento
   nuevo que la mida en las etapas 2 a 5, sin cambiar la corrida, diría si comen después de la puerta. Si la decisión 6
-  pasara a medir ahí, se decide antes de ver la medición.
+  pasara a medir ahí, se decide antes de ver la medición. Con el paso 1 cerrado como no aprendido (Fer, 2026-11-24;
+  decisión 10), es lo que queda si se retoma comer; con la [comida que rebrota](../qa/AnalisisQA.md#rebrota), las semillas
+  que hacen la cadena comían ~1 manzana en toda la vida, antes y después de la puerta.
 - [ ] **Las manzanas bajo los árboles** (la otra mitad de la ecología del ítem 7 del [BACKLOG](BACKLOG.md)): con la comida
   que rebrota, es un segundo cambio (la decisión 4 del spec: un cambio por vez), para después de medirla.
 
