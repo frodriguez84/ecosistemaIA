@@ -614,9 +614,10 @@ de cada paso, la puerta de hierro la abren 4,4 agentes por generación y el cofr
   `python main.py --modo autonomo --curriculo --acercarse --acercarse-camino --deslizar --fortalezas-moviles --brujula-camino --fitness-sin-tope --generaciones 150`.
 * **Lo que no aprende: comer.** Comer aprendido pide que la red gire hacia la comida (antes de abrir la puerta de
   madera, 0,02 rad/tick o más y más que sin evolución) y que, dentro de cada generación, los que giran hacia ella
-  coman más. Lo segundo pasa; lo primero, en 1 de 5 semillas. Comen 0,99 manzanas por agente en toda la vida (sin
-  evolución, 0,39). Lo que se probó para que lo aprendan (más peso a la comida en el fitness, comida que rebrota)
-  o no lo logró, o lo logró perdiendo pasos de la cadena: comer y la cadena compiten por el giro.
+  coman más. Lo segundo pasa; lo primero, en 1 de 5 semillas. En las mismas 5 generaciones, cada agente come 0,99
+  manzanas en toda su vida (sin evolución, 0,39). Lo que se probó para que lo aprendan (más peso a la comida en
+  el fitness, comida que rebrota) o no lo logró, o lo logró perdiendo pasos de la cadena: comer y la cadena
+  compiten por el giro.
 
 ---
 

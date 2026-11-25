@@ -132,7 +132,7 @@ que se escribe el control. Aplicada en [`OPERACIONES.md`](OPERACIONES.md) § Med
 
 ## LEC-022 — 2026-11-22 — Una medida "por px" de un recurso que se agota no compara poblaciones
 
-**Qué pasó.** La decisión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md) pedía, para comer,
+**Qué pasó.** La decisión 6 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md) pedía, para comer,
 más manzanas por 1.000 px caminados que la línea base, para separar comer de caminar. Al fijar el criterio de
 [comer](../qa/AnalisisQA.md#comer), antes de calcular, se vio en lo publicado que hay 70 manzanas por generación, sin
 reponer, y que con evolución se comen el 84%: el que camina más pasa por donde ya comieron. Calculado: la larga, que gira

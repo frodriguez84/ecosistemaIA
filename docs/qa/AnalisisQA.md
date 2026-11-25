@@ -4141,7 +4141,7 @@ cofre en 2 (la 1 y la 4): es la primera vez que alguien abre el cofre sin nada d
 
 **Qué sugiere** (lo decide Fer):
 - **El costo de golpear es lo que frena la puerta sin la llave.** Sacarlo destraba la puerta y la cadena, con golpe en
-  todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), dos caminos sin código, cada
+  todos lados. Para el spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), dos caminos sin código, cada
   uno medido contra esta corrida y contra sin la llave:
   - **El costo en 0 como referencia nueva:** la puerta pasa el ítem 5 en 5 de 5 y la cadena llega al cofre. Lo aprendido
     sería golpear siempre, no golpear en la puerta.
@@ -4159,7 +4159,7 @@ cofre en 2 (la 1 y la 4): es la primera vez que alguien abre el cofre sin nada d
 <a id="comer"></a>
 ## Comer, en la referencia: ¿giran hacia la comida o comen porque caminan? (2026-11-22)
 
-**La pregunta** (el paso 1 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), SOLOS-01, con su
+**La pregunta** (el paso 1 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), SOLOS-01, con su
 decisión 6): en la referencia, ¿comer está aprendido? El 16/11, en otra condición (30 generaciones, con la llave dada),
 comían más porque caminaban más, y la red no giraba hacia la comida (+0,003 rad/tick;
 [brújula, deslizando](#brujula-c-deslizando)). La decisión 6 pide dos cosas: más manzanas por 1.000 px caminados que la
@@ -4353,14 +4353,14 @@ edad, 1.008 ticks (905; la larga 907).
 adentro de cada generación; las manzanas por 1.000 px, sin criterio; LEC-022). Con la decisión nueva, la referencia
 tampoco pasa: la sensibilidad, 3 de 5; el Spearman con las manzanas en las 121-150, +0,102 contra +0,041 de la línea
 base, sí. Lo que se prueba para comer es `FITNESS_FOOD` en 20, en la misma tanda que el costo de golpear en 0,01, cada uno
-contra la referencia ([el spec](../specs/active/PUZZLE_SOLOS.md)).
+contra la referencia ([el spec](../specs/done/PUZZLE_SOLOS.md)).
 
 ---
 
 <a id="costo-chico-comida20"></a>
 ## El costo de golpear en 0,01 y la comida al doble en el fitness: una tanda, dos cambios (2026-11-22)
 
-**La pregunta** (sesión 3 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md); los dos cambios, decididos
+**La pregunta** (sesión 3 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md); los dos cambios, decididos
 por Fer el 2026-11-22 con [el costo](#costo-golpe) y [comer](#comer)): dos experimentos en la misma tanda de 10 corridas,
 cada uno con un solo cambio contra la referencia vigente, la de la decisión 3, con `HIT_ENERGY_COST` en 0,05 (decisiones 3
 y 4):
@@ -4710,14 +4710,14 @@ negrita, donde NF cumple el 1):
 (`results/medicion_costo_golpe_20261121/`, con sus SHA-256 publicados), con `HIT_ENERGY_COST:0` en `pesos=`. El valor por
 defecto de `config.py` no cambia. Comer se retoma después de la cadena, con la referencia nueva. Esa referencia no tiene
 línea base sin evolución propia: la publicada es con costo, y sin costo los agentes al azar viven más y pueden llegar a más.
-La corre la próxima sesión ([el spec](../specs/active/PUZZLE_SOLOS.md)).
+La corre la próxima sesión ([el spec](../specs/done/PUZZLE_SOLOS.md)).
 
 ---
 
 <a id="cadena-sin-costo"></a>
 ## Los pasos 3 a 6 en la referencia sin costo, contra su línea base sin costo (2026-11-22)
 
-**La pregunta** (sesión 4 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)): con la referencia
+**La pregunta** (sesión 4 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md)): con la referencia
 vigente, sin costo de golpear (decidida por Fer el 2026-11-22, en [la sección anterior](#costo-chico-comida20)), ¿qué pasos
 de la cadena cumplen el criterio común (la decisión 5 del spec) contra su propia línea base sin evolución? La puerta de
 madera pasó contra la línea base publicada, que es con costo: sin costo, los agentes al azar golpean gratis y viven más, y
@@ -4924,7 +4924,7 @@ línea base.
 <a id="medicion-puerta-hierro"></a>
 ## Dónde se traba la puerta de hierro, en la referencia sin costo (2026-11-22)
 
-**La pregunta** (sesión 5 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), decisión 7): la
+**La pregunta** (sesión 5 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), decisión 7): la
 cadena se corta en la puerta de hierro. De los que tienen la llave dorada, la abre el 1% (21 de 2.056 en las 31-150,
 [la cadena sin costo](#cadena-sin-costo)). ¿Dónde se traba? Hay cuatro respuestas posibles: no llegan, llegan sin
 tiempo, llegan y no golpean, o golpean y no completan los 3 golpes. **Es un diagnóstico dentro de N0, sin contraste con
@@ -5136,12 +5136,12 @@ recompensa por acercarse no cambia.
 <a id="brujula-camino"></a>
 ## La brújula por el camino: los pasos 2 a 6 con la brújula nueva, contra su línea base (2026-11-22)
 
-**La pregunta** (sesión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)): con la brújula que
+**La pregunta** (sesión 6 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md)): con la brújula que
 sigue el camino libre más corto (`BRUJULA_CAMINO`, decidida por Fer en [dónde se traba](#medicion-puerta-hierro)), ¿pasa la
 puerta de hierro, el paso 5? ¿Y el cofre, el 6? La brújula nueva cambia los sensores 9 y 11 en todos los pasos, así que los
 pasos 2 a 4, que pasan con la referencia, no tienen que perder.
 
-**El cambio.** La sección [La brújula por el camino](../specs/active/PUZZLE_SOLOS.md#la-brújula-por-el-camino) del spec,
+**El cambio.** La sección [La brújula por el camino](../specs/done/PUZZLE_SOLOS.md#la-brújula-por-el-camino) del spec,
 en `src/world/camino.py`. Por etapa, una grilla de celdas de 5 px con lo que `_choca` deja libre, y la distancia por el
 camino al objetivo de la etapa: la ecuación eikonal, euclídea alrededor de las paredes. El sensor 9 apunta contra el
 gradiente de esa distancia, interpolado en las cuatro celdas que rodean al agente; el 11 es la distancia por el camino. En
@@ -5389,13 +5389,13 @@ defecto.
 <a id="acercarse-camino"></a>
 ## La recompensa por acercarse, por el camino: los pasos 2 a 6 contra la línea base de la referencia (2026-11-22)
 
-**La pregunta** (sesión 7 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)): con la recompensa por
+**La pregunta** (sesión 7 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md)): con la recompensa por
 acercarse medida por el camino libre (`ACERCARSE_CAMINO`, decidida por Fer en [la brújula por el camino](#brujula-camino)),
 ¿pasa la puerta de hierro, el paso 5? ¿Y el cofre, el 6? Los pasos 2 a 4, que pasan con la referencia, no tienen que
 perder.
 
 **El cambio.** La sección [La recompensa por acercarse, por el
-camino](../specs/active/PUZZLE_SOLOS.md#la-recompensa-por-acercarse-por-el-camino) del spec. `_medir_acercamiento` mide
+camino](../specs/done/PUZZLE_SOLOS.md#la-recompensa-por-acercarse-por-el-camino) del spec. `_medir_acercamiento` mide
 d0 y dmín con la distancia por el camino de la brújula (`camino.distancia`, la de `camino.rumbo` leída para un punto); en
 el objetivo, sin camino o sin celda libre cerca, la recta. No cambian la fórmula del avance, los pasos, `FITNESS_ACERCARSE`
 ni la brújula. Con la recta, el agente que queda contra la pared de la fortaleza chica tiene el mejor avance que puede
@@ -5637,7 +5637,7 @@ comer, medido sobre la tanda de NA y NCB0, sin correr nada.
 <a id="comer-na"></a>
 ## Comer, en la referencia nueva: el paso 1 sobre la tanda de NA, contra NCB0 (2026-11-23)
 
-**La pregunta** (sesión 8 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), SOLOS-01, con su
+**La pregunta** (sesión 8 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), SOLOS-01, con su
 decisión 6): en la referencia vigente, NA, ¿comer está aprendido? NA pasa los pasos 2 a 6 en 5 de 5 ([acercarse por el
 camino](#acercarse-camino)); si comer pasa, la misma tanda cumple los seis. En la referencia de la Sesión 2 no pasaba
 ([comer](#comer)): la sensibilidad, 3 de 5. Sin corridas: la tanda de NA y la de NCB0 tienen las columnas de la decisión 6
@@ -5837,18 +5837,18 @@ de los términos a [0, 100], y a 50 + 50 × la parte vivida de `BASE_TICKS`. La 
 
 **Decidido por Fer (2026-11-23):** para comer se prueba sacar el tope del fitness, con un switch apagado por defecto,
 contra NA. Lo diseña e implementa la próxima sesión, con sus controles, y la tanda va en la siguiente ([el
-spec](../specs/active/PUZZLE_SOLOS.md)). Para el diseño (sin criterio, después de decidir): en NA, en las 31-150, el tope
+spec](../specs/done/PUZZLE_SOLOS.md)). Para el diseño (sin criterio, después de decidir): en NA, en las 31-150, el tope
 por tiempo vivido recorta el 0,1% de las filas (39 de 36.000) y el piso en 0, 19.
 
 <a id="sin-tope"></a>
 ## El fitness sin tope: comer y los pasos 2 a 6, contra la línea base de la referencia (2026-11-23)
 
-**La pregunta** (sesión 9 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): SOLOS-01 con su
+**La pregunta** (sesión 9 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md): SOLOS-01 con su
 decisión 6, y SOLOS-02 a 06 como guardas): si la selección ordena por la suma de los términos del fitness, sin el tope de
 100 (`FITNESS_SIN_TOPE`, decidido por Fer en [comer en la referencia nueva](#comer-na)), ¿comer pasa? ¿Y los pasos 2 a 6
 siguen pasando?
 
-**El cambio.** La sección [El fitness sin tope](../specs/active/PUZZLE_SOLOS.md#el-fitness-sin-tope) del spec. Con el
+**El cambio.** La sección [El fitness sin tope](../specs/done/PUZZLE_SOLOS.md#el-fitness-sin-tope) del spec. Con el
 switch, `fitness` es la suma de los términos con piso en 0, sin el recorte a 100 y sin el tope por tiempo vivido (que vale
 100 como mucho). La mutación adaptativa de `evolve` y la guía del modo guiado siguen leyendo el de 0 a 100
 (`fitness_con_tope`, nuevo): **cambia solo el orden de la selección** (Fer, Sesión 9). Sin eso hubieran sido dos cambios:
@@ -6176,12 +6176,12 @@ lee es otra. Llega más lejos, y más agentes quedan en 100 con esa cuenta (en l
 **Decidido por Fer (2026-11-23):** NT pasa a la referencia del spec, con NCB0 de línea base (NT en
 `results/medicion_sin_tope_20261123/`, sus SHA-256 arriba; NCB0 en `results/medicion_brujula_camino_20261122/`, en [la
 brújula por el camino](#brujula-camino)). El valor por defecto de `config.py` no cambia. Para comer se prueba `FITNESS_FOOD`
-en 20, contra NT, con `pesos=` ([el spec](../specs/active/PUZZLE_SOLOS.md)).
+en 20, contra NT, con `pesos=` ([el spec](../specs/done/PUZZLE_SOLOS.md)).
 
 <a id="comida20-sin-tope"></a>
 ## La comida al doble, con el fitness sin tope: comer y los pasos 2 a 6, contra la línea base de la referencia (2026-11-23)
 
-**La pregunta** (sesión 10 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): SOLOS-01 con su
+**La pregunta** (sesión 10 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md): SOLOS-01 con su
 decisión 6, y SOLOS-02 a 06 como guardas): con `FITNESS_FOOD` en 20 contra la referencia NT (decidido por Fer en [el
 fitness sin tope](#sin-tope)), ¿comer pasa? ¿Y los pasos 2 a 6 siguen pasando?
 
@@ -6493,7 +6493,7 @@ menos agentes quedan en 100 con esa cuenta.
 - **O cerrar el paso 1 como no aprendido** y hacer la corrida final con NT, los pasos 2 a 6. Cambia el DoD del spec.
 
 **Decidido por Fer (2026-11-23):** para comer se prueba comida que rebrota, con un switch apagado por defecto, contra la
-referencia NT ([el spec](../specs/active/PUZZLE_SOLOS.md)). NF no va a la referencia, que sigue siendo NT. Medir comer
+referencia NT ([el spec](../specs/done/PUZZLE_SOLOS.md)). NF no va a la referencia, que sigue siendo NT. Medir comer
 después de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).
 
 ---
@@ -6501,12 +6501,12 @@ después de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).
 <a id="rebrota"></a>
 ## La comida que rebrota: comer y los pasos 2 a 6, contra su línea base (2026-11-23)
 
-**La pregunta** (sesión 11 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): SOLOS-01 con su
+**La pregunta** (sesión 11 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md): SOLOS-01 con su
 decisión 6, y SOLOS-02 a 06 como guardas): con la comida que rebrota contra la referencia NT (decidida por Fer en [la
 comida al doble, sin tope](#comida20-sin-tope); dónde, cuándo y R, por Fer en la Sesión 11), ¿comer pasa? ¿Y los pasos 2 a
 6 siguen pasando?
 
-**El cambio.** La sección [La comida que rebrota](../specs/active/PUZZLE_SOLOS.md#la-comida-que-rebrota) del spec. Con el
+**El cambio.** La sección [La comida que rebrota](../specs/done/PUZZLE_SOLOS.md#la-comida-que-rebrota) del spec. Con el
 switch `COMIDA_REBROTA` (apagado por defecto), cada manzana comida vuelve 250 ticks después (`COMIDA_REBROTA_TICKS`), la
 misma manzana, en un lugar al azar con las reglas del arranque y a 35 px o más de cada agente vivo. Consume azar solo
 cuando vuelve una. En NT se comen ~60 de las 70 manzanas en una vida de ~1.040 ticks, y no vuelven; con R = 250, lo comido
@@ -6875,14 +6875,14 @@ las 31-150; NT, 79).
 - **Otro R no se sugiere:** con más comida, forrajear rinde más (la 5); con menos, se vuelve a NT.
 
 **Decidido por Fer (2026-11-24):** el paso 1 se cierra como no aprendido (la decisión 10 del
-[spec](../specs/active/PUZZLE_SOLOS.md)), y la corrida final (paso 7) es NT, con los pasos 2 a 6; comer se informa, sin
+[spec](../specs/done/PUZZLE_SOLOS.md)), y la corrida final (paso 7) es NT, con los pasos 2 a 6; comer se informa, sin
 criterio. NR no va a la referencia, que sigue siendo NT, y `COMIDA_REBROTA` sigue apagado por defecto. Medir comer después
 de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).
 
 <a id="corrida-final"></a>
 ## La corrida final: los pasos 2 a 6 en la referencia, otra vez desde el último commit (2026-11-24, SOLOS-07)
 
-**La pregunta** (sesión 13 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), el paso 7): la
+**La pregunta** (sesión 13 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), el paso 7): la
 referencia (NT) y su línea base (NCB0), corridas otra vez desde el commit de la Sesión 12 (`91c8478`, con el código de los
 cuatro switches del spec), ¿dan lo publicado byte a byte? Si es así, NT es la referencia final, y sus números son los de
 [el fitness sin tope](#sin-tope), regenerables desde ese commit (LEC-011). Comer va sin criterio (la decisión 10).
@@ -6937,3 +6937,47 @@ más (el Spearman, +0,097 contra +0,049 de NCB0). Comen 0,99 manzanas por agente
 en la ventana que se mide.
 
 **Qué sugiere:** cerrar el spec, con el hacha y los árboles en el BACKLOG como el paso que sigue.
+
+---
+
+<a id="qa-puzzle-solos"></a>
+## QA /qa-spec — Que aprendan el puzzle solos (2026-11-25)
+**Veredicto:** APROBADO (los checkers dieron PARCIAL en tres criterios; ninguno se sostiene contra el texto del spec:
+ver SOLOS-QA-04 y 06, 09 y 10)
+**Verificación técnica:** sintaxis ✅ (`compileall` de `main.py`, `config.py`, `src`, `experimento.py`, `mediciones` y
+`tests`) · tests 231/231 en 84,8 s · build N/A (Python, sin build)
+**Método:** cuatro checkers independientes (Explore/haiku, solo lectura) contra el DoD y el QA manual de
+`docs/specs/active/PUZZLE_SOLOS.md` (hoy en `done/`), sin su bitácora: los pasos 2 a 6 (SOLOS-02 a 06), la corrida final
+(SOLOS-07), comer y el README (SOLOS-01 y 08), y la referencia final, los switches y el hacha (los puntos 3, 4 y 6 del
+DoD). No se corrió ninguna simulación: los checkers recalcularon con Python de solo lectura desde los CSV de
+`results/corrida_final_20261124/` (la tanda de la Sesión 13, desde `91c8478`). Cada `archivo:línea` de la tabla se imprimió
+antes de copiarlo (LEC-006); un checker citó el reenvío de los flags en `medir_puerta.py:916-917`, y es `:912-924`. Los IDs
+`SOLOS-NN` son los del QA manual del spec; SOLOS-QA-09 a 11 son los puntos del DoD que no tienen ID.
+
+Los tres PARCIAL, y por qué no cuentan:
+- **Los pasos 4 y 6:** su medida independiente (por 1.000 px) "no agrega", porque NCB0 da 0 (:6031 y :6033). El criterio
+  fijado antes de lanzar en [acercarse por el camino](#acercarse-camino) ya lo preveía: "si NCB0 da 0 (en la llave dorada
+  y el cofre dio 0), no agrega, y se anota" (:5454-5455). La decisión 5 pide leer el paso junto con la medida, no que la
+  medida agregue (LEC-006). En el 6, el checker sumó el margen de la semilla 5 (1,8 por generación): el mínimo del
+  criterio es 1.
+- **La referencia final:** el spec no copia los SHA-256, los linkea; el proyecto no duplica (CLAUDE.md). Están en las
+  secciones linkeadas y coinciden con la tanda (SOLOS-QA-07).
+- **Los tests del fitness sin tope:** el checker contó 10 `def test_` en `test_fitness_sin_tope.py`; uno está parametrizado
+  en los dos modos (`:154`) y pytest junta 11 (`--collect-only`), los del DoD.
+
+| ID | Criterio | Resultado | Evidencia / Gap |
+|----|----------|-----------|-----------------|
+| SOLOS-QA-01 | Comer (decisión 6; cerrado como no aprendido, no bloquea) | ✅ | Medido con la decisión 6 en las 5 semillas de NT: la sensibilidad por semilla (:5993-5997), 1 de 5 (:6000), y el Spearman, +0,097 contra +0,049 (:6001-6003). El checker recalculó la sensibilidad desde `agentes_*_evolucion.csv`: −0,0288 · −0,0073 · +0,0311 · −0,0179 · −0,0131, igual. El cierre como no aprendido, en la decisión 10 (`PUZZLE_SOLOS.md:52`) y en el paso 1 del estado (`:268`); en la corrida final, comer sin criterio (:6932-6934) (SOLOS-01) |
+| SOLOS-QA-02 | Llave roja (decisión 5) | ✅ | Recalculado desde los `corrida_*.csv`, gens 146-150: 55,8 · 57,6 · 54,4 · 53,6 · 53,6 contra 1,6 · 1,0 · 0,6 · 1,2 · 1,8 de NCB0; 5 de 5 arriba y ≥ 1; 55,00 contra 1,24, como lo publicado (:6012-6017, :6922). Medida independiente: por 1.000 px, 26,2 contra 3,5, acompaña (:6029) (SOLOS-02) |
+| SOLOS-QA-03 | Puerta de madera (decisión 5) | ✅ | 49,6 · 46,8 · 30,4 · 48,2 · 44,4 contra 0 en las 5; 43,88 (:6012-6017, :6923). Medida: llega a la puerta el 77% de los que tienen la llave roja, contra el 7% de NCB0 (:6030) (SOLOS-03) |
+| SOLOS-QA-04 | Llave dorada (decisión 5) | ✅ | 47,8 · 45,8 · 27,0 · 48,2 · 43,4 contra 0; 42,44 (:6012-6017, :6924). Medida: por 1.000 px, 20,2 contra 0, "no agrega: NCB0 da 0" (:6031), como fijaba el criterio antes de lanzar (:5454-5455). **El checker dio PARCIAL** por esa medida (arriba) (SOLOS-04) |
+| SOLOS-QA-05 | Puerta de hierro (decisión 5) | ✅ | 19,4 · 25,0 · 4,4 · 10,8 · 5,8 contra 0; 13,08 (:6012-6017, :6925). Medida: llega el 51% de los que tienen la llave dorada, contra el 43% de NA, y por semilla 4 de 5 (:6032) (SOLOS-05) |
+| SOLOS-QA-06 | Cofre (decisión 5) | ✅ | 13,4 · 22,6 · 3,8 · 6,6 · 1,8 contra 0; 9,64 (:6012-6017, :6926). Medida: por 1.000 px, 4,6 contra 0, no agrega (:6033), como en el paso 4. **El checker dio PARCIAL** por eso y por el margen de la semilla 5 (arriba) (SOLOS-06) |
+| SOLOS-QA-07 | Todo junto | ✅ | Los 30 CSV de `results/corrida_final_20261124/` dan el SHA-256 publicado (`sha256sum`; cada hash aparece una vez en este archivo: NT en :5976-5982, NCB0 en :5257-5262). `etapa_inicial` es 0 en las 25 filas de `corrida_*` y las 1.500 de `agentes_*` de NT de las gens 146-150. Los 10 logs, con su línea `MEDICION inconsistencias=0 filas=9000`. El comando de NT (:6898-6901) es el del spec (`PUZZLE_SOLOS.md:246-249`). Comer, sin criterio (:6932-6934), y los pasos 2 a 6 en la misma tanda (:6936-6937) (SOLOS-07) |
+| SOLOS-QA-08 | Lo que dice el README | ✅ | "Lo que aprende el modo autónomo" (`README.md:585-620`): los 10 números de la tabla, la semilla más baja de la puerta de hierro (4,4) y del cofre (1,8), "1 de 5" y las manzanas por agente (0,99 contra 0,39), iguales a la corrida final (:6922-6926, :6932-6934) y a [el fitness sin tope](#sin-tope) (:6074), y recalculados desde los CSV. Los seis valores de `config.py` y sus valores por defecto (`config.py:29`, `:54`, `:123`, `:127`, `:130`, `:134`), los argumentos de `medir_puerta.py` y los flags de `main.py`, verificados. **Corregido en la sesión** (observación del checker): las manzanas por agente no decían la ventana, las gens 146-150; el número no cambia (SOLOS-08) |
+| SOLOS-QA-09 | La referencia final, con sus SHA-256 (DoD) | ✅ | "La referencia final" (`PUZZLE_SOLOS.md:240-262`): el comando, los switches, los seis valores con el de por defecto (iguales a `config.py`) y lo que va por defecto. `medir_puerta.py` acepta cada argumento, fija los valores con `setattr` sin tocar `config.py` (`:875`) y pasa los flags a `main.py` (`:912-924`). Los SHA-256, linkeados: NT en [el fitness sin tope](#sin-tope) (:5976-5982) y NCB0 en [la brújula por el camino](#brujula-camino) (:5257-5262). **El checker dio PARCIAL** porque el spec los linkea en lugar de copiarlos (arriba) |
+| SOLOS-QA-10 | Los switches, sus tests y la decisión de Fer (DoD) | ✅ | Los cuatro, apagados por defecto: `BRUJULA_CAMINO` (`config.py:60`), `ACERCARSE_CAMINO` (`:63`), `FITNESS_SIN_TOPE` (`:67`) y `COMIDA_REBROTA`, con `COMIDA_REBROTA_TICKS` en 250 (`:89-90`). Sus flags, en `main.py:159-172`, aplicados en `:327-334`; los leen `advanced_agent.py:178` (la brújula, con `camino.py:203`), `:229` (acercarse) y `:833` (el fitness), y `main.py:551-552` con `world.py:376` (el rebrote). Tests, con `pytest --collect-only`: `test_brujula_camino.py` 12, `test_acercarse_camino.py` 7, `test_fitness_sin_tope.py` 11 y `test_comida_rebrota.py` 11, los del DoD. Ninguno por defecto, decidido por Fer (`PUZZLE_SOLOS.md:261`; :6890). **El checker dio PARCIAL** por contar 10 en el del fitness (arriba) |
+| SOLOS-QA-11 | El hacha y los árboles, en el BACKLOG (DoD) | ✅ | Su ítem, "el paso que sigue al cofre", que el autónomo aprenda a talar contra la referencia final, sin spec todavía (`BACKLOG.md:46`) |
+
+**Fuera de criterio** (sin gap): las medidas independientes de los pasos 4 y 6 se informan pero no distinguen nada mientras
+la línea base dé 0. Si el hacha y los árboles usan la misma referencia, conviene fijar antes una medida que sí agregue.

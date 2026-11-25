@@ -123,12 +123,12 @@ Con la [medición](../qa/AnalisisQA.md#sin-la-llave-dada): la larga con el curr�
 Con la [medición](../qa/AnalisisQA.md#sens-golpe): sin la llave dada, los que llegan a la puerta casi no golpean por las dos cosas, el golpe en general (cae desde el corte, en las dos etapas) y el golpe condicionado a la distancia (la larga lo aprende tarde; sin la llave, no).
 
 - [x] 2026-11-21 — medido ([AnalisisQA](../qa/AnalisisQA.md#costo-golpe)): **el costo frena la puerta, por el golpe en general.** Sin costo, el golpe en general no cae desde el corte (4 de 5), la puerta pasa de 2,5 a 7,6 por generación (4 de 5) y la cadena llega al cofre en 2 semillas, pero golpean en todos lados (61% de los ticks lejos de la puerta) y el golpe condicionado sube en 3 de 5, no en 4. Lo que sigue, abajo, en "Aparecido al medir el costo de golpear". **El costo de golpear, sin la llave dada:** la corrida sin la llave con `HIT_ENERGY_COST` en 0 (`pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0`, sin código), contra sin la llave, que ya está corrida (cambia una sola cosa, LEC-019). Si el golpe en general no cae y la puerta sube, esa parte es el costo: golpear cuesta siempre y paga solo en la puerta. Es un diagnóstico, no un arreglo (sin costo, golpear en todos lados es gratis); un cambio de golpear (el costo, que cueste solo si golpea algo, los cooldowns) se mediría después contra este. 5 corridas, ~1 h 30 min.
-- [x] 2026-11-22 — medido en [comer](../qa/AnalisisQA.md#comer), el paso 1 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): no es solo cuánto comen. El giro hacia la comida llega a +0,047 en la generación 60 y cae a +0,014, y desde la 60 la selección casi no lo ve. Lo que se prueba, decidido por Fer: `FITNESS_FOOD` en 20, dentro del spec. **La comida sin la llave dada:** baja del 1,10 al 0,99 a medida que aprenden la llave (el 89,8% de la larga), con la recompensa por acercarse pesando el doble (la llave es un paso dado más). Si importa, es de los pesos (`FITNESS_ACERCARSE` = 40, fijado con la llave dada); lo decide Fer.
+- [x] 2026-11-22 — medido en [comer](../qa/AnalisisQA.md#comer), el paso 1 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md): no es solo cuánto comen. El giro hacia la comida llega a +0,047 en la generación 60 y cae a +0,014, y desde la 60 la selección casi no lo ve. Lo que se prueba, decidido por Fer: `FITNESS_FOOD` en 20, dentro del spec. **La comida sin la llave dada:** baja del 1,10 al 0,99 a medida que aprenden la llave (el 89,8% de la larga), con la recompensa por acercarse pesando el doble (la llave es un paso dado más). Si importa, es de los pesos (`FITNESS_ACERCARSE` = 40, fijado con la llave dada); lo decide Fer.
 
 ## Aparecido al medir el costo de golpear — 2026-11-21
 
 Con la [medición](../qa/AnalisisQA.md#costo-golpe): sin `HIT_ENERGY_COST`, la puerta sin la llave se triplica, pero
-golpean en todos lados. Para el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), Fer decidió el
+golpean en todos lados. Para el spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md), Fer decidió el
 2026-11-22, después de medir el costo en 0,01, que la referencia sea sin costo ([BACKLOG](BACKLOG.md)).
 
 - [x] 2026-11-22 — medido ([AnalisisQA](../qa/AnalisisQA.md#costo-chico-comida20)): **con 0,01 pasa la puerta (4 de 5),
@@ -154,7 +154,7 @@ golpear siempre, y con ninguno de los tres valores medidos (0,05, 0,01 y 0) la r
   [Modo guiado y modo autónomo](../specs/done/MODO_GUIADO_Y_AUTONOMO.md)). Si el golpe que no toca nada golpeable (una
   puerta, el cofre, un árbol) cuesta y el que toca no, golpear en todos lados se paga y golpear en la puerta no: la
   selección vería el golpe condicionado. Sin medir. Es código, con un switch apagado por defecto y sus tests (decisión 7
-  del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)). **Trampa:** el costo se cobra en el agente
+  del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md)). **Trampa:** el costo se cobra en el agente
   (`act()`, `advanced_agent.py`) antes de que `main.py` pruebe qué golpea (los `_try_*`), así que el cobro tendría que
   moverse después de esas pruebas.
 
@@ -179,7 +179,7 @@ Con la [brújula por el camino](../qa/AnalisisQA.md#brujula-camino), al probar s
 
 ## Aparecido con la comida que rebrota — 2026-11-23
 
-Al diseñar [la comida que rebrota](../specs/active/PUZZLE_SOLOS.md#la-comida-que-rebrota) (`COMIDA_REBROTA`):
+Al diseñar [la comida que rebrota](../specs/done/PUZZLE_SOLOS.md#la-comida-que-rebrota) (`COMIDA_REBROTA`):
 
 - [ ] **La tala, con la comida que rebrota:** los árboles se pueden talar con 30 manzanas sin comer o menos
   (`TREE_CUTTING_THRESHOLD`; las casitas, 20). Con rebrote puede que no se llegue nunca. Cuando se retomen el hacha y los
@@ -191,7 +191,7 @@ Con la [medición](../qa/AnalisisQA.md#comida20-sin-tope): girar hacia la comida
 cuando aprende la puerta. Fer eligió probar comida que rebrota; esto quedó afuera.
 
 - [ ] **Medir comer también después de abrir la puerta:** la sensibilidad a la comida de `medir_puerta.py` (la de la
-  decisión 6 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md)) se mide solo en las etapas 0 y 1,
+  decisión 6 del spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md)) se mide solo en las etapas 0 y 1,
   donde la brújula apunta a la llave roja y a la puerta. Cuando se fijó, casi nadie abría la puerta y cubría la vida
   entera; con la cadena aprendida, cubre lo que tardan en abrirla (en NT, una mediana de 634 ticks de ~1.040). Un argumento
   nuevo que la mida en las etapas 2 a 5, sin cambiar la corrida, diría si comen después de la puerta. Si la decisión 6
@@ -203,7 +203,7 @@ cuando aprende la puerta. Fer eligió probar comida que rebrota; esto quedó afu
 
 ## El hacha y los árboles, después del cofre — 2026-11-21
 
-Decidido con Fer al armar el spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md): talar va después del
+Decidido con Fer al armar el spec [Que aprendan el puzzle solos](../specs/done/PUZZLE_SOLOS.md): talar va después del
 cofre, como primer paso después de la cadena del puzzle. Lo que dice el código hoy, para la sesión que lo tome:
 
 - [ ] **Talar, con lo que hay:** cortar pide golpear y el hacha propia (se agarra por contacto, a 30 px, y queda en el

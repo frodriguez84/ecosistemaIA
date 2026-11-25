@@ -64,7 +64,7 @@ El detalle de cada punto, con sus números, está en el README.
     `--fitness-sin-tope`: la selección ordena por la suma de los términos; la mutación adaptativa y
     la guía siguen leyendo `fitness_con_tope`, de 0 a 100) y la comida que rebrota (`COMIDA_REBROTA`,
     `--comida-rebrota`: cada manzana comida vuelve a los `COMIDA_REBROTA_TICKS` ticks, al azar y lejos
-    de los vivos; prendida consume azar) ([spec](docs/specs/active/PUZZLE_SOLOS.md)).
+    de los vivos; prendida consume azar) ([spec](docs/specs/done/PUZZLE_SOLOS.md)).
     No son columnas del CSV: van en el nombre del archivo, el panel, el boletín y el resumen del
     experimento.
 

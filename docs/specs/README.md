@@ -68,7 +68,7 @@ hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 
 | Spec | Cuándo leerlo |
 |------|----------------|
-| [Que aprendan el puzzle solos](active/PUZZLE_SOLOS.md) — en el autónomo y sin nada dado al nacer: comer, llave roja, puerta de madera, llave dorada, puerta de hierro y cofre, cada paso con el mismo criterio; varias sesiones, con bitácora | Al arrancar cada sesión del spec (la última entrada de su bitácora) y antes de medir o cambiar el aprendizaje del autónomo |
+| _(vacío)_ | |
 
 ## 🔵 Planned (`planned/`)
 
@@ -80,6 +80,7 @@ hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 
 | Spec | Resumen en SPECS_ARCHIVO |
 |------|---------------------------|
+| [Que aprendan el puzzle solos](done/PUZZLE_SOLOS.md) — en el autónomo y sin nada dado al nacer, la cadena del puzzle (de la llave roja al cofre) se aprende en 5 de 5 semillas contra la línea base, con cuatro switches nuevos apagados por defecto; comer, no; trece sesiones con bitácora | [§ Que aprendan el puzzle solos](../archive/SPECS_ARCHIVO.md#puzzle-solos) |
 | [Que el puzzle se pueda aprender](done/PUZZLE_APRENDIBLE.md) — recompensa por acercarse al próximo paso y currículo (las primeras generaciones nacen con la llave roja), cada uno con su switch; en el autónomo, ninguno hace que aprenda la puerta de madera | [§ Que el puzzle se pueda aprender](../archive/SPECS_ARCHIVO.md#puzzle-aprendible) |
 | [Pantallas para ver aprender](done/PANTALLAS_VER_APRENDER.md) — sin el popup de cada generación: gráfico en vivo en el panel, avisos que no tapan y una pantalla final como boletín, sin cambiar la simulación | [§ Pantallas para ver aprender](../archive/SPECS_ARCHIVO.md#pantallas-ver-aprender) |
 | [Modo guiado y modo autónomo](done/MODO_GUIADO_Y_AUTONOMO.md) — switch de la conducción escrita a mano, puzzle por agente, brújula, golpear, `config.py` que manda y medición por modo | [§ Modo guiado y modo autónomo](../archive/SPECS_ARCHIVO.md#modo-guiado-y-autonomo) |

@@ -5,6 +5,51 @@ diseño queda en el spec, en [`../specs/done/`](../specs/done/). El más nuevo a
 
 ---
 
+## Que aprendan el puzzle solos {#puzzle-solos}
+
+**Spec:** [PUZZLE_SOLOS](../specs/done/PUZZLE_SOLOS.md) · cerrado el 2026-11-25, en catorce sesiones con
+bitácora (trece de mediciones y cambios, del 2026-11-21 al 2026-11-24, y el cierre).
+
+**Qué hace:** lleva al modo autónomo, sin nada dado al nacer en la ventana que se mide, por la cadena del
+puzzle, un paso por vez y con el mismo criterio contra la línea base sin evolución (4 de 5 semillas, al
+menos 1 agente por generación, leído junto con una medida independiente). Cada cambio a la simulación entró
+con un switch en `config.py`, apagado por defecto y común a los dos modos: la **brújula por el camino**
+(`BRUJULA_CAMINO`, `--brujula-camino`: los sensores 9 y 11 apuntan por el camino libre más corto, no en
+línea recta), la **recompensa por acercarse medida por el camino** (`ACERCARSE_CAMINO`,
+`--acercarse-camino`, va con `--acercarse`), el **fitness sin tope** (`FITNESS_SIN_TOPE`,
+`--fitness-sin-tope`: la selección ordena por la suma de los términos; la mutación adaptativa y la guía
+siguen con el de 0 a 100) y la **comida que rebrota** (`COMIDA_REBROTA`, `--comida-rebrota`: cada manzana
+comida vuelve a los `COMIDA_REBROTA_TICKS`, 250, al azar y lejos de los vivos). Apagados, la corrida es la
+de antes byte a byte; ninguno va por defecto (Fer, 2026-11-24). Lo demás se probó sin código, con los
+argumentos de `mediciones/medir_puerta.py` (`pesos=`, `cruce=`, `curriculo=`).
+
+**Alcance:** `config.py`, `main.py` y `experimento.py` (los cuatro flags, el nombre del CSV, el panel, el
+boletín y el resumen); `src/world/camino.py` (nuevo: por etapa, una grilla con la distancia y el rumbo por
+el camino libre), `src/world/world.py`, `src/agents/advanced_agent.py` y `src/evolution/genetic_algorithm.py`
+(la mutación adaptativa lee `fitness_con_tope`); `mediciones/medir_puerta.py` (los cuatro switches y la
+medida `hierro`) y un script `mediciones/analizar_*.py` por medición. Tests: `test_brujula_camino.py` (12),
+`test_acercarse_camino.py` (7), `test_fitness_sin_tope.py` (11) y `test_comida_rebrota.py` (11), nuevos; 231
+en ~85 s. No cambia la red (11 entradas, 5 salidas), el modo guiado por defecto ni el mapa.
+
+**Resultado:** la cadena entera, sí. En la referencia final (NT: el autónomo con el currículo hasta la 30,
+acercarse por el camino, deslizar, fortalezas móviles, la brújula por el camino, el fitness sin tope, el
+cruce en 0,2, golpear sin costo y tres pesos del fitness), en las gens 146-150 la llave roja, la puerta de
+madera, la llave dorada, la puerta de hierro y el cofre pasan 5 de 5 (55,0 · 43,9 · 42,4 · 13,1 · 9,6
+agentes por generación; sin evolución, 1,2 y 0), y corrida otra vez desde el commit de la Sesión 12 da sus
+30 CSV byte a byte. Lo que destrabó cada paso: golpear sin costo, la puerta de madera; la brújula y la
+recompensa por acercarse medidas por el camino, la puerta de hierro (la recta cruzaba las paredes de la
+fortaleza chica); y el fitness sin tope subió la puerta de hierro y el cofre (la selección distingue la
+cadena entera). **Comer, no:** se cerró como no aprendido (decisión 10); compite con la cadena por el giro,
+y ni más peso a la comida ni la comida que rebrota lo sumaron. El comando, los valores y los SHA-256, en
+[§ La referencia final](../specs/done/PUZZLE_SOLOS.md#la-referencia-final) del spec; la lectura, en
+[AnalisisQA § La corrida final](../qa/AnalisisQA.md#corrida-final).
+
+**QA:** [AnalisisQA § QA /qa-spec — Que aprendan el puzzle solos](../qa/AnalisisQA.md#qa-puzzle-solos),
+APROBADO 11/11 (los checkers dieron PARCIAL en tres criterios; ninguno se sostiene contra el texto del
+spec).
+
+---
+
 ## Que el puzzle se pueda aprender {#puzzle-aprendible}
 
 **Spec:** [PUZZLE_APRENDIBLE](../specs/done/PUZZLE_APRENDIBLE.md) · cerrado el 2026-11-15, en cuatro
