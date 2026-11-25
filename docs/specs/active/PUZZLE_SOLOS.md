@@ -1,6 +1,6 @@
 # Spec: Que aprendan el puzzle solos
 
-**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`), la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`) y el fitness sin tope (`FITNESS_SIN_TOPE`), los tres apagados por defecto: la puerta de hierro, 13,08 por generación, y el cofre, 9,64, con poco margen en la semilla 5 (1,8). Esa corrida (NT, Sesión 9) es la referencia desde el 2026-11-23 (Fer). El paso 1 (comer) **se cerró como no aprendido** (Fer, 2026-11-24, decisión 10): no pasa ni en NA (Sesión 8), ni en NT (Sesión 9), ni con `FITNESS_FOOD` en 20 contra NT (Sesión 10, NF), que además cuesta la cadena (la puerta de hierro y el cofre, 2 de 5), ni con la comida que rebrota contra NT (Sesión 11, `COMIDA_REBROTA`, apagado por defecto; cada manzana comida vuelve a los 250 ticks, al azar y lejos de los vivos), con su tanda (NR y su línea base, NRB0) leída en la Sesión 12: comer, 3 de 5, y el cofre cae (3 de 5). Falta el 7 (todo junto): la corrida final con NT, los pasos 2 a 6. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22, y la 10, sumada el 2026-11-24; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22, y con la recompensa por acercarse por el camino y el fitness sin tope desde el 2026-11-23)
+**Estado:** Parcial — pasos 2 a 6 (llave roja, puerta de madera, llave dorada, puerta de hierro y cofre) ✅, 5 de 5 cada uno contra su línea base, con la brújula por el camino (`BRUJULA_CAMINO`), la recompensa por acercarse medida por el camino (`ACERCARSE_CAMINO`) y el fitness sin tope (`FITNESS_SIN_TOPE`), los tres apagados por defecto: la puerta de hierro, 13,08 por generación, y el cofre, 9,64, con poco margen en la semilla 5 (1,8). Esa corrida (NT, Sesión 9) es la referencia desde el 2026-11-23 (Fer). El paso 1 (comer) **se cerró como no aprendido** (Fer, 2026-11-24, decisión 10): no pasa ni en NA (Sesión 8), ni en NT (Sesión 9), ni con `FITNESS_FOOD` en 20 contra NT (Sesión 10, NF), que además cuesta la cadena (la puerta de hierro y el cofre, 2 de 5), ni con la comida que rebrota contra NT (Sesión 11, `COMIDA_REBROTA`, apagado por defecto; cada manzana comida vuelve a los 250 ticks, al azar y lejos de los vivos), con su tanda (NR y su línea base, NRB0) leída en la Sesión 12: comer, 3 de 5, y el cofre cae (3 de 5). El 7 (todo junto) ✅: la corrida final, NT y NCB0 otra vez desde el commit de la Sesión 12, da lo publicado byte a byte (Sesión 13, 2026-11-24): NT es la [referencia final](#la-referencia-final), y ninguno de los switches del spec va prendido por defecto (Fer). Falta el cierre. Decisiones cerradas con Fer el 2026-11-21 (la 6, cambiada el 2026-11-22, y la 10, sumada el 2026-11-24; la referencia, sin costo de golpear desde el 2026-11-22, con la brújula por el camino desde el 2026-11-22, y con la recompensa por acercarse por el camino y el fitness sin tope desde el 2026-11-23)
 **Prioridad:** Alta — es el rumbo del modo autónomo, pedido por Fer el 2026-11-21
 **Gate:** Ninguno
 **Bloquea:** el ítem 6 del [BACKLOG](../../product/BACKLOG.md) (mecánicas nuevas) y el hacha y los árboles: entran cuando el puzzle esté aprendido
@@ -237,6 +237,30 @@ manzana comida vuelve a los R ticks, en otro lugar al azar. Va con el switch `CO
   "comida que rebrota"; en el resumen del experimento, "**Comida:** cada manzana comida vuelve a los
   `COMIDA_REBROTA_TICKS` ticks (`config.py`), en otro lugar al azar" (`experimento.py` no lee `config.py`).
 
+## La referencia final
+
+**NT, desde el 2026-11-24** (Sesión 13): la corrida final, NT y NCB0 otra vez desde `91c8478`, da sus 30 CSV byte a byte
+([la corrida final](../../qa/AnalisisQA.md#corrida-final)). Los pasos 2 a 6 pasan 5 de 5 cada uno; comer, sin criterio
+(decisión 10).
+
+- **El comando,** por semilla S, de 1 a 5: `python mediciones/medir_puerta.py . SALIDA S evolucion 150 acercarse deslizar
+  fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino
+  acercarse-camino fitness-sin-tope`. `sens-etapa0`, `sens-golpe` y `hierro` solo miden.
+- **La línea base,** NCB0: el comando de NC ([la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino)) con
+  `sin_evolucion` y sin `cruce=`. Sin evolución, `acercarse-camino` y `fitness-sin-tope` no cambian lo que hacen.
+- **Los switches:** `medir_puerta.py` corre `main.py` en el modo autónomo con el currículo, y con `--acercarse`,
+  `--deslizar`, `--fortalezas-moviles`, `--brujula-camino`, `--acercarse-camino` y `--fitness-sin-tope`. La comida que
+  rebrota, apagada.
+- **Los valores de `config.py` que cambia** (antes de `main.main()`, sin tocar el archivo; entre paréntesis, el de por
+  defecto): `CURRICULO_HASTA_GENERACION` 30 (15), `CROSSOVER_RATE` 0,2 (0,95), `FITNESS_ACERCARSE` 40 (10),
+  `FITNESS_EXPLORATION` 0 (10), `FITNESS_ANTI_CIRCLE` 0 (18) y `HIT_ENERGY_COST` 0 (0,05).
+- **Los SHA-256:** los de NT, en [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope); los de NCB0, en [la brújula por el
+  camino](../../qa/AnalisisQA.md#brujula-camino). Los CSV, en `results/corrida_final_20261124/` (y antes, en
+  `results/medicion_sin_tope_20261123/` y `results/medicion_brujula_camino_20261122/`).
+- **Por defecto** (la decisión 9; Fer, 2026-11-24, Sesión 13): ninguno de los cuatro switches del spec (`BRUJULA_CAMINO`,
+  `ACERCARSE_CAMINO`, `FITNESS_SIN_TOPE`, `COMIDA_REBROTA`). `python main.py` sigue siendo la corrida de antes.
+
 ## Estado por paso
 
 | # | Paso | Estado | Dónde |
@@ -247,22 +271,26 @@ manzana comida vuelve a los R ticks, en otro lugar al azar. Va con el switch `CO
 | 4 | Llave dorada | ✅ En la referencia sin costo, contra su línea base sin costo (2026-11-22): 4,0 por generación contra 0, 5 de 5. Viene con la puerta: la agarra el 53% de los que la abren, en toda la corrida. Con la brújula por el camino (Sesión 6): 27,0 contra 0, 5 de 5, 6,7 veces N0. Con la recompensa por acercarse por el camino (Sesión 7, NA): 41,0 contra 0, 5 de 5. Con el fitness sin tope (Sesión 9, NT, la referencia): 42,4 contra 0, 5 de 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
 | 5 | Puerta de hierro | ✅ **Con el fitness sin tope** (2026-11-23, Sesión 9, NT, la referencia): 5 de 5 (19,4 · 25,0 · 4,4 · 10,8 · 5,8 por generación, 13,08 en promedio; NA, 7,92, sin criterio: NT más alta en 4 de 5). Llega el 51% de los que tienen la llave dorada (NA, 43%) y la abre el 26%. El freno sigue siendo llegar (el 66% de los que no la abren). **Pasa con la recompensa por acercarse por el camino** (2026-11-23, Sesión 7, NA): 5 de 5 (3,4 · 13,6 · 11,6 · 8,6 · 2,4 por generación, 7,92 en promedio; la línea base, 0). Llega el 43% de los que tienen la llave dorada (NC, 37%; más en las 5 semillas) y la abre el 21%. Sigue frenando llegar (el 71% de los que no la abren), y llega sin tiempo el 23%. **Antes:** no pasaba (2026-11-22): ninguna semilla llega a 1 por generación (0,16 en promedio; la línea base, 0). **La cadena se corta acá:** la abre el 1% de los que tienen la llave dorada (21 de 2.056 en las 31-150). Pide 3 golpes con 90 ticks entre golpe y golpe (la de madera, 2). **Se traba en llegar** (2026-11-22): el 99% de los que tienen la llave dorada nunca está a 25 px, y los que llegan la abren (21 de 29). La brújula y la recompensa por acercarse apuntan en línea recta, y desde la llave dorada, adentro de la fortaleza chica, esa recta cruza paredes en los 600 mapas: el seguidor perfecto no llega en 588, y los agentes quedan donde queda él. Fer decidió probar una brújula que siga el camino libre, con un switch. **Con la brújula por el camino** (2026-11-22, Sesión 6): **3 de 5, no pasa** (1,6 · 4,4 · 12,6 · 0,4 · 0 por generación; de 0,16 a 3,80 en promedio). Llega el 37% de los que tienen la llave dorada (N0, 1%) y la abre el 14%. Las semillas 4 y 5 van atrasadas en toda la cadena. Sigue trabándose en llegar (el 73% de los que no la abren), y el 19% llega sin tiempo; la recompensa por acercarse todavía mide la recta | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [dónde se traba](../../qa/AnalisisQA.md#medicion-puerta-hierro), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
 | 6 | Cofre | ✅ **Con el fitness sin tope** (2026-11-23, Sesión 9, NT, la referencia): 5 de 5 (13,4 · 22,6 · 3,8 · 6,6 · 1,8 por generación, 9,64 en promedio; NA, 4,80, sin criterio: NT más alta en 4 de 5), con poco margen en la semilla 5. Lo abre el 68% de los que abren la puerta de hierro (gens 31-150), como con NA. **Pasa con la recompensa por acercarse por el camino** (2026-11-23, Sesión 7, NA): 5 de 5 (1,2 · 9,2 · 6,0 · 6,2 · 1,4 por generación, 4,80 en promedio; la línea base, 0), con poco margen en las semillas 1 y 5; en las 116-120 hubiera sido 4 de 5. Lo abre el 68% de los que abren la puerta de hierro (gens 31-150). **Antes:** no pasaba (2026-11-22): 0,08 por generación, detrás de la puerta de hierro (7 agentes en las 31-150, en las semillas 1 y 4). Se vuelve a medir cuando pase el paso 5. Con la brújula por el camino (Sesión 6): 1 de 5 (la semilla 3, 9,4 por generación; 2,12 en promedio), 856 agentes en las 31-150; en las 116-120 hubieran sido 3 de 5 | [la cadena sin costo](../../qa/AnalisisQA.md#cadena-sin-costo), [la brújula por el camino](../../qa/AnalisisQA.md#brujula-camino), [acercarse por el camino](../../qa/AnalisisQA.md#acercarse-camino), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
-| 7 | Todo junto | ⏳ Una corrida final con los pasos 2 a 6: comer se cerró como no aprendido (decisión 10), y la corrida final es NT, corrida otra vez desde el commit de la Sesión 12 (Sesión 13). Comer no pasa ni en la tanda de NA (Sesión 8), ni en la de NT (Sesión 9), ni en la de NF (Sesión 10, donde además caen la puerta de hierro y el cofre), ni en la de NR (Sesión 12, donde cae el cofre). Con NT, la selección distingue la cadena entera: el que abre el cofre suma 342 y el que solo abre la puerta de madera, 120 (con el tope, 100 los dos) | [comer en NA](../../qa/AnalisisQA.md#comer-na), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) |
+| 7 | Todo junto | ✅ **La corrida final** (2026-11-24, Sesión 13): NT y NCB0, corridas otra vez desde el commit de la Sesión 12 (`91c8478`), dan los 30 CSV publicados byte a byte, y nada dado al nacer en las gens 146-150. Los pasos 2 a 6, 5 de 5 cada uno en la misma tanda (la llave roja, 55,00 por generación; la puerta de madera, 43,88; la llave dorada, 42,44; la puerta de hierro, 13,08; el cofre, 9,64; NCB0, 1,24 y 0). Comer, sin criterio: la sensibilidad, 1 de 5. NT es la [referencia final](#la-referencia-final). Comer no pasa ni en la tanda de NA (Sesión 8), ni en la de NT (Sesión 9), ni en la de NF (Sesión 10, donde además caen la puerta de hierro y el cofre), ni en la de NR (Sesión 12, donde cae el cofre). Con NT, la selección distingue la cadena entera: el que abre el cofre suma 342 y el que solo abre la puerta de madera, 120 (con el tope, 100 los dos) | [comer en NA](../../qa/AnalisisQA.md#comer-na), [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope), [la corrida final](../../qa/AnalisisQA.md#corrida-final) |
 
 Un paso ✅ se vuelve a mirar en la corrida final: un cambio para un paso posterior puede romper uno anterior.
 
 ## Criterios de done (DoD)
 
-- [ ] Cada paso de la cadena (llave roja, puerta de madera, llave dorada, puerta de hierro, cofre) cumple el criterio
+- [x] Cada paso de la cadena (llave roja, puerta de madera, llave dorada, puerta de hierro, cofre) cumple el criterio
       común en la referencia vigente, con su sección en AnalisisQA. Comer, cerrado como no aprendido (decisión 10), con
-      sus mediciones en AnalisisQA.
-- [ ] La corrida final: la referencia vigente, 5 semillas, con los pasos 2 a 6 cumpliendo el criterio común en la misma
-      tanda, y nada dado al nacer en la ventana que se mide. Comer se informa, sin criterio (decisión 10).
-- [ ] La referencia final escrita en este spec (comando, switches y pesos), con los SHA-256 de sus CSV.
-- [ ] Cada cambio a la simulación que hizo falta, con su switch, sus tests, y la decisión de Fer sobre si va por defecto.
-- [ ] El README dice lo que aprende el modo autónomo y lo que no (comer), y es verdad (con los números de la corrida
-      final).
-- [ ] El hacha y los árboles, anotados en el BACKLOG como el paso que sigue.
+      sus mediciones en AnalisisQA. *(Sesión 9, [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope); comer, Sesión 12.)*
+- [x] La corrida final: la referencia vigente, 5 semillas, con los pasos 2 a 6 cumpliendo el criterio común en la misma
+      tanda, y nada dado al nacer en la ventana que se mide. Comer se informa, sin criterio (decisión 10). *(Sesión 13,
+      [la corrida final](../../qa/AnalisisQA.md#corrida-final).)*
+- [x] La referencia final escrita en este spec (comando, switches y pesos), con los SHA-256 de sus CSV. *([La referencia
+      final](#la-referencia-final).)*
+- [x] Cada cambio a la simulación que hizo falta, con su switch, sus tests, y la decisión de Fer sobre si va por defecto.
+      *(`BRUJULA_CAMINO`, 12 tests; `ACERCARSE_CAMINO`, 7; `FITNESS_SIN_TOPE`, 11; `COMIDA_REBROTA`, 11. Ninguno por
+      defecto: Fer, 2026-11-24.)*
+- [x] El README dice lo que aprende el modo autónomo y lo que no (comer), y es verdad (con los números de la corrida
+      final). *(Sesión 13, "Lo que aprende el modo autónomo".)*
+- [x] El hacha y los árboles, anotados en el BACKLOG como el paso que sigue. *(Sesión 13.)*
 
 ## QA manual (IDs propuestos)
 
@@ -1150,3 +1178,50 @@ leé la última entrada de la Bitácora de ejecución y tomá su "Próxima sesi�
   - **Para el cierre** (puede ser otra sesión): el hacha y los árboles en el BACKLOG como el paso que sigue, y
     `/close-spec`.
   - **Trampas:** la línea base de los pasos 2 a 6 es NCB0, no NRB0; la máquina queda ocupada ~2 h, nada más en paralelo.
+
+### Sesión 13 — 2026-11-24 — Paso 7: la corrida final
+- **Hecho:**
+  - la pregunta del DoD, antes de lanzar: Fer decidió que ninguno de los switches del spec va prendido por defecto;
+  - la tanda, NT y NCB0, semillas 1 a 5, las 10 a la vez, desde `91c8478` con el árbol limpio, en
+    `results/corrida_final_20261124/`: del 2026-11-24 a las 20:21:24 a las 22:39:02 (2 h 17 min), con las 10 líneas
+    `MEDICION inconsistencias=0 filas=9000`;
+  - el control, con un script de la sesión probado antes de leer (con una copia de las tandas publicadas da 30 de 30, y con
+    tres defectos sembrados, los encuentra): **los 30 CSV dan el SHA-256 publicado** y son iguales a los de las tandas de
+    la Sesión 9 y la 6; `etapa_inicial` es 0 en las gens 146-150 de NT;
+  - en AnalisisQA, [la corrida final](../../qa/AnalisisQA.md#corrida-final); en este spec, [la referencia
+    final](#la-referencia-final), el paso 7 y el DoD; en el README, "Lo que aprende el modo autónomo", con los números de
+    la corrida final y lo que no aprende (comer); en el BACKLOG, la línea del spec, la decisión de Fer y el hacha y los
+    árboles como el paso que sigue.
+
+  Commit: el de esta sesión, confirmado por Fer.
+- **Estados:** el paso 7 pasa a ✅ (SOLOS-07): los pasos 2 a 6, 5 de 5 cada uno en la misma tanda, sin nada dado al nacer
+  en la ventana. NT es la referencia final. Los seis puntos del DoD, cumplidos. El spec sigue "Parcial" hasta el cierre.
+- **Decidido por Fer (2026-11-24):** ninguno de los cuatro switches del spec (`BRUJULA_CAMINO`, `ACERCARSE_CAMINO`,
+  `FITNESS_SIN_TOPE`, `COMIDA_REBROTA`) va prendido por defecto. Las otras opciones eran prender la brújula por el camino y
+  el fitness sin tope (cambian también el modo guiado, que es el de por defecto y donde nunca se midieron), y un flag que
+  prenda toda la referencia de una vez (no se anotó en mejoras futuras: Fer eligió sin él).
+- **Desvíos del spec:**
+  - **no se corrió el script de análisis:** con los 30 CSV iguales byte a byte, su salida es la publicada en
+    [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope). La sección de la corrida final la cita, no la repite;
+  - **la tanda tardó 2 h 17,** no ~2 h;
+  - **el control del control, con una copia en el scratchpad, se cayó con `FileNotFoundError`:** la ruta de los CSV pasaba
+    los 260 caracteres de Windows. Es LEC-026 (que habla de la salida de `medir_puerta.py`, y vale también para una copia de
+    sus CSV); la copia se hizo en `C:/Temp/` y se borró.
+- **A medias o bloqueado:** nada. Del spec falta el cierre.
+- **Para verificar en producción:** N/A.
+- **Próxima sesión:** el cierre del spec, con `/close-spec docs/specs/active/PUZZLE_SOLOS.md`. No toca la simulación ni
+  corre tandas.
+  - **Primer paso:** `git status -sb` (limpio, con el commit de esta sesión) y `python -m pytest -q`.
+  - **El QA** (`/qa-spec`, dentro de `/close-spec`): SOLOS-01 a 08 contra AnalisisQA. SOLOS-01 (comer) está cerrado como
+    no aprendido (decisión 10) y no bloquea. SOLOS-02 a 06 y 07, en [la corrida final](../../qa/AnalisisQA.md#corrida-final),
+    que remite a [el fitness sin tope](../../qa/AnalisisQA.md#sin-tope) para el detalle por semilla. SOLOS-08: los números
+    de "Lo que aprende el modo autónomo" del README contra esas dos secciones. Si el QA no da APROBADO, `/close-spec` para.
+  - **Después del `git mv` a `done/`:** los links al spec en `active/` se rompen. Hoy son 44 en 6 archivos: AnalisisQA 22,
+    BACKLOG 13, mejoras futuras 6, y uno en `CLAUDE.md`, `docs/specs/README.md` y LECCIONES_APRENDIDAS. Se cuentan con
+    `grep -rEo "active/PUZZLE_SOLOS\.md[)#]" --include=*.md .` (sin `results/`), que cuenta los links y no el texto de
+    esta bitácora. Pasan a `done/`, y el mismo grep tiene que dar 0. El prompt de "Prompt de cada sesión" nombra la ruta
+    vieja en texto: con el spec cerrado ya no se usa.
+  - **Al cerrar:** el estado del spec, `✅ Implementado (fecha)`; la línea del BACKLOG, a Hecho; y borrar la memoria
+    `spec-en-ejecucion` (la regla global: se borra cuando el spec se cierra).
+  - **Trampas:** el README es CRLF (el Edit lo conserva; para contar los finales de línea, Python con bytes, LEC-003);
+    los docs son LF.

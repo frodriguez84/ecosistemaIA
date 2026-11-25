@@ -582,6 +582,42 @@ Los experimentos, con su lectura, están en [`docs/qa/AnalisisQA.md`](docs/qa/An
 que se mide es cada modo contra su línea base sin evolución, con la misma semilla y en varias
 semillas: que el fitness suba con las generaciones no alcanza, porque la línea base también sube.
 
+### Lo que aprende el modo autónomo
+
+Sin guía y sin nada dado al nacer, la evolución aprende la cadena entera del puzzle. En las últimas 5 de 150
+generaciones, con 60 agentes, cada paso lo da al menos 1 agente por generación y más que la línea base sin
+evolución, en las 5 semillas ([la corrida final](docs/qa/AnalisisQA.md#corrida-final), 2026-11-24):
+
+| Paso | Con evolución | Sin evolución |
+|---|---|---|
+| Llave roja | 55,0 | 1,2 |
+| Puerta de madera | 43,9 | 0 |
+| Llave dorada | 42,4 | 0 |
+| Puerta de hierro | 13,1 | 0 |
+| Cofre | 9,6 | 0 |
+
+Agentes por generación que dan el paso, promedio de las 5 semillas, generaciones 146 a 150. En la semilla más baja
+de cada paso, la puerta de hierro la abren 4,4 agentes por generación y el cofre, 1,8.
+
+* **No es la configuración por defecto.** Es el modo autónomo con el currículo hasta la generación 30 (desde la 31
+  nacen sin la llave roja), la recompensa por acercarse medida por el camino, deslizar, las fortalezas móviles, la
+  brújula por el camino y el fitness sin tope, y con seis valores de `config.py` cambiados:
+  `CURRICULO_HASTA_GENERACION` 30, `CROSSOVER_RATE` 0,2, `FITNESS_ACERCARSE` 40, `FITNESS_EXPLORATION` 0,
+  `FITNESS_ANTI_CIRCLE` 0 y `HIT_ENERGY_COST` 0 (golpear no cuesta energía). Así se corre, para la semilla S;
+  `mediciones/medir_puerta.py` fija esos valores sin tocar `config.py` y mide sin cambiar la corrida:
+
+  ```bash
+  python mediciones/medir_puerta.py . results/referencia S evolucion 150 acercarse deslizar fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2 pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino acercarse-camino fitness-sin-tope
+  ```
+
+  Con la misma semilla da los mismos CSV, byte a byte. Para verla con ventana: esos seis valores en `config.py` y
+  `python main.py --modo autonomo --curriculo --acercarse --acercarse-camino --deslizar --fortalezas-moviles --brujula-camino --fitness-sin-tope --generaciones 150`.
+* **Lo que no aprende: comer.** Comer aprendido pide que la red gire hacia la comida (antes de abrir la puerta de
+  madera, 0,02 rad/tick o más y más que sin evolución) y que, dentro de cada generación, los que giran hacia ella
+  coman más. Lo segundo pasa; lo primero, en 1 de 5 semillas. Comen 0,99 manzanas por agente en toda la vida (sin
+  evolución, 0,39). Lo que se probó para que lo aprendan (más peso a la comida en el fitness, comida que rebrota)
+  o no lo logró, o lo logró perdiendo pasos de la cadena: comer y la cadena compiten por el giro.
+
 ---
 
 ## 🧩 Arquitectura Implementada

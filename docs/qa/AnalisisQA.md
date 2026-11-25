@@ -6878,3 +6878,62 @@ las 31-150; NT, 79).
 [spec](../specs/active/PUZZLE_SOLOS.md)), y la corrida final (paso 7) es NT, con los pasos 2 a 6; comer se informa, sin
 criterio. NR no va a la referencia, que sigue siendo NT, y `COMIDA_REBROTA` sigue apagado por defecto. Medir comer después
 de la puerta queda en [mejoras futuras](../product/mejoras_futuras.md).
+
+<a id="corrida-final"></a>
+## La corrida final: los pasos 2 a 6 en la referencia, otra vez desde el último commit (2026-11-24, SOLOS-07)
+
+**La pregunta** (sesión 13 del spec [Que aprendan el puzzle solos](../specs/active/PUZZLE_SOLOS.md), el paso 7): la
+referencia (NT) y su línea base (NCB0), corridas otra vez desde el commit de la Sesión 12 (`91c8478`, con el código de los
+cuatro switches del spec), ¿dan lo publicado byte a byte? Si es así, NT es la referencia final, y sus números son los de
+[el fitness sin tope](#sin-tope), regenerables desde ese commit (LEC-011). Comer va sin criterio (la decisión 10).
+
+**Los switches por defecto** (la decisión 9; Fer, 2026-11-24, antes de lanzar): ninguno. `BRUJULA_CAMINO`,
+`ACERCARSE_CAMINO`, `FITNESS_SIN_TOPE` y `COMIDA_REBROTA` quedan apagados en `config.py`. La referencia también lleva
+acercarse, deslizar, fortalezas móviles, el currículo hasta la 30, el cruce en 0,2 y cuatro pesos, así que prender solo
+esos cuatro no da la referencia. Además, la brújula por el camino y el fitness sin tope cambiarían el modo guiado, que es el
+de por defecto y donde nunca se midieron.
+
+**Cómo se corrió.** Las 10 a la vez, en `results/corrida_final_20261124/`, con el árbol limpio en `91c8478`, del 2026-11-24
+a las 20:21:24 a las 22:39:02 (2 h 17 min):
+- **NT,** semillas 1 a 5: `medir_puerta.py . results/corrida_final_20261124 S evolucion 150 acercarse deslizar
+  fortalezas-moviles curriculo=30 sens-etapa0 sens-golpe cruce=0.2
+  pesos=FITNESS_ACERCARSE:40,FITNESS_EXPLORATION:0,FITNESS_ANTI_CIRCLE:0,HIT_ENERGY_COST:0 hierro brujula-camino
+  acercarse-camino fitness-sin-tope`, el comando de [el fitness sin tope](#sin-tope);
+- **NCB0,** semillas 1 a 5: el comando de NC ([la brújula por el camino](#brujula-camino)) con `sin_evolucion` y sin
+  `cruce=`.
+
+**El control** (un script de la sesión, probado antes de leer con una copia de las tandas publicadas, que dio 30 de 30, y
+con tres defectos sembrados en la copia, que encontró):
+- las 10 líneas `MEDICION inconsistencias=0 filas=9000`, contadas (LEC-017);
+- **los 30 CSV dan el SHA-256 publicado:** los 15 de NT, los de [el fitness sin tope](#sin-tope), y los 15 de NCB0, los de
+  [la brújula por el camino](#brujula-camino). Son también iguales byte a byte a los de
+  `results/medicion_sin_tope_20261123/` y `results/medicion_brujula_camino_20261122/`;
+- **nada dado al nacer en la ventana:** `etapa_inicial` es 0 en las 1.500 filas de `agentes_*.csv` de NT de las gens
+  146-150 y en sus 25 filas de `corrida_*.csv`.
+
+Con los CSV iguales, valen los controles de la tanda de [el fitness sin tope](#sin-tope) (los pesos, el costo de golpear en
+0, el currículo y las sumas de los pasos).
+
+**El resultado: NT es la referencia final.** Sus números son los publicados. En resumen (gens 146-150; agentes por
+generación que dan el paso, promedio de las 5 semillas, y la semilla más baja de NT):
+
+| Paso | NT | NCB0 | La semilla más baja de NT | El criterio (pide 4 de 5) |
+|---|---|---|---|---|
+| 2, llave roja | 55,00 | 1,24 | 53,6 | **5 de 5** |
+| 3, puerta de madera | 43,88 | 0 | 30,4 (la 3) | **5 de 5** |
+| 4, llave dorada | 42,44 | 0 | 27,0 (la 3) | **5 de 5** |
+| 5, puerta de hierro | 13,08 | 0 | 4,4 (la 3) | **5 de 5** |
+| 6, cofre | 9,64 | 0 | 1,8 (la 5) | **5 de 5** |
+
+Las medidas independientes acompañan: de los que tienen la llave roja, el 77% llega a la puerta de madera (NCB0, el 7%), y
+de los que tienen la llave dorada, el 51% llega a la de hierro (gens 31-150). Por semilla, en [el fitness sin
+tope](#sin-tope).
+
+**Comer, sin criterio** (la decisión 10): la sensibilidad a la comida antes de abrir la puerta da −0,0072 rad/tick en
+promedio, y pasa de 0,02 y de NCB0 en 1 de 5 semillas (la 3). Dentro de la generación, los que giran hacia la comida comen
+más (el Spearman, +0,097 contra +0,049 de NCB0). Comen 0,99 manzanas por agente (NCB0, 0,39).
+
+**SOLOS-07: PASA.** Los pasos 2 a 6 cumplen el criterio común en la misma tanda, 5 de 5 cada uno, sin nada dado al nacer
+en la ventana que se mide.
+
+**Qué sugiere:** cerrar el spec, con el hacha y los árboles en el BACKLOG como el paso que sigue.
