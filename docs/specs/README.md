@@ -74,7 +74,7 @@ hook pre-commit (`.claude/hooks/pre-commit-gate.sh`).
 
 | Spec | Gate / nota |
 |------|----------------|
-| _(vacío)_ | |
+| [El hacha y los árboles](planned/HACHA_Y_ARBOLES.md) — que el modo autónomo aprenda a talar, contra la referencia final de Que aprendan el puzzle solos | Sin gate; decisiones cerradas con Fer el 2026-11-25 |
 
 ## ⚫ Done (`done/`)
 
